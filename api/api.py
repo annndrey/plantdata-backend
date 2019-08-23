@@ -1,0 +1,608 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+from functools import wraps
+from flask import Flask, g, make_response, request, current_app
+from flask_restful import Resource, Api, reqparse, abort, marshal_with
+from flask.json import jsonify
+from flask_migrate import Migrate
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import or_
+from sqlalchemy import func as sql_func
+from flask_marshmallow import Marshmallow
+from flask_httpauth import HTTPBasicAuth
+from flask_cors import CORS, cross_origin
+from flask_restful.utils import cors
+from marshmallow import fields
+from marshmallow_enum import EnumField
+from models import db, User, Sensor, Location, Data, DataPicture
+import logging
+import os
+import uuid
+
+import click
+import datetime
+import calendar
+from dateutil.relativedelta import relativedelta
+import jwt
+import json
+
+import io
+import requests
+from PIL import Image
+import glob
+from collections import OrderedDict
+
+logging.basicConfig(format='%(levelname)s: %(asctime)s - %(message)s',
+                    level=logging.DEBUG, datefmt='%d.%m.%Y %I:%M:%S %p')
+
+app = Flask(__name__)
+cors = CORS(app, resources={r"/*": {"origins": "*"}}, methods=['GET', 'POST', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'])
+api = Api(app, prefix="/api/v1")
+auth = HTTPBasicAuth()
+app.config.from_envvar('APPSETTINGS')
+app.config['PROPAGATE_EXCEPTIONS'] = True
+db.init_app(app)
+migrate = Migrate(app, db)
+ma = Marshmallow(app)
+
+gunicorn_logger = logging.getLogger('gunicorn.error')
+app.logger.handlers = gunicorn_logger.handlers
+app.logger.setLevel(gunicorn_logger.level)
+
+
+def token_required(f):  
+    @wraps(f)
+    def _verify(*args, **kwargs):
+        auth_headers = request.headers.get('Authorization', '').split()
+
+        invalid_msg = {
+            'message': 'Invalid token. Registeration and / or authentication required',
+            'authenticated': False
+        }
+        expired_msg = {
+            'message': 'Expired token. Reauthentication required.',
+            'authenticated': False
+        }
+
+        if len(auth_headers) != 2:
+            return abort(403)
+
+        token = auth_headers[1]
+        data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
+        user = User.query.filter_by(login=data['sub']).first()
+
+        if not user:
+            abort(404)
+
+        return f(*args, **kwargs)
+
+    return _verify
+
+
+def authenticate(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if not getattr(func, 'authenticated', True):
+            return func(*args, **kwargs)
+
+        acct = basic_authentication()  # custom account lookup function
+
+        if acct:
+            return func(*args, **kwargs)
+
+        abort(401)
+    return wrapper
+
+
+@app.errorhandler(404)
+def not_found(error):
+    return make_response(jsonify({'error': 'Not found'}), 404)
+
+@auth.error_handler
+def unauthorized():
+    return make_response(jsonify({'error': 'Unauthorized access'}), 401)
+
+@auth.verify_password
+def verify_password(username_or_token, password):
+    user = User.verify_auth_token(username_or_token)
+    if not user:
+        # try to authenticate with username/password
+        user = User.query.filter_by(login = username_or_token).first()
+        if not user or not user.verify_password(password):
+            return False
+    g.user = user
+    return True
+
+
+#@cross_origin(origin=='localhost',headers=['Content- Type','Authorization'])
+#@cross_origin(supports_credentials=True)
+@token_required
+def access_picture(path):
+    print("PATH")
+    print(request.cookies)
+    realpath = path
+    redirect_path = "/pictures/" + realpath
+    response = make_response("")
+    response.headers["X-Accel-Redirect"] = redirect_path
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    return response
+
+
+
+@app.route('/api/v1/token', methods=['POST'])
+@cross_origin(supports_credentials=True)
+def get_auth_token_post():
+    username = request.json.get('username')
+    password = request.json.get('password')
+    user = User.query.filter_by(login = username).first()
+    if user:
+        if user.verify_password(password):
+            token = user.generate_auth_token()
+            response = jsonify({ 'token': "%s" % token.decode('utf-8'), "user_id":user.id, "login": user.login, "name": user.name })
+            return response
+    abort(404)
+
+
+@app.route('/api/v1/token', methods=['GET'])
+def get_auth_token():
+    token = g.user.generate_auth_token()
+    return jsonify({ 'token': "%s" % token })
+
+
+# SCHEMAS 
+class UserSchema(ma.ModelSchema):
+    class Meta:
+        model = User
+
+class SensorSchema(ma.ModelSchema):
+    class Meta:
+        model = Sensor
+    numrecords = ma.Function(lambda obj: obj.numrecords)
+
+class DataPictureSchema(ma.ModelSchema):
+    class Meta:
+        model = DataPicture
+
+class LocationSchema(ma.ModelSchema):
+    class Meta:
+        model = Location
+        
+
+class DataSchema(ma.ModelSchema):
+    class Meta:
+        model = Data
+    pictures = ma.Nested("DataPictureSchema", many=True)
+
+
+class PictAPI(Resource):
+    def __init__(self):
+        self.schema = DataPictureSchema()
+        self.m_schema = DataPictureSchema(many=True)
+        self.method_decorators = []
+    def options(self, *args, **kwargs):
+        return jsonify([])
+
+    #@token_required
+    @cross_origin()
+    def get(self, path):
+        auth_cookie = request.cookies.get("auth", "")
+        auth_headers = request.headers.get('Authorization', '').split()
+        if len(auth_headers) > 0:
+            token = auth_headers[1]
+        elif len(auth_cookie) > 0:
+            token = auth_cookie
+        else:
+            abort(403)
+            
+        data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
+        user = User.query.filter_by(login=data['sub']).first()
+        if not user:
+            abort(404)
+        if not path:
+            abort(404)
+        
+        realpath = path
+        redirect_path = "/pictures/" + realpath
+        response = make_response("")
+        response.headers["X-Accel-Redirect"] = redirect_path
+        return response
+
+    
+    
+class StatsAPI(Resource):
+    def __init__(self):
+        self.schema = DataSchema()
+        self.m_schema = DataSchema(many=True)
+        self.method_decorators = []
+    def options(self, *args, **kwargs):
+        return jsonify([])
+
+    @token_required
+    @cross_origin()
+    def get(self, sensorid=None, dataid=None):
+        suuid = request.args['uuid']
+        auth_headers = request.headers.get('Authorization', '').split()
+        token = auth_headers[1]
+        data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
+        user = User.query.filter_by(login=data['sub']).first()
+        if not user:
+            abort(404)
+        if not suuid:
+            abort(404)
+            
+        if not dataid:
+            sensordata = db.session.query(Data).join(Sensor).filter(Sensor.uuid == suuid).all()
+            if sensordata:
+                return jsonify(self.m_schema.dump(sensordata).data), 200
+        else:
+            sensordata = db.session.query(Data).filter(Data.sensor_id == sensorid).filter(Data.id == dataid).first()
+            if sensordata:
+                return jsonify(self.schema.dump(sensordata).data), 200
+            
+        # return data here
+        #if not id:
+        #    return jsonify(self.schema.dump(user).data), 200
+        return abort(404)
+
+    @token_required
+    @cross_origin()
+    def post(self):
+        auth_headers = request.headers.get('Authorization', '').split()
+        token = auth_headers[1]
+        udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
+        user = User.query.filter_by(login=udata['sub']).first()
+        suuid = request.form.get('uuid')
+        sensor = db.session.query(Sensor).filter(Sensor.uuid == suuid).first()
+        if sensor:
+            if sensor.user != user:
+                abort(403)
+            
+            temp0 = float(request.form.get('T0'))
+            temp1 = float(request.form.get("T1"))
+            tempA = float(request.form.get("TA"))
+            hum0 = float(request.form.get("H0"))
+            hum1 = float(request.form.get("H1"))
+            uv = int(request.form.get("UV"))
+            lux = int(request.form.get("L"))
+            soilmoist = int(request.form.get("M"))
+            co2 = int(request.form.get("CO2"))
+
+            picts = []
+            for i in range(2):
+                pict = request.files.get(f'upload_file{i}')
+                fpath = os.path.join(current_app.config['FILE_PATH'], user.login, sensor.uuid)
+                if not os.path.exists(fpath):
+                    os.makedirs(fpath)
+                fdata = pict.read()
+                fuuid = str(uuid.uuid4())
+                fname = fuuid + '.jpg'
+                fullpath = os.path.join(fpath, fname)
+                partpath = os.path.join(user.login, sensor.uuid, fname)
+                with open(fullpath, 'wb') as outf:
+                    outf.write(fdata)
+                newpicture = DataPicture(fpath=partpath)
+                db.session.add(newpicture)
+                db.session.commit()
+                picts.append(newpicture)
+            
+            app.logger.debug(["REQUEST", request.json, user, sensor])
+            app.logger.debug(["DATA", request.form])
+            app.logger.debug(["FILES", request.files])
+            newdata = Data(sensor_id=sensor.id,
+                           ts = datetime.datetime.now(),
+                           temp0 = temp0,
+                           temp1 = temp1,
+                           tempA = tempA,
+                           hum0 = hum0,
+                           hum1 = hum1,
+                           uv = uv,
+                           lux = lux,
+                           soilmoist = soilmoist,
+                           co2 = co2
+                           # fpath = partpath
+            )
+            
+            app.logger.debug("New data saved")
+            db.session.add(newdata)
+            db.session.commit()
+            for p in picts:
+                p.data_id = newdata.id
+                db.session.add(p)
+                db.session.commit()
+            
+            
+        # maxqueryage = current_app.config['QUERY_AGE']
+        # if not user:
+        #    return abort(403)
+
+        # index = request.form['index']
+        # orig_name = request.form['filename']
+        # f = request.files['croppedfile']
+        # data = f.read()
+        # fsize = len(data)
+        # imgext = os.path.splitext(f.filename)[-1].lower()
+        # #print(1)
+        # if not os.path.exists(fpath):
+        #    os.makedirs(fpath)
+        # #print(2)
+        # fuuid = str(uuid.uuid4())
+        # fname = fuuid + imgext
+        # #print(3)
+        # prevquery = db.session.query(UserQuery).filter(UserQuery.orig_name == orig_name).filter(UserQuery.fsize == fsize).filter(UserQuery.user == user).first()
+        # if prevquery and prevquery.queryage <= maxqueryage:
+        #    #print(11)
+        #    # return existing data without calculating
+        #    print("SAVED RESULTS")
+        #    resp = json.loads(prevquery.result)
+        #else:
+        #    print("NEW RESULTS")
+        #    fullpath = os.path.join(fpath, fname)
+
+        #    with open(fullpath, 'wb') as outf:
+        #        outf.write(data)
+        #    #print(4)
+        #    # AI Section start
+        #    img_pil = Image.open(io.BytesIO(data))
+        #    if imgext == '.png':
+        #        img_pil = remove_transparency(img_pil)
+
+        #    img_tensor = using_data_transform(img_pil)
+        #    img_tensor.unsqueeze_(0)
+        #    img_variable = img_tensor
+        #    result = {}
+        #    # passing the image to models
+        #    # and getting back the result#
+
+        #    # 1. plant / non plant 
+        #    # if not plant:
+        #    # return result
+        #    # if plant:
+        #    # 2. leaf / non leaf
+        #    # if not leaf:
+        #    # return result
+        #    # if leaf:
+        #    # 3. tomato / non tomato
+        #    # if tomato:
+        #    # 4. tomato healthy / unhealthy
+        #    # if not tomato:
+        #    # 5. plant healthy / unhealthy
+
+        #    print("1 Plant / non plant")
+        #    result = get_model_results('plant_or_not', result, img_variable)
+            
+        #    if result['plant_or_not'] == "plant":
+        #        print("Leaf / non leaf")
+
+        #        result = get_model_results('leaf_or_not', result, img_variable)
+                
+        #        if result['leaf_or_not'] == "leaf":
+        #            print("tomato / non tomato")
+        #            result = get_model_results('tomat_or_not', result, img_variable)
+
+        #            if result['tomat_or_not'] == "tomat":
+        #                print("health_tomato or not")
+        #                result = get_model_results('tomat_health_or_not', result, img_variable)
+        #            else:
+        #                print("health_plant or not")
+        #                result = get_model_results('plant_health_or_not', result, img_variable)
+                
+
+        #    print('RESULT', result)
+        #    # AI Section ends
+            
+        #    objtype = result.get("plant_or_not", "non_plant")
+        #    picttype = result.get("leaf_or_not", "not_single_leaf")
+        #    planttype = result.get("tomat_or_not", "non_tomat")
+        #    tomatostatus = result.get("tomat_health_or_not", "tomat_non_health")
+        #    plantstatus = result.get("plant_health_or_not", "plants_non_health")
+            
+        #    resp  = {'objtype': objtype, 'picttype': picttype, 'planttype': planttype, 'plantstatus': plantstatus, 'tomatostatus': tomatostatus, 'index': index, 'filename': orig_name}
+        #    print("RESP", resp)
+
+        #    newquery = UserQuery(local_name=fname, orig_name=orig_name, user=user, result=json.dumps(resp), fsize=fsize)
+        #    db.session.add(newquery)
+        #    db.session.commit()
+
+        #print(resp)
+        return jsonify("DATA ADDED {}".format(datetime.datetime.now())), 201
+
+
+class SensorAPI(Resource):
+    def __init__(self):
+        self.reqparse = reqparse.RequestParser()
+        self.schema = SensorSchema()
+        self.m_schema = SensorSchema(many=True)
+
+    def options(self, *args, **kwargs):
+        return jsonify([])
+
+    @token_required
+    @cross_origin()
+    def get(self, id=None):
+        auth_headers = request.headers.get('Authorization', '').split()
+        token = auth_headers[1]
+        data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
+        user = User.query.filter_by(login=data['sub']).first()
+        if not user:
+            abort(404)
+        if not id:
+            sensors = user.sensors
+            return jsonify(self.m_schema.dump(sensors).data), 200
+        abort(404)
+
+    @token_required
+    @cross_origin()
+    def post(self):
+        print("REQUEST", request.json)
+        auth_headers = request.headers.get('Authorization', '').split()
+        token = auth_headers[1]
+        udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
+        user = User.query.filter_by(login=udata['sub']).first()
+        
+        lat = request.json.get('lat')
+        lon = request.json.get('lon')
+        address = request.json.get('address')
+        location = db.session.query(Location).filter(Location.lat == lat).filter(Location.lon == lon).filter(Location.address == address).first()
+        if not location:
+            location = Location(lat=lat, lon=lon, address=address)
+            db.session.add(location)
+            db.session.commit()
+        
+        
+        newsensor = Sensor(location=location, user=user)
+        newuuid = str(uuid.uuid4())
+        newsensor.uuid=newuuid
+        db.session.add(newsensor)
+        db.session.commit()
+        
+        return jsonify(self.schema.dump(newsensor).data), 201
+
+    @token_required
+    @cross_origin()
+    def patch(self, id):
+        print("REQUEST", request.remote_addr)
+        auth_headers = request.headers.get('Authorization', '').split()
+        token = auth_headers[1]
+        udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
+        user = User.query.filter_by(login=udata['sub']).first()
+        #
+        return jsonify("OK {}".format(datetime.datetime.now()))
+
+    @token_required
+    @cross_origin()
+    def delete(self, id):
+        print("REQUEST", request.remote_addr)
+        auth_headers = request.headers.get('Authorization', '').split()
+        token = auth_headers[1]
+        udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
+        user = User.query.filter_by(login=udata['sub']).first()
+        return jsonify("OK {}".format(datetime.datetime.now()))
+
+    
+
+class UserAPI(Resource):
+    def __init__(self):
+        self.reqparse = reqparse.RequestParser()
+        self.schema = UserSchema(exclude=['password_hash',])
+        self.m_schema = UserSchema(many=True, exclude=['password_hash',])
+        self.method_decorators = []
+
+        
+    def options(self, *args, **kwargs):
+        return jsonify([])
+        
+    @token_required
+    @cross_origin()
+    def get(self, id=None):
+        if not id:
+            users = db.session.query(User).all()
+            return jsonify(self.m_schema.dump(users).data)
+        else:
+            user = User.query.filter_by(id=id).first()
+            if user:
+                return jsonify(self.schema.dump(user).data), 200
+            else:
+                abort(404)
+
+    @token_required
+    @cross_origin()
+    def patch(self, id):
+        if not request.json:
+            abort(400, message="No data provided")
+            
+        user = db.session.query(User).filter(User.id==id).first()
+        if user:
+            for attr in ['login', 'phone', 'name', 'note', 'is_confirmed', 'confirmed_on', 'password']:
+                val = request.json.get(attr)
+                if attr == 'password' and val:
+                    user.hash_password(val)
+                    
+                elif attr == 'confirmed_on':
+                    val = datetime.datetime.now()
+
+                        
+                if val:
+                    setattr(user, attr, val)
+                
+            db.session.add(user)
+            db.session.commit()
+            return jsonify(self.schema.dump(user).data), 201
+        
+        abort(404, message="Not found")
+
+    @token_required
+    @cross_origin()
+    def post(self):
+        if not request.json:
+            abort(400, message="No data provided")
+        login = request.json.get('login')
+        phone = request.json.get('phone')
+        name = request.json.get('name')
+        password = request.json.get('password')
+        
+        if not(any([login, phone, name])):
+            return abort(400, 'Provide required fields for phone, name or login')
+        
+        prevuser = db.session.query(User).filter(User.login==login).first()
+        if prevuser:
+            abort(409, message='User exists')
+        note = request.json.get('note')
+
+        is_confirmed = request.json.get('is_confirmed')
+        confirmed_on = None
+        if is_confirmed:
+            confirmed_on = datetime.datetime.today()
+
+        newuser = User(login=login, is_confirmed=is_confirmed, confirmed_on=confirmed_on, phone=phone, name=name, note=note)
+        
+        newuser.hash_password(password)
+        db.session.add(newuser)
+        db.session.commit()
+        
+        return jsonify(self.schema.dump(newuser).data), 201
+    
+    def delete(self, id):
+        if not id:
+            abort(404, message="Not found")
+        user = db.session.query(User).filter(User.id==id).first()
+        if user:
+            db.session.delete(user)
+            db.session.commit()
+            return make_response("User deleted", 204)
+        abort(404, message="Not found")
+
+        
+api.add_resource(UserAPI, '/users', '/users/<int:id>', endpoint='users')
+api.add_resource(StatsAPI, '/data', endpoint='savedata')
+api.add_resource(SensorAPI, '/sensors', '/sensors/<int:id>', endpoint='sensors')
+api.add_resource(PictAPI, "/p/<path:path>", endpoint="picts")
+
+@app.cli.command()
+@click.option('--login',  help='user@mail.com')
+@click.option('--password',  help='password')
+@click.option('--name',  help='name')
+@click.option('--phone',  help='phone')
+def adduser(login, password, name, phone):
+    """ Create new user"""
+    newuser = User(login=login, name=name, phone=phone)
+    newuser.hash_password(password)
+    newuser.is_confirmed = True
+    newuser.confirmed_on = datetime.datetime.today()
+    db.session.add(newuser)
+    db.session.commit()
+    print("New user added", newuser)
+
+@app.cli.command()
+def fix_path():
+    data = db.session.query(Data).all()
+    for d in data:
+        if d.fpath is not None:
+            nimage = DataPicture(fpath=d.fpath, data_id=d.id)
+            db.session.add(nimage)
+            db.session.commit()
+
+                
+if __name__ == '__main__':
+    app.debug = True
+    app.run(host='0.0.0.0')

@@ -1,0 +1,9 @@
+#!/usr/bin/env python
+#Ю -*- coding: utf-8 -*-
+
+import requests
+
+def collect_data():
+    login_data = {"username":"plantuser@plantdata.com",
+                  "password":"plantpassword"
+    }
