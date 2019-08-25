@@ -1,0 +1,8 @@
+authtoken: [token here]
+tunnels:
+  ssh:
+    addr: 22
+    proto: tcp
+  camera:
+    addr: [camera_ipaddr]:[camera_port]
+    proto: http
