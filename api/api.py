@@ -269,8 +269,12 @@ class StatsAPI(Resource):
             co2 = int(request.form.get("CO2"))
 
             picts = []
-            for i in range(2):
-                pict = request.files.get(f'upload_file{i}')
+            
+            for f in request.files:
+                app.logger.debug(["FILE", f])
+                
+            for uplname in request.files:
+                pict = request.files.get(uplname)
                 fpath = os.path.join(current_app.config['FILE_PATH'], user.login, sensor.uuid)
                 if not os.path.exists(fpath):
                     os.makedirs(fpath)

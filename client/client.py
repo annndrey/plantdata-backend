@@ -7,9 +7,14 @@ import os
 import serial
 import json
 import cv2
+import shutil
 
 #from picamera import PiCamera
 from time import sleep
+
+CAMERA_IP = "192.168.0.104"
+CAMERA_LOGIN = "plantdata"
+CAMERA_PASSWORD = "plantpassword"
 
 
 def get_token():
@@ -100,7 +105,8 @@ def post_data(token, suuid):
         sleep(1)
     showPic = cv2.imwrite("img0.jpg",frame)
     v0.release()
-
+    print("Captured USB CAM 0")
+    
     for i in range(15):
         check, frame = v1.read()
         sleep(1)
@@ -108,8 +114,25 @@ def post_data(token, suuid):
     check, frame = v1.read()
     showPic = cv2.imwrite("img1.jpg",frame)
     v1.release()
-    
-    files = {'upload_file0': open('img0.jpg','rb'), 'upload_file1': open('img1.jpg','rb')}
+    print("Captured USB CAM 1")
+    # IP Camera
+    for i in range(1, 4):
+        requests.get("http://{}:{}@{}//cgi-bin/hi3510/preset.cgi?-act=goto&-number={}".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP, i))
+        sleep(3)
+        r = requests.get("http://{}:{}@{}/tmpfs/auto.jpg".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), stream=True)
+        if r.status_code == 200:
+            with open("camimage{}.jpg".format(i), 'wb') as f:
+                r.raw.decode_content = True
+                shutil.copyfileobj(r.raw, f)
+                print("CAPTURED IP CAM PICT {}".format(i))
+    requests.get("http://{}:{}@{}//cgi-bin/hi3510/preset.cgi?-act=set&-status=0&-number=1".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))
+    requests.get("http://{}:{}@{}//cgi-bin/hi3510/preset.cgi?-act=goto&-number=1".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))
+    files = {'upload_file0': open('img0.jpg','rb'),
+             'upload_file1': open('img1.jpg','rb'),
+             'upload_file2': open('camimage1.jpg','rb'),
+             'upload_file3': open('camimage2.jpg','rb'),
+             'upload_file4': open('camimage3.jpg','rb')
+    }
     serialdata['uuid'] = suuid
     response = requests.post("https://plantdata.fermata.tech:5498/api/v1/data", data=serialdata, files=files, headers=head)
     print(response.text)
