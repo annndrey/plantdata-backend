@@ -270,10 +270,7 @@ class StatsAPI(Resource):
 
             picts = []
             
-            for f in request.files:
-                app.logger.debug(["FILE", f])
-                
-            for uplname in request.files:
+            for uplname in sorted(request.files):
                 pict = request.files.get(uplname)
                 fpath = os.path.join(current_app.config['FILE_PATH'], user.login, sensor.uuid)
                 if not os.path.exists(fpath):
