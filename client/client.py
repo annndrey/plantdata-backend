@@ -8,9 +8,18 @@ import serial
 import json
 import cv2
 import shutil
+import uuid
+import datetime
 
 #from picamera import PiCamera
 from time import sleep
+
+
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine
+
+from models import Base, SensorData, Photo
+
 
 CAMERA_IP = "192.168.0.104"
 CAMERA_LOGIN = "plantdata"
@@ -18,6 +27,14 @@ CAMERA_PASSWORD = "plantpassword"
 SERVER_LOGIN = "plantuser@plantdata.com"
 SERVER_PASSWORD = "plantpassword"
 SERVER_HOST = "https://plantdata.fermata.tech:5498/api/v1/{}"
+db_dile = 'localdata.db'
+DATADIR = "picts"
+
+engine = create_engine(f'sqlite:///{db_file}')
+Session = sessionmaker(bind=engine)
+session = Session()
+
+Base.metadata.create_all(engine, checkfirst=True)
 
 def get_token():
     data_sent = False
@@ -112,26 +129,30 @@ def post_data(token, suuid):
     data_sent = False
     data_cached = False
 
+    if not os.path.exists(DATADIR):
+        os.makedir(DATADIR)
+    
     if not token:
         print('Not allowed')
     head = {'Authorization': 'Bearer ' + token}
 
     # collect serial data here
-    ser = serial.Serial('/dev/ttyACM0',9600)
-
-    serialdata = readserialdata(ser, data_read)
+    fnames = []
     
+    ser = serial.Serial('/dev/ttyACM0',9600)
+    serialdata = readserialdata(ser, data_read)
     v0 = cv2.VideoCapture(0)
     v0.set(3,1280)
     v0.set(4,960)
-
     v1 = cv2.VideoCapture(1)
     v1.set(3,1280)
     v1.set(4,960)
+    
     for i in range(15):
         check, frame = v0.read()
         sleep(1)
-    showPic = cv2.imwrite("img0.jpg",frame)
+    fname0 = os.path.join(DATADIR, str(uuid.uuid4())+".jpg")
+    showPic = cv2.imwrite(fname0, frame)
     v0.release()
     print("Captured USB CAM 0")
     
@@ -140,37 +161,101 @@ def post_data(token, suuid):
         sleep(1)
 
     check, frame = v1.read()
-    showPic = cv2.imwrite("img1.jpg",frame)
+    fname1 = os.path.join(DATADIR, str(uuid.uuid4())+".jpg")
+    showPic = cv2.imwrite(fname1, frame)
     v1.release()
+    
+    fnames.append(fname0)
+    fnames.append(fname1)
+    
     print("Captured USB CAM 1")
     # IP Camera
     for i in range(1, 4):
-        requests.get("http://{}:{}@{}//cgi-bin/hi3510/preset.cgi?-act=goto&-number={}".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP, i))
-        sleep(3)
-        r = requests.get("http://{}:{}@{}/tmpfs/auto.jpg".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), stream=True)
-        if r.status_code == 200:
-            with open("camimage{}.jpg".format(i), 'wb') as f:
-                r.raw.decode_content = True
-                shutil.copyfileobj(r.raw, f)
-                print("CAPTURED IP CAM PICT {}".format(i))
-    requests.get("http://{}:{}@{}//cgi-bin/hi3510/preset.cgi?-act=set&-status=0&-number=1".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))
-    requests.get("http://{}:{}@{}//cgi-bin/hi3510/preset.cgi?-act=goto&-number=1".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))
-    files = {'upload_file0': open('img0.jpg','rb'),
-             'upload_file1': open('img1.jpg','rb'),
-             'upload_file2': open('camimage1.jpg','rb'),
-             'upload_file3': open('camimage2.jpg','rb'),
-             'upload_file4': open('camimage3.jpg','rb')
-    }
+        fname = os.path.join(DATADIR, str(uuid.uuid4())+".jpg")
+        try:
+            requests.get("http://{}:{}@{}//cgi-bin/hi3510/preset.cgi?-act=goto&-number={}".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP, i))
+            sleep(3)
+            r = requests.get("http://{}:{}@{}/tmpfs/auto.jpg".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), stream=True)
+            if r.status_code == 200:
+                with open(fname, 'wb') as f:
+                    r.raw.decode_content = True
+                    shutil.copyfileobj(r.raw, f)
+                    print("CAPTURED IP CAM PICT {}".format(i))
+            requests.get("http://{}:{}@{}//cgi-bin/hi3510/preset.cgi?-act=goto&-number=1".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))
+            fnames.append(fname)
+        except:
+            pass
+        
+    #requests.get("http://{}:{}@{}//cgi-bin/hi3510/preset.cgi?-act=set&-status=0&-number=1".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))
+    
+        
+    #files = {'upload_file0': open('img0.jpg','rb'),
+    #         'upload_file1': open('img1.jpg','rb'),
+    #         'upload_file2': open('camimage1.jpg','rb'),
+    #         'upload_file3': open('camimage2.jpg','rb'),
+    #         'upload_file4': open('camimage3.jpg','rb')
+    #}
     serialdata['uuid'] = suuid
+    serialdata['TS'] = datetime.datetime.now()
+    #create cache record here with status uploaded False
+    newdata = SensorData(ts = serialdata['TS'],
+                         sensor_uuid = serialdata['uuid'],
+                         temp0 = serialdata['T0'],
+                         temp1 = serialdata['T1'],
+                         hum0 = serialdata['H0'],
+                         hum1 = serialdata['H1'],
+                         tempA = serialdata['TA'],
+                         uv = serialdata['UV'],
+                         lux = serialdata['L'],
+                         soilmost = serialdata['M'],
+                         co2 = serialdata['CO2']
+    )
+    session.add(newdata)
+    session.commit()
+    
+    files = {}
+    for i, f in enumerate(fnames):
+        # files[f'uploaded_file{i}'] = open(f, 'rb')
+        # cache captured images
+        newphoto = Photo(sensordata=newdata, photo_filename=f)
+        session.add(newphoto)
+        session.commit()
+    # All data saved
+    
     while not data_sent:
         try:
-
-            response = requests.post(SERVER_HOST.format("data"), data=serialdata, files=files, headers=head)
-            print(response.text)
+            # try to send all cached data
+            cacheddata = session.query(SensorData).filter(SensorData.uploaded.is_(False)).all()
+            for cd in cacheddata:
+                serialdata = {'uuid': cd.sensor_uuid,
+                              'ts': cd.ts,
+                              'TA': cd.tempA,
+                              'T0': cd.temp0,
+                              'T1': cd.temp1,
+                              'H0': cd.hum0,
+                              'H1': cd.hum1,
+                              'UV': cd.uv,
+                              'L': cd.lux,
+                              'M': cd.soilmost,
+                              'CO2': cd. co2
+                }
+                files = {}
+                for i, f in enumerate(cd.photos):
+                    files[f'uploaded_file{i}'] = open(f.photo_filename, 'rb')
+                response = requests.post(SERVER_HOST.format("data"), data=serialdata, files=files, headers=head)
+                print(response.text)
+                
+                cd.uploaded = True
+                for f in cd.photos:
+                    os.unlink(f.photo_filename)
+                    session.delete(f)
+                    session.commit()
+                session.delete(cd)
+                session.commit()
+                
             data_sent=True
+            # remove cached data here
         except requests.exceptions.ConnectionError:
-            if not data_cached:
-                data_cached = True
             sleep(2)
             print("No network, trying to connect")
 
