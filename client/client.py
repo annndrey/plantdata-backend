@@ -221,8 +221,8 @@ def post_data(token, suuid):
         session.add(newphoto)
         session.commit()
     # All data saved
-    
-    while not data_sent:
+    numretries = 0
+    while numretries < 5:
         try:
             # try to send all cached data
             cacheddata = session.query(SensorData).filter(SensorData.uploaded.is_(False)).all()
@@ -237,7 +237,7 @@ def post_data(token, suuid):
                               'UV': cd.uv,
                               'L': cd.lux,
                               'M': cd.soilmost,
-                              'CO2': cd. co2
+                              'CO2': cd.co2
                 }
                 files = {}
                 for i, f in enumerate(cd.photos):
@@ -245,11 +245,13 @@ def post_data(token, suuid):
                 response = requests.post(SERVER_HOST.format("data"), data=serialdata, files=files, headers=head)
                 print(response.text)
                 
-                cd.uploaded = True
+                # cd.uploaded = True
+                # remoce all cached photos
                 for f in cd.photos:
                     os.unlink(f.photo_filename)
                     session.delete(f)
                     session.commit()
+                # remove cached data
                 session.delete(cd)
                 session.commit()
                 
@@ -257,6 +259,7 @@ def post_data(token, suuid):
             # remove cached data here
         except requests.exceptions.ConnectionError:
             sleep(2)
+            numretries =+ 1
             print("No network, trying to connect")
 
 if __name__ == '__main__':
