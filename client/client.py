@@ -15,18 +15,19 @@ from time import sleep
 CAMERA_IP = "192.168.0.104"
 CAMERA_LOGIN = "plantdata"
 CAMERA_PASSWORD = "plantpassword"
-
+SERVER_LOGIN = "plantuser@plantdata.com"
+SERVER_PASSWORD = "plantpassword"
+SERVER_HOST = "https://plantdata.fermata.tech:5498/api/v1/{}"
 
 def get_token():
     data_sent = False
-    login_data = {"username":"plantuser@plantdata.com",
-                  "password":"plantpassword"
+    login_data = {"username": SERVER_LOGIN,
+                  "password": SERVER_PASSWORD
     }
     token = None
     while not data_sent:
         try:
-
-            res = requests.post("https://plantdata.fermata.tech:5498/api/v1/token", json=login_data)
+            res = requests.post(SERVER_HOST.format("token"), json=login_data)
             data_sent = True
         except requests.exceptions.ConnectionError:
             print("Trying to reconnect")
@@ -77,7 +78,7 @@ def new_sensor(token):
     while not data_sent:
         try:
 
-            response = requests.post("https://plantdata.fermata.tech:5498/api/v1/sensors", json=location, headers=head)
+            response = requests.post(SERVER_HOST.format("sensors"), json=location, headers=head)
             data_sent = True
         except requests.exceptions.ConnectionError:
             sleep(2)
@@ -164,7 +165,7 @@ def post_data(token, suuid):
     while not data_sent:
         try:
 
-            response = requests.post("https://plantdata.fermata.tech:5498/api/v1/data", data=serialdata, files=files, headers=head)
+            response = requests.post(SERVER_HOST.format("data"), data=serialdata, files=files, headers=head)
             print(response.text)
             data_sent=True
         except requests.exceptions.ConnectionError:
