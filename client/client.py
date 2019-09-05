@@ -21,16 +21,16 @@ from sqlalchemy import create_engine
 from models import Base, SensorData, Photo
 
 
-CAMERA_IP = "192.168.0.104"
+CAMERA_IP = "192.168.0.100"
 CAMERA_LOGIN = "plantdata"
 CAMERA_PASSWORD = "plantpassword"
 SERVER_LOGIN = "plantuser@plantdata.com"
 SERVER_PASSWORD = "plantpassword"
 SERVER_HOST = "https://plantdata.fermata.tech:5498/api/v1/{}"
-db_dile = 'localdata.db'
+db_file = 'localdata.db'
 DATADIR = "picts"
 
-engine = create_engine(f'sqlite:///{db_file}')
+engine = create_engine('sqlite:///{}'.format(db_file))
 Session = sessionmaker(bind=engine)
 session = Session()
 
@@ -130,7 +130,7 @@ def post_data(token, suuid):
     data_cached = False
 
     if not os.path.exists(DATADIR):
-        os.makedir(DATADIR)
+        os.makedirs(DATADIR)
     
     if not token:
         print('Not allowed')
@@ -207,7 +207,7 @@ def post_data(token, suuid):
                          tempA = serialdata['TA'],
                          uv = serialdata['UV'],
                          lux = serialdata['L'],
-                         soilmost = serialdata['M'],
+                         soilmoist = serialdata['M'],
                          co2 = serialdata['CO2']
     )
     session.add(newdata)
@@ -222,7 +222,7 @@ def post_data(token, suuid):
         session.commit()
     # All data saved
     numretries = 0
-    while numretries < 5:
+    while not data_sent:
         try:
             # try to send all cached data
             cacheddata = session.query(SensorData).filter(SensorData.uploaded.is_(False)).all()
@@ -236,12 +236,12 @@ def post_data(token, suuid):
                               'H1': cd.hum1,
                               'UV': cd.uv,
                               'L': cd.lux,
-                              'M': cd.soilmost,
+                              'M': cd.soilmoist,
                               'CO2': cd.co2
                 }
                 files = {}
                 for i, f in enumerate(cd.photos):
-                    files[f'uploaded_file{i}'] = open(f.photo_filename, 'rb')
+                    files['uploaded_file{}'.format(i)] = open(f.photo_filename, 'rb')
                 response = requests.post(SERVER_HOST.format("data"), data=serialdata, files=files, headers=head)
                 print(response.text)
                 
