@@ -229,6 +229,7 @@ def post_data(token, suuid):
     try:
         # try to send all cached data
         cacheddata = session.query(SensorData).filter(SensorData.uploaded.is_(False)).all()
+        print("CACHED DATA", [(c.sensor_uuid, c.ts) for c in cacheddata])
         for cd in cacheddata:
             serialdata = {'uuid': cd.sensor_uuid,
                           'ts': cd.ts,
@@ -245,20 +246,22 @@ def post_data(token, suuid):
             files = {}
             for i, f in enumerate(cd.photos):
                 files['uploaded_file{}'.format(i)] = open(f.photo_filename, 'rb')
+            print("SENDING POST REQUEST")
             response = requests.post(SERVER_HOST.format("data"), data=serialdata, files=files, headers=head)
-            print(response.text)
-                
+            print("SERVER RESPONSE", response.status_code)
             # cd.uploaded = True
             # remoce all cached photos
-            for f in cd.photos:
-                os.unlink(f.photo_filename)
-                session.delete(f)
+            # CREATED
+            if response.status_code == 201:
+                for f in cd.photos:
+                    os.unlink(f.photo_filename)
+                    session.delete(f)
+                    session.commit()
+                    # remove cached data
+                session.delete(cd)
                 session.commit()
-                # remove cached data
-            session.delete(cd)
-            session.commit()
                 
-        data_sent=True
+                data_sent=True
         # remove cached data here
     except requests.exceptions.ConnectionError:
         sleep(2)
@@ -274,5 +277,5 @@ if __name__ == '__main__':
         #for i in range(3):
         while True:
             post_data(token, sensor_uuid)
-            #sleep(60)
-            sleep(3600)
+            sleep(60)
+            #sleep(3600)
