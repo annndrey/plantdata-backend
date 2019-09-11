@@ -277,5 +277,5 @@ if __name__ == '__main__':
         #for i in range(3):
         while True:
             post_data(token, sensor_uuid)
-            sleep(60)
-            #sleep(3600)
+            #sleep(60)
+            sleep(3600)
