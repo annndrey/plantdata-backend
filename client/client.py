@@ -206,7 +206,7 @@ def post_data(token, suuid):
                          uv = serialdata['UV'],
                          lux = serialdata['L'],
                          soilmoist = serialdata['M'],
-                         co2 = serialdata['CO2']
+                         co2 = serialdata['CO2'],
                          wght0 = serialdata.get('WGHT0', -1)
     )
     session.add(newdata)
@@ -235,7 +235,8 @@ def post_data(token, suuid):
                           'UV': cd.uv,
                           'L': cd.lux,
                           'M': cd.soilmoist,
-                          'CO2': cd.co2
+                          'CO2': cd.co2,
+                          'WGHT0':cd.wght0
             }
             files = {}
             for i, f in enumerate(cd.photos):
