@@ -1,1 +1,1 @@
-{"cpu":{"fqbn":"arduino:avr:uno","name":"Arduino/Genuino Uno","port":""},"secrets":[]}
+{"cpu":{"name":"Arduino/Genuino Uno","com_name":"/dev/cu.usbmodemFD121","fqbn":"arduino:avr:uno","flavour":"default"},"secrets":[]}
