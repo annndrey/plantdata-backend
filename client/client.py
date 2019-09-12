@@ -120,6 +120,7 @@ def readserialdata(ser, isread):
     serialdata = serialdata.replace("\r\n", '')
     serialdata = serialdata.replace("'", '"')
     serialdata = serialdata.replace("CO2", '"CO2"')
+    serialdata = serialdata.replace("WGHT0", '"WGHT0"')
     serialdata = serialdata.replace(", ,", ", ")
     serialdata = serialdata.replace(", }", "}")
     print(serialdata)
@@ -144,9 +145,11 @@ def post_data(token, suuid):
     
     ser = serial.Serial('/dev/ttyACM0',9600)
     serialdata = readserialdata(ser, data_read)
+    # USB0
     v0 = cv2.VideoCapture(0)
     v0.set(3,1280)
     v0.set(4,960)
+    # USB1
     v1 = cv2.VideoCapture(1)
     v1.set(3,1280)
     v1.set(4,960)
@@ -190,14 +193,6 @@ def post_data(token, suuid):
             pass
         
     #requests.get("http://{}:{}@{}//cgi-bin/hi3510/preset.cgi?-act=set&-status=0&-number=1".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))
-    
-        
-    #files = {'upload_file0': open('img0.jpg','rb'),
-    #         'upload_file1': open('img1.jpg','rb'),
-    #         'upload_file2': open('camimage1.jpg','rb'),
-    #         'upload_file3': open('camimage2.jpg','rb'),
-    #         'upload_file4': open('camimage3.jpg','rb')
-    #}
     serialdata['uuid'] = suuid
     serialdata['TS'] = datetime.datetime.now(tz)
     #create cache record here with status uploaded False
@@ -212,14 +207,13 @@ def post_data(token, suuid):
                          lux = serialdata['L'],
                          soilmoist = serialdata['M'],
                          co2 = serialdata['CO2']
+                         wght0 = serialdata.get('WGHT0', -1)
     )
     session.add(newdata)
     session.commit()
     
     files = {}
     for i, f in enumerate(fnames):
-        # files[f'uploaded_file{i}'] = open(f, 'rb')
-        # cache captured images
         newphoto = Photo(sensordata=newdata, photo_filename=f)
         session.add(newphoto)
         session.commit()

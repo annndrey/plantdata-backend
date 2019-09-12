@@ -21,6 +21,7 @@ class SensorData(Base):
     lux = Column(Integer)
     soilmoist = Column(Integer)
     co2 = Column(Integer)
+    wght0 = Column(Numeric(precision=3))
     photos = relationship("Photo", backref="sensordata")
     uploaded = Column(Boolean, default=False)
 
