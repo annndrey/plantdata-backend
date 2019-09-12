@@ -10,6 +10,7 @@ import cv2
 import shutil
 import uuid
 import datetime
+import pytz
 
 #from picamera import PiCamera
 from time import sleep
@@ -21,16 +22,18 @@ from sqlalchemy import create_engine
 from models import Base, SensorData, Photo
 
 
-CAMERA_IP = "192.168.0.104"
+tz = pytz.timezone('Europe/Moscow')
+
+CAMERA_IP = "192.168.0.100"
 CAMERA_LOGIN = "plantdata"
 CAMERA_PASSWORD = "plantpassword"
 SERVER_LOGIN = "plantuser@plantdata.com"
 SERVER_PASSWORD = "plantpassword"
 SERVER_HOST = "https://plantdata.fermata.tech:5498/api/v1/{}"
-db_dile = 'localdata.db'
+db_file = 'localdata.db'
 DATADIR = "picts"
 
-engine = create_engine(f'sqlite:///{db_file}')
+engine = create_engine('sqlite:///{}'.format(db_file))
 Session = sessionmaker(bind=engine)
 session = Session()
 
@@ -130,7 +133,7 @@ def post_data(token, suuid):
     data_cached = False
 
     if not os.path.exists(DATADIR):
-        os.makedir(DATADIR)
+        os.makedirs(DATADIR)
     
     if not token:
         print('Not allowed')
@@ -196,7 +199,7 @@ def post_data(token, suuid):
     #         'upload_file4': open('camimage3.jpg','rb')
     #}
     serialdata['uuid'] = suuid
-    serialdata['TS'] = datetime.datetime.now()
+    serialdata['TS'] = datetime.datetime.now(tz)
     #create cache record here with status uploaded False
     newdata = SensorData(ts = serialdata['TS'],
                          sensor_uuid = serialdata['uuid'],
@@ -207,7 +210,7 @@ def post_data(token, suuid):
                          tempA = serialdata['TA'],
                          uv = serialdata['UV'],
                          lux = serialdata['L'],
-                         soilmost = serialdata['M'],
+                         soilmoist = serialdata['M'],
                          co2 = serialdata['CO2']
     )
     session.add(newdata)
@@ -222,45 +225,48 @@ def post_data(token, suuid):
         session.commit()
     # All data saved
     numretries = 0
-    while numretries < 5:
-        try:
-            # try to send all cached data
-            cacheddata = session.query(SensorData).filter(SensorData.uploaded.is_(False)).all()
-            for cd in cacheddata:
-                serialdata = {'uuid': cd.sensor_uuid,
-                              'ts': cd.ts,
-                              'TA': cd.tempA,
-                              'T0': cd.temp0,
-                              'T1': cd.temp1,
-                              'H0': cd.hum0,
-                              'H1': cd.hum1,
-                              'UV': cd.uv,
-                              'L': cd.lux,
-                              'M': cd.soilmost,
-                              'CO2': cd.co2
-                }
-                files = {}
-                for i, f in enumerate(cd.photos):
-                    files[f'uploaded_file{i}'] = open(f.photo_filename, 'rb')
-                response = requests.post(SERVER_HOST.format("data"), data=serialdata, files=files, headers=head)
-                print(response.text)
-                
-                # cd.uploaded = True
-                # remoce all cached photos
+    #while not data_sent:
+    try:
+        # try to send all cached data
+        cacheddata = session.query(SensorData).filter(SensorData.uploaded.is_(False)).all()
+        print("CACHED DATA", [(c.sensor_uuid, c.ts) for c in cacheddata])
+        for cd in cacheddata:
+            serialdata = {'uuid': cd.sensor_uuid,
+                          'ts': cd.ts,
+                          'TA': cd.tempA,
+                          'T0': cd.temp0,
+                          'T1': cd.temp1,
+                          'H0': cd.hum0,
+                          'H1': cd.hum1,
+                          'UV': cd.uv,
+                          'L': cd.lux,
+                          'M': cd.soilmoist,
+                          'CO2': cd.co2
+            }
+            files = {}
+            for i, f in enumerate(cd.photos):
+                files['uploaded_file{}'.format(i)] = open(f.photo_filename, 'rb')
+            print("SENDING POST REQUEST")
+            response = requests.post(SERVER_HOST.format("data"), data=serialdata, files=files, headers=head)
+            print("SERVER RESPONSE", response.status_code)
+            # cd.uploaded = True
+            # remoce all cached photos
+            # CREATED
+            if response.status_code == 201:
                 for f in cd.photos:
                     os.unlink(f.photo_filename)
                     session.delete(f)
                     session.commit()
-                # remove cached data
+                    # remove cached data
                 session.delete(cd)
                 session.commit()
                 
-            data_sent=True
-            # remove cached data here
-        except requests.exceptions.ConnectionError:
-            sleep(2)
-            numretries =+ 1
-            print("No network, trying to connect")
+                data_sent=True
+        # remove cached data here
+    except requests.exceptions.ConnectionError:
+        sleep(2)
+        numretries =+ 1
+        print("No network, trying to connect")
 
 if __name__ == '__main__':
     sensor_uuid, token = get_sensor_uuid()
@@ -271,5 +277,5 @@ if __name__ == '__main__':
         #for i in range(3):
         while True:
             post_data(token, sensor_uuid)
-            sleep(60)
-            #sleep(3600)
+            #sleep(60)
+            sleep(3600)

@@ -267,7 +267,7 @@ class StatsAPI(Resource):
             lux = int(request.form.get("L"))
             soilmoist = int(request.form.get("M"))
             co2 = int(request.form.get("CO2"))
-
+            ts = request.form.get("ts")
             picts = []
             
             for uplname in sorted(request.files):
@@ -291,7 +291,7 @@ class StatsAPI(Resource):
             app.logger.debug(["DATA", request.form])
             app.logger.debug(["FILES", request.files])
             newdata = Data(sensor_id=sensor.id,
-                           ts = datetime.datetime.now(),
+                           ts = ts,
                            temp0 = temp0,
                            temp1 = temp1,
                            tempA = tempA,
