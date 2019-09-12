@@ -257,7 +257,7 @@ class StatsAPI(Resource):
         if sensor:
             if sensor.user != user:
                 abort(403)
-            
+            wght0 = float(request.form.get('WGHT0', 0.0))
             temp0 = float(request.form.get('T0'))
             temp1 = float(request.form.get("T1"))
             tempA = float(request.form.get("TA"))
@@ -291,6 +291,7 @@ class StatsAPI(Resource):
             app.logger.debug(["DATA", request.form])
             app.logger.debug(["FILES", request.files])
             newdata = Data(sensor_id=sensor.id,
+                           wght0 = wght0,
                            ts = ts,
                            temp0 = temp0,
                            temp1 = temp1,
@@ -312,100 +313,6 @@ class StatsAPI(Resource):
                 db.session.add(p)
                 db.session.commit()
             
-            
-        # maxqueryage = current_app.config['QUERY_AGE']
-        # if not user:
-        #    return abort(403)
-
-        # index = request.form['index']
-        # orig_name = request.form['filename']
-        # f = request.files['croppedfile']
-        # data = f.read()
-        # fsize = len(data)
-        # imgext = os.path.splitext(f.filename)[-1].lower()
-        # #print(1)
-        # if not os.path.exists(fpath):
-        #    os.makedirs(fpath)
-        # #print(2)
-        # fuuid = str(uuid.uuid4())
-        # fname = fuuid + imgext
-        # #print(3)
-        # prevquery = db.session.query(UserQuery).filter(UserQuery.orig_name == orig_name).filter(UserQuery.fsize == fsize).filter(UserQuery.user == user).first()
-        # if prevquery and prevquery.queryage <= maxqueryage:
-        #    #print(11)
-        #    # return existing data without calculating
-        #    print("SAVED RESULTS")
-        #    resp = json.loads(prevquery.result)
-        #else:
-        #    print("NEW RESULTS")
-        #    fullpath = os.path.join(fpath, fname)
-
-        #    with open(fullpath, 'wb') as outf:
-        #        outf.write(data)
-        #    #print(4)
-        #    # AI Section start
-        #    img_pil = Image.open(io.BytesIO(data))
-        #    if imgext == '.png':
-        #        img_pil = remove_transparency(img_pil)
-
-        #    img_tensor = using_data_transform(img_pil)
-        #    img_tensor.unsqueeze_(0)
-        #    img_variable = img_tensor
-        #    result = {}
-        #    # passing the image to models
-        #    # and getting back the result#
-
-        #    # 1. plant / non plant 
-        #    # if not plant:
-        #    # return result
-        #    # if plant:
-        #    # 2. leaf / non leaf
-        #    # if not leaf:
-        #    # return result
-        #    # if leaf:
-        #    # 3. tomato / non tomato
-        #    # if tomato:
-        #    # 4. tomato healthy / unhealthy
-        #    # if not tomato:
-        #    # 5. plant healthy / unhealthy
-
-        #    print("1 Plant / non plant")
-        #    result = get_model_results('plant_or_not', result, img_variable)
-            
-        #    if result['plant_or_not'] == "plant":
-        #        print("Leaf / non leaf")
-
-        #        result = get_model_results('leaf_or_not', result, img_variable)
-                
-        #        if result['leaf_or_not'] == "leaf":
-        #            print("tomato / non tomato")
-        #            result = get_model_results('tomat_or_not', result, img_variable)
-
-        #            if result['tomat_or_not'] == "tomat":
-        #                print("health_tomato or not")
-        #                result = get_model_results('tomat_health_or_not', result, img_variable)
-        #            else:
-        #                print("health_plant or not")
-        #                result = get_model_results('plant_health_or_not', result, img_variable)
-                
-
-        #    print('RESULT', result)
-        #    # AI Section ends
-            
-        #    objtype = result.get("plant_or_not", "non_plant")
-        #    picttype = result.get("leaf_or_not", "not_single_leaf")
-        #    planttype = result.get("tomat_or_not", "non_tomat")
-        #    tomatostatus = result.get("tomat_health_or_not", "tomat_non_health")
-        #    plantstatus = result.get("plant_health_or_not", "plants_non_health")
-            
-        #    resp  = {'objtype': objtype, 'picttype': picttype, 'planttype': planttype, 'plantstatus': plantstatus, 'tomatostatus': tomatostatus, 'index': index, 'filename': orig_name}
-        #    print("RESP", resp)
-
-        #    newquery = UserQuery(local_name=fname, orig_name=orig_name, user=user, result=json.dumps(resp), fsize=fsize)
-        #    db.session.add(newquery)
-        #    db.session.commit()
-
-        #print(resp)
         return jsonify("DATA ADDED {}".format(datetime.datetime.now())), 201
 
 

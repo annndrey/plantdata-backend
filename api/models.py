@@ -104,6 +104,7 @@ class Data(db.Model):
     sensor = relationship("Sensor", backref=backref("data", uselist=True))
     ts = db.Column(db.DateTime, default=datetime.datetime.now)
     temp0 = db.Column(db.Numeric(precision=3))
+    wght0 = db.Column(db.Numeric(precision=3))
     temp1 = db.Column(db.Numeric(precision=3))
     hum0 = db.Column(db.Numeric(precision=3))
     hum1 = db.Column(db.Numeric(precision=3))
