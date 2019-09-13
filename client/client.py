@@ -174,7 +174,7 @@ def post_data(token, suuid):
 
     for fnm in [fname0, fname1]:
         fimg = Image.open(fnm)
-        if sum(img.convert("L").getextrema()) >= LOWLIGHT:
+        if sum(fimg.convert("L").getextrema()) >= LOWLIGHT:
             fnames.append(fnm)
         else:
             os.unlink(fnm)
