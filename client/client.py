@@ -14,7 +14,7 @@ import pytz
 
 #from picamera import PiCamera
 from time import sleep
-
+from PIL import Image
 
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
@@ -32,6 +32,7 @@ SERVER_PASSWORD = "plantpassword"
 SERVER_HOST = "https://plantdata.fermata.tech:5498/api/v1/{}"
 db_file = 'localdata.db'
 DATADIR = "picts"
+LOWLIGHT = 10
 
 engine = create_engine('sqlite:///{}'.format(db_file))
 Session = sessionmaker(bind=engine)
@@ -120,7 +121,7 @@ def readserialdata(ser, isread):
     serialdata = serialdata.replace("\r\n", '')
     serialdata = serialdata.replace("'", '"')
     serialdata = serialdata.replace("CO2", '"CO2"')
-    serialdata = serialdata.replace("WGHT0", '"WGHT0"')
+    #serialdata = serialdata.replace("WGHT0", '"WGHT0"')
     serialdata = serialdata.replace(", ,", ", ")
     serialdata = serialdata.replace(", }", "}")
     print(serialdata)
@@ -170,9 +171,13 @@ def post_data(token, suuid):
     fname1 = os.path.join(DATADIR, str(uuid.uuid4())+".jpg")
     showPic = cv2.imwrite(fname1, frame)
     v1.release()
-    
-    fnames.append(fname0)
-    fnames.append(fname1)
+
+    for fnm in [fname0, fname1]:
+        fimg = Image.open(fnm)
+        if sum(img.convert("L").getextrema()) >= LOWLIGHT:
+            fnames.append(fnm)
+        else:
+            os.unlink(fnm)
     
     print("Captured USB CAM 1")
     # IP Camera
@@ -207,7 +212,7 @@ def post_data(token, suuid):
                          lux = serialdata['L'],
                          soilmoist = serialdata['M'],
                          co2 = serialdata['CO2'],
-                         wght0 = serialdata.get('WGHT0', -1)
+                         wght0 = serialdata.get('WGHT0')#/472
     )
     session.add(newdata)
     session.commit()
@@ -272,5 +277,5 @@ if __name__ == '__main__':
         #for i in range(3):
         while True:
             post_data(token, sensor_uuid)
-            #sleep(60)
-            sleep(3600)
+            sleep(60)
+            #sleep(3600)
