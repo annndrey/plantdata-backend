@@ -211,7 +211,7 @@ def post_data(token, suuid):
                     with open(fname, 'wb') as f:
                         r.raw.decode_content = True
                         shutil.copyfileobj(r.raw, f)
-                        print("CAPTURED IP CAM {} PICT {}".format(, indi))
+                        print("CAPTURED IP CAM {} PICT {}".format(ind, i))
                 requests.get("http://{}:{}@{}//cgi-bin/hi3510/preset.cgi?-act=goto&-number=1".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))
                 fnames.append(fname)
             except:
