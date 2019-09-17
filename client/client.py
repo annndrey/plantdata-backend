@@ -21,12 +21,26 @@ from sqlalchemy import create_engine
 
 from models import Base, SensorData, Photo
 
+# Some useful camera commands
+# http://XXX.XXX.XXX.XXX/cgi-bin/hi3510/preset.cgi?-act=set&-status=1&-number=[0-7] :: установить позицию
+# http://XXX.XXX.XXX.XXX/cgi-bin/hi3510/ptzctrl.cgi?-step=1&-act=down :: Переход на один шаг вниз
+# http://XXX.XXX.XXX.XXX/cgi-bin/hi3510/preset.cgi?-act=set&-status=0&-number=[0-7] :: отключить позицию
+# http://XXX.XXX.XXX.XXX/cgi-bin/hi3510/preset.cgi?-act=goto&-status=1&-number=[0-7] :: перейти к заданной позиции
+# http://192.168.1.225/web/cgi-bin/hi3510/ptzctrl.cgi?-step=0&-act=zoomout&-speed=45 zoom
+
 
 tz = pytz.timezone('Europe/Moscow')
 
-CAMERA_IP = "192.168.0.100"
-CAMERA_LOGIN = "plantdata"
-CAMERA_PASSWORD = "plantpassword"
+CAMERA_CONFIG = [ {"CAMERA_IP" :"192.168.0.100", 
+                   "CAMERA_LOGIN" : "plantdata",
+                   "CAMERA_PASSWORD" :"plantpassword"
+                   },
+                  #{"CAMERA_IP" : "192.168.0.100", 
+                  # "CAMERA_LOGIN" : "plantdata",
+                  # "CAMERA_PASSWORD" : "plantpassword"
+                  # }
+]
+
 SERVER_LOGIN = "plantuser@plantdata.com"
 SERVER_PASSWORD = "plantpassword"
 SERVER_HOST = "https://plantdata.fermata.tech:5498/api/v1/{}"
@@ -123,7 +137,8 @@ def readserialdata(ser, isread):
     serialdata = serialdata.replace("CO2", '"CO2"')
     #serialdata = serialdata.replace("WGHT0", '"WGHT0"')
     serialdata = serialdata.replace(", ,", ", ")
-    serialdata = serialdata.replace(", }", "}")
+    serialdata = serialdata.replace(", }", "} ")
+    serialdata = serialdata.replace("nan", "-1")
     print(serialdata)
     serialdata = json.loads(serialdata)
     data_read = True
@@ -181,22 +196,27 @@ def post_data(token, suuid):
     
     print("Captured USB CAM 1")
     # IP Camera
-    for i in range(1, 4):
-        fname = os.path.join(DATADIR, str(uuid.uuid4())+".jpg")
-        try:
-            requests.get("http://{}:{}@{}//cgi-bin/hi3510/preset.cgi?-act=goto&-number={}".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP, i))
-            sleep(3)
-            r = requests.get("http://{}:{}@{}/tmpfs/auto.jpg".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), stream=True)
-            if r.status_code == 200:
-                with open(fname, 'wb') as f:
-                    r.raw.decode_content = True
-                    shutil.copyfileobj(r.raw, f)
-                    print("CAPTURED IP CAM PICT {}".format(i))
-            requests.get("http://{}:{}@{}//cgi-bin/hi3510/preset.cgi?-act=goto&-number=1".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))
-            fnames.append(fname)
-        except:
-            pass
+    for ind, camera in enumerate(CAMERA_CONFIG):
+        CAMERA_LOGIN = camera['CAMERA_LOGIN']
+        CAMERA_PASSWORD = camera['CAMERA_PASSWORD']
+        CAMERA_IP = camera['CAMERA_IP']
         
+        for i in range(1, 4):
+            fname = os.path.join(DATADIR, str(uuid.uuid4())+".jpg")
+            try:
+                requests.get("http://{}:{}@{}//cgi-bin/hi3510/preset.cgi?-act=goto&-number={}".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP, i))
+                sleep(3)
+                r = requests.get("http://{}:{}@{}/tmpfs/auto.jpg".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), stream=True)
+                if r.status_code == 200:
+                    with open(fname, 'wb') as f:
+                        r.raw.decode_content = True
+                        shutil.copyfileobj(r.raw, f)
+                        print("CAPTURED IP CAM {} PICT {}".format(, indi))
+                requests.get("http://{}:{}@{}//cgi-bin/hi3510/preset.cgi?-act=goto&-number=1".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))
+                fnames.append(fname)
+            except:
+                pass
+    
     #requests.get("http://{}:{}@{}//cgi-bin/hi3510/preset.cgi?-act=set&-status=0&-number=1".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))
     serialdata['uuid'] = suuid
     serialdata['TS'] = datetime.datetime.now(tz)
@@ -277,5 +297,5 @@ if __name__ == '__main__':
         #for i in range(3):
         while True:
             post_data(token, sensor_uuid)
-            sleep(60)
-            #sleep(3600)
+            #sleep(60)
+            sleep(3600)
