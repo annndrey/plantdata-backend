@@ -7,7 +7,7 @@ from flask_restful import Resource, Api, reqparse, abort, marshal_with
 from flask.json import jsonify
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import or_
+from sqlalchemy import or_, desc
 from sqlalchemy import func as sql_func
 from flask_marshmallow import Marshmallow
 from flask_httpauth import HTTPBasicAuth
@@ -232,7 +232,7 @@ class StatsAPI(Resource):
             abort(404)
             
         if not dataid:
-            sensordata = db.session.query(Data).join(Sensor).filter(Sensor.uuid == suuid).all()
+            sensordata = db.session.query(Data).join(Sensor).filter(Sensor.uuid == suuid).order_by(Data.ts).all()
             if sensordata:
                 return jsonify(self.m_schema.dump(sensordata).data), 200
         else:
@@ -257,7 +257,7 @@ class StatsAPI(Resource):
         if sensor:
             if sensor.user != user:
                 abort(403)
-            wght0 = float(request.form.get('WGHT0', 0.0))
+            wght0 = float(request.form.get('WGHT0', -1))
             temp0 = float(request.form.get('T0'))
             temp1 = float(request.form.get("T1"))
             tempA = float(request.form.get("TA"))
