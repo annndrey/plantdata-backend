@@ -33,12 +33,16 @@ tz = pytz.timezone('Europe/Moscow')
 
 CAMERA_CONFIG = [ {"CAMERA_IP" :"192.168.0.100", 
                    "CAMERA_LOGIN" : "plantdata",
-                   "CAMERA_PASSWORD" :"plantpassword"
+                   "CAMERA_PASSWORD" :"plantpassword",
+                   "NUMFRAMES": 3,
+                   "LABEL": "Top White Camera"
                    },
-                  #{"CAMERA_IP" : "192.168.0.100", 
-                  # "CAMERA_LOGIN" : "plantdata",
-                  # "CAMERA_PASSWORD" : "plantpassword"
-                  # }
+                  {"CAMERA_IP" : "192.168.0.105", 
+                   "CAMERA_LOGIN" : "admin",
+                   "CAMERA_PASSWORD" : "admin",
+                   "NUMFRAMES": 4,
+                   "LABEL": "Bottom Black Camera"
+                   }
 ]
 
 SERVER_LOGIN = "plantuser@plantdata.com"
@@ -157,7 +161,7 @@ def post_data(token, suuid):
     head = {'Authorization': 'Bearer ' + token}
 
     # collect serial data here
-    fnames = []
+    cameradata = []
     
     ser = serial.Serial('/dev/ttyACM0',9600)
     serialdata = readserialdata(ser, data_read)
@@ -173,8 +177,11 @@ def post_data(token, suuid):
     for i in range(15):
         check, frame = v0.read()
         sleep(1)
+        
     fname0 = os.path.join(DATADIR, str(uuid.uuid4())+".jpg")
     showPic = cv2.imwrite(fname0, frame)
+    camdata0 = {"fname": fname0, "label": "USB0"}
+
     v0.release()
     print("Captured USB CAM 0")
     
@@ -185,14 +192,17 @@ def post_data(token, suuid):
     check, frame = v1.read()
     fname1 = os.path.join(DATADIR, str(uuid.uuid4())+".jpg")
     showPic = cv2.imwrite(fname1, frame)
-    v1.release()
+    camdata1 = {"fname": fname1, "label": "USB1"}
 
-    for fnm in [fname0, fname1]:
-        fimg = Image.open(fnm)
-        if sum(fimg.convert("L").getextrema()) >= LOWLIGHT:
-            fnames.append(fnm)
+    v1.release()
+    # Check for black images
+    for c in [camdata0, camdata1]:
+        fimg = Image.open(c['fname'])
+        # mean
+        if sum(fimg.convert("L").getextrema())/2 >= LOWLIGHT:
+            cameradata.append(c)
         else:
-            os.unlink(fnm)
+            os.unlink(c['fname'])
     
     print("Captured USB CAM 1")
     # IP Camera
@@ -200,24 +210,25 @@ def post_data(token, suuid):
         CAMERA_LOGIN = camera['CAMERA_LOGIN']
         CAMERA_PASSWORD = camera['CAMERA_PASSWORD']
         CAMERA_IP = camera['CAMERA_IP']
+        NUMFRAMES = camera['NUMFRAMES']
+        LABEL = camera['LABEL']
         
-        for i in range(1, 4):
+        requests.get("http://{}:{}@{}//cgi-bin/hi3510/preset.cgi?-act=goto&-number=0".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))    
+        sleep(5)
+        for i in range(1, NUMFRAMES + 1):
             fname = os.path.join(DATADIR, str(uuid.uuid4())+".jpg")
             try:
                 requests.get("http://{}:{}@{}//cgi-bin/hi3510/preset.cgi?-act=goto&-number={}".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP, i))
-                sleep(3)
+                sleep(5)
                 r = requests.get("http://{}:{}@{}/tmpfs/auto.jpg".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), stream=True)
                 if r.status_code == 200:
                     with open(fname, 'wb') as f:
                         r.raw.decode_content = True
                         shutil.copyfileobj(r.raw, f)
                         print("CAPTURED IP CAM {} PICT {}".format(ind, i))
-                requests.get("http://{}:{}@{}//cgi-bin/hi3510/preset.cgi?-act=goto&-number=1".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))
-                fnames.append(fname)
+                        cameradata.append({"fname": fname, "label": LABEL})
             except:
                 pass
-    
-    #requests.get("http://{}:{}@{}//cgi-bin/hi3510/preset.cgi?-act=set&-status=0&-number=1".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))
     serialdata['uuid'] = suuid
     serialdata['TS'] = datetime.datetime.now(tz)
     #create cache record here with status uploaded False
@@ -232,14 +243,14 @@ def post_data(token, suuid):
                          lux = serialdata['L'],
                          soilmoist = serialdata['M'],
                          co2 = serialdata['CO2'],
-                         wght0 = serialdata.get('WGHT0')#/472
+                         wght0 = serialdata.get('WGHT0')/452
     )
     session.add(newdata)
     session.commit()
     
     files = {}
-    for i, f in enumerate(fnames):
-        newphoto = Photo(sensordata=newdata, photo_filename=f)
+    for i, d in enumerate(cameradata):
+        newphoto = Photo(sensordata=newdata, photo_filename=d['fname'], label=d["label"] + " {}".format(i))
         session.add(newphoto)
         session.commit()
     # All data saved
@@ -265,7 +276,7 @@ def post_data(token, suuid):
             }
             files = {}
             for i, f in enumerate(cd.photos):
-                files['uploaded_file{}'.format(i)] = open(f.photo_filename, 'rb')
+                files['{}'.format(f.label)] = open(f.photo_filename, 'rb')
             print("SENDING POST REQUEST")
             response = requests.post(SERVER_HOST.format("data"), data=serialdata, files=files, headers=head)
             print("SERVER RESPONSE", response.status_code)
@@ -293,9 +304,9 @@ if __name__ == '__main__':
     if not sensor_uuid:
         token = get_token()
         sensor_uuid = register_sensor(token)
-    else:
+   # else:
         #for i in range(3):
-        while True:
-            post_data(token, sensor_uuid)
-            #sleep(60)
-            sleep(3600)
+    while True:
+        post_data(token, sensor_uuid)
+        #sleep(60)
+        sleep(3600)

@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey, Column, Integer, Text, DateTime, Enum, Boolean, Numeric
+from sqlalchemy import ForeignKey, Column, Integer, Text, DateTime, Enum, Boolean, Numeric, String
 from sqlalchemy.orm import backref, validates, relationship
 from sqlalchemy.ext.declarative import declarative_base
 import enum
@@ -30,4 +30,5 @@ class Photo(Base):
     photo_id = Column(Integer, primary_key=True)
     sensordata_id = Column(Integer, ForeignKey('sensordata.id'))
     photo_filename  = Column(Text())
-
+    label = Column(String(255))
+    
