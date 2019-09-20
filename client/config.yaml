@@ -1,0 +1,18 @@
+- CAMERA_IP: "192.168.0.100"
+  CAMERA_LOGIN: "plantdata"
+  CAMERA_PASSWORD: "plantpassword"
+  NUMFRAMES: 3
+  LABEL: "Top White Camera"
+  CAMERA_TYPE: "IP"
+- LABEL: "Bottom Black Camera"
+  CAMERA_TYPE: "IP"
+  CAMERA_IP: "192.168.0.105"
+  CAMERA_LOGIN: "admin"
+  CAMERA_PASSWORD: "admin"
+  NUMFRAMES: 4
+- LABEL: "USB0"
+  CAMERA_TYPE: "USB"
+  PORTNUM: 0
+#- LABEL: "USB1"
+#  CAMERA_TYPE: "USB"
+#  PORTNUM: 1

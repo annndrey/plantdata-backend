@@ -12,6 +12,8 @@ import uuid
 import datetime
 import pytz
 
+import yaml
+
 #from picamera import PiCamera
 from time import sleep
 from PIL import Image
@@ -31,19 +33,12 @@ from models import Base, SensorData, Photo
 
 tz = pytz.timezone('Europe/Moscow')
 
-CAMERA_CONFIG = [ {"CAMERA_IP" :"192.168.0.100", 
-                   "CAMERA_LOGIN" : "plantdata",
-                   "CAMERA_PASSWORD" :"plantpassword",
-                   "NUMFRAMES": 3,
-                   "LABEL": "Top White Camera"
-                   },
-                  {"CAMERA_IP" : "192.168.0.105", 
-                   "CAMERA_LOGIN" : "admin",
-                   "CAMERA_PASSWORD" : "admin",
-                   "NUMFRAMES": 4,
-                   "LABEL": "Bottom Black Camera"
-                   }
-]
+
+with open("config.yaml", 'r') as stream:
+    try:
+        CAMERA_CONFIG = yaml.safe_load(stream)
+    except yaml.YAMLError as exc:
+        print(exc)
 
 SERVER_LOGIN = "plantuser@plantdata.com"
 SERVER_PASSWORD = "plantpassword"
@@ -165,70 +160,57 @@ def post_data(token, suuid):
     
     ser = serial.Serial('/dev/ttyACM0',9600)
     serialdata = readserialdata(ser, data_read)
-    # USB0
-    v0 = cv2.VideoCapture(0)
-    v0.set(3,1280)
-    v0.set(4,960)
-    # USB1
-    v1 = cv2.VideoCapture(1)
-    v1.set(3,1280)
-    v1.set(4,960)
     
-    for i in range(15):
-        check, frame = v0.read()
-        sleep(1)
+    for CAMERA in CAMERA_CONFIG:
+        if CAMERA['CAMERA_TYPE'] == "USB":
+            
+            v = cv2.VideoCapture(CAMERA['PORTNUM'])
+            v.set(3,1280)
+            v.set(4,960)
+
+            for i in range(15):
+                check, frame = v.read()
+                sleep(1)
         
-    fname0 = os.path.join(DATADIR, str(uuid.uuid4())+".jpg")
-    showPic = cv2.imwrite(fname0, frame)
-    camdata0 = {"fname": fname0, "label": "USB0"}
-
-    v0.release()
-    print("Captured USB CAM 0")
-    
-    for i in range(15):
-        check, frame = v1.read()
-        sleep(1)
-
-    check, frame = v1.read()
-    fname1 = os.path.join(DATADIR, str(uuid.uuid4())+".jpg")
-    showPic = cv2.imwrite(fname1, frame)
-    camdata1 = {"fname": fname1, "label": "USB1"}
-
-    v1.release()
-    # Check for black images
-    for c in [camdata0, camdata1]:
-        fimg = Image.open(c['fname'])
-        # mean
-        if sum(fimg.convert("L").getextrema())/2 >= LOWLIGHT:
-            cameradata.append(c)
-        else:
-            os.unlink(c['fname'])
-    
-    print("Captured USB CAM 1")
-    # IP Camera
-    for ind, camera in enumerate(CAMERA_CONFIG):
-        CAMERA_LOGIN = camera['CAMERA_LOGIN']
-        CAMERA_PASSWORD = camera['CAMERA_PASSWORD']
-        CAMERA_IP = camera['CAMERA_IP']
-        NUMFRAMES = camera['NUMFRAMES']
-        LABEL = camera['LABEL']
-        
-        requests.get("http://{}:{}@{}//cgi-bin/hi3510/preset.cgi?-act=goto&-number=0".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))    
-        sleep(5)
-        for i in range(1, NUMFRAMES + 1):
             fname = os.path.join(DATADIR, str(uuid.uuid4())+".jpg")
-            try:
-                requests.get("http://{}:{}@{}//cgi-bin/hi3510/preset.cgi?-act=goto&-number={}".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP, i))
-                sleep(5)
-                r = requests.get("http://{}:{}@{}/tmpfs/auto.jpg".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), stream=True)
-                if r.status_code == 200:
-                    with open(fname, 'wb') as f:
-                        r.raw.decode_content = True
-                        shutil.copyfileobj(r.raw, f)
-                        print("CAPTURED IP CAM {} PICT {}".format(ind, i))
-                        cameradata.append({"fname": fname, "label": LABEL})
-            except:
-                pass
+            showPic = cv2.imwrite(fname, frame)
+            camdata = {"fname": fname, "label": CAMERA["LABEL"]}
+            v.release()
+            print("Captured {}".format(CAMERA['LABEL']))
+    
+            # Check for black images
+            fimg = Image.open(camdata['fname'])
+            # mean
+            if sum(fimg.convert("L").getextrema())/2 >= LOWLIGHT:
+                cameradata.append(camdata)
+            else:
+                os.unlink(camdata['fname'])
+                
+        elif CAMERA['CAMERA_TYPE'] == "IP":
+            CAMERA_LOGIN = CAMERA['CAMERA_LOGIN']
+            CAMERA_PASSWORD = CAMERA['CAMERA_PASSWORD']
+            CAMERA_IP = CAMERA['CAMERA_IP']
+            NUMFRAMES = CAMERA['NUMFRAMES']
+            LABEL = CAMERA['LABEL']
+        
+            requests.get("http://{}:{}@{}//cgi-bin/hi3510/preset.cgi?-act=goto&-number=0".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))    
+            sleep(5)
+            for i in range(1, NUMFRAMES + 1):
+                fname = os.path.join(DATADIR, str(uuid.uuid4())+".jpg")
+                try:
+                    requests.get("http://{}:{}@{}//cgi-bin/hi3510/preset.cgi?-act=goto&-number={}".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP, i))
+                    sleep(5)
+                    r = requests.get("http://{}:{}@{}/tmpfs/auto.jpg".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), stream=True)
+                    if r.status_code == 200:
+                        with open(fname, 'wb') as f:
+                            r.raw.decode_content = True
+                            shutil.copyfileobj(r.raw, f)
+                            print("CAPTURED {} PICT {}".format(LABEL, i))
+                            cameradata.append({"fname": fname, "label": LABEL + " {}".format(i)})
+                except:
+                    pass
+
+                
     serialdata['uuid'] = suuid
     serialdata['TS'] = datetime.datetime.now(tz)
     #create cache record here with status uploaded False
@@ -250,7 +232,7 @@ def post_data(token, suuid):
     
     files = {}
     for i, d in enumerate(cameradata):
-        newphoto = Photo(sensordata=newdata, photo_filename=d['fname'], label=d["label"] + " {}".format(i))
+        newphoto = Photo(sensordata=newdata, photo_filename=d['fname'], label=d["label"])
         session.add(newphoto)
         session.commit()
     # All data saved
