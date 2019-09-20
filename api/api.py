@@ -282,7 +282,7 @@ class StatsAPI(Resource):
                 partpath = os.path.join(user.login, sensor.uuid, fname)
                 with open(fullpath, 'wb') as outf:
                     outf.write(fdata)
-                newpicture = DataPicture(fpath=partpath)
+                newpicture = DataPicture(fpath=partpath, label=uplname)
                 db.session.add(newpicture)
                 db.session.commit()
                 picts.append(newpicture)
@@ -302,7 +302,6 @@ class StatsAPI(Resource):
                            lux = lux,
                            soilmoist = soilmoist,
                            co2 = co2
-                           # fpath = partpath
             )
             
             app.logger.debug("New data saved")
