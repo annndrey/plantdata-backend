@@ -54,11 +54,12 @@ app.logger.setLevel(gunicorn_logger.level)
 
 CF_LOGIN = app.config['CF_LOGIN']
 CF_PASSWORD = app.config['CF_PASSWORD']
-CF_HOST = "https://cityfarmer.fermata.tech:5444/api/v1/{}"
+CF_HOST = app.config['CF_HOST'] 
 CF_TOKEN = None
+FONT = app.config['FONT'] 
+FONTSIZE = app.config['FONTSIZE']
 
-
-zonefont = ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", size=40)
+zonefont = ImageFont.truetype(FONT, size=FONTSIZE)
 
 CLASSIFY_ZONES = app.config['CLASSIFY_ZONES']
 if CLASSIFY_ZONES:
