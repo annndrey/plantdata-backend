@@ -1,0 +1,33 @@
+Bottom Black Camera 1:
+ - label: zone 1
+   left: 72
+   top: 500
+   right: 500
+   bottom: 750
+ - label: zone 2
+   left: 414
+   top: 250
+   right: 852
+   bottom: 538
+ - label: zone 3
+   left: 940
+   top: 170
+   right: 1380
+   bottom: 446
+Bottom Black Camera 3:
+ - label: zone 1
+   left: 1072
+   top: 106
+   right: 1414
+   bottom: 296
+ - label: zone 2
+   left: 1212
+   top: 458
+   right: 1560
+   bottom: 648
+Top White Camera 1:
+ - label: zone 1
+   left: 842
+   top: 894
+   right: 1110
+   bottom: 980

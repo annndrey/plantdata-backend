@@ -26,10 +26,11 @@ import calendar
 from dateutil.relativedelta import relativedelta
 import jwt
 import json
+import yaml
 
 import io
 import requests
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 import glob
 from collections import OrderedDict
 
@@ -49,6 +50,35 @@ ma = Marshmallow(app)
 gunicorn_logger = logging.getLogger('gunicorn.error')
 app.logger.handlers = gunicorn_logger.handlers
 app.logger.setLevel(gunicorn_logger.level)
+
+
+CF_LOGIN = app.config['CF_LOGIN']
+CF_PASSWORD = app.config['CF_PASSWORD']
+CF_HOST = "https://cityfarmer.fermata.tech:5444/api/v1/{}"
+CF_TOKEN = None
+
+
+zonefont = ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", size=40)
+
+CLASSIFY_ZONES = app.config['CLASSIFY_ZONES']
+if CLASSIFY_ZONES:
+    with open("cropsettings.yaml", 'r') as stream:
+        try:
+            CROP_SETTINGS = yaml.safe_load(stream)
+        except yaml.YAMLError as exc:
+            app.logger.debug(exc)
+
+@app.before_first_request
+def login_to_classifier():
+    app.logger.debug("Logging to CF server")
+    login_data = {"username": CF_LOGIN,
+                  "password": CF_PASSWORD
+                  }
+    
+    global CF_TOKEN
+    res = requests.post(CF_HOST.format("token"), json=login_data)
+    if res.status_code == 200:
+        CF_TOKEN = res.json().get('token')
 
 
 def token_required(f):  
@@ -254,6 +284,9 @@ class StatsAPI(Resource):
         user = User.query.filter_by(login=udata['sub']).first()
         suuid = request.form.get('uuid')
         sensor = db.session.query(Sensor).filter(Sensor.uuid == suuid).first()
+
+        cf_headers = {'Authorization': 'Bearer ' + CF_TOKEN}
+        
         if sensor:
             if sensor.user != user:
                 abort(403)
@@ -282,7 +315,34 @@ class StatsAPI(Resource):
                 partpath = os.path.join(user.login, sensor.uuid, fname)
                 with open(fullpath, 'wb') as outf:
                     outf.write(fdata)
-                newpicture = DataPicture(fpath=partpath, label=uplname)
+
+                imglabel = uplname    
+                if CLASSIFY_ZONES:
+                    zones = CROP_SETTINGS.get(uplname, None)
+                    if zones:
+                        responses = []
+                        original = Image.open(fullpath)
+                        for zone in zones:
+                            cropped = original.crop((zone['left'], zone['top'], zone['right'], zone['bottom']))
+                            img_io = io.BytesIO()
+                            cropped.save(img_io, 'JPEG', quality=100)
+                            img_io.seek(0)
+                            dr = ImageDraw.Draw(original)
+                            dr.rectangle((zone['left'], zone['top'], zone['right'], zone['bottom']), outline = '#fbb040', width=3)
+                            dr.text((zone['right'], zone['bottom']), zone['label'], font=zonefont)
+                            # Now take an original image, crop the zones, send it to the
+                            # CF server and get back the response for each
+                            # Draw rectangle zones on the original image & save it
+                            # Modify the image lzbel with zones results
+                            # send CF request
+                            response = requests.post(CF_HOST.format("loadimage"), headers=cf_headers, files = {'croppedfile': img_io}, data={'index':0, 'filename': ''})
+                            if response.status_code == 200:
+                                
+                                responses.append("{}: {}".format(zone['label'], response.json().get('objtype')))
+                        original.save(fullpath)
+                        imglabel = imglabel + " Results: {}".format(", ".join(responses))
+                        
+                newpicture = DataPicture(fpath=partpath, label=imglabel)
                 db.session.add(newpicture)
                 db.session.commit()
                 picts.append(newpicture)
@@ -303,7 +363,6 @@ class StatsAPI(Resource):
                            soilmoist = soilmoist,
                            co2 = co2
             )
-            
             app.logger.debug("New data saved")
             db.session.add(newdata)
             db.session.commit()
