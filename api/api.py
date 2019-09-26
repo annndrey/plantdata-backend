@@ -289,8 +289,8 @@ class StatsAPI(Resource):
         user = User.query.filter_by(login=udata['sub']).first()
         suuid = request.form.get('uuid')
         sensor = db.session.query(Sensor).filter(Sensor.uuid == suuid).first()
-
-        cf_headers = {'Authorization': 'Bearer ' + CF_TOKEN}
+        if CF_TOKEN:
+            cf_headers = {'Authorization': 'Bearer ' + CF_TOKEN}
         
         if sensor:
             if sensor.user != user:
