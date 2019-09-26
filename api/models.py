@@ -16,7 +16,6 @@ import calendar
 
 db = SQLAlchemy()
 
-
 class Gender(enum.Enum):
     m = u'm'
     f = u'f'

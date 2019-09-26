@@ -77,10 +77,12 @@ def login_to_classifier():
                   }
     
     global CF_TOKEN
-    res = requests.post(CF_HOST.format("token"), json=login_data)
-    if res.status_code == 200:
-        CF_TOKEN = res.json().get('token')
-
+    try:
+        res = requests.post(CF_HOST.format("token"), json=login_data)
+        if res.status_code == 200:
+            CF_TOKEN = res.json().get('token')
+    except:
+        CF_TOKEN = None
 
 def token_required(f):  
     @wraps(f)
@@ -217,6 +219,8 @@ class PictAPI(Resource):
     #@token_required
     @cross_origin()
     def get(self, path):
+        app.logger.debug(request.cookies)
+        app.logger.debug(request.headers)
         auth_cookie = request.cookies.get("auth", "")
         auth_headers = request.headers.get('Authorization', '').split()
         if len(auth_headers) > 0:
@@ -318,7 +322,7 @@ class StatsAPI(Resource):
                     outf.write(fdata)
 
                 imglabel = uplname    
-                if CLASSIFY_ZONES:
+                if CLASSIFY_ZONES and CF_TOKEN:
                     zones = CROP_SETTINGS.get(uplname, None)
                     if zones:
                         responses = []
