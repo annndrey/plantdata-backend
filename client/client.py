@@ -192,7 +192,7 @@ def post_data(token, suuid):
             CAMERA_IP = CAMERA['CAMERA_IP']
             NUMFRAMES = CAMERA['NUMFRAMES']
             LABEL = CAMERA['LABEL']
-            image_downloaded = False
+            NUMRETRIES = 10
             if LABEL == "INESUN":
                 for i in range(0, NUMFRAMES):
                     
@@ -202,7 +202,13 @@ def post_data(token, suuid):
                                 "language": "cn",
                                 "presetNum": i
                     }
-                    r = requests.post("http://{}:{}@{}/form/presetSet".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), data=postdata)
+                    for n in range(NUMRETRIES):
+                        try:
+                            r = requests.post("http://{}:{}@{}/form/presetSet".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), data=postdata)
+                        except:
+                            print("Failed to connect to camera")
+                            sleep(2)
+                            
                     sleep(4)
                     rtsp = cv2.VideoCapture("rtsp://{}:{}@{}:554/1/h264major".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))
                     #for rng in range(10):
