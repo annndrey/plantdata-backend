@@ -192,23 +192,49 @@ def post_data(token, suuid):
             CAMERA_IP = CAMERA['CAMERA_IP']
             NUMFRAMES = CAMERA['NUMFRAMES']
             LABEL = CAMERA['LABEL']
-        
-            requests.get("http://{}:{}@{}//cgi-bin/hi3510/preset.cgi?-act=goto&-number=0".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))    
-            sleep(5)
-            for i in range(1, NUMFRAMES + 1):
-                fname = os.path.join(DATADIR, str(uuid.uuid4())+".jpg")
-                try:
-                    requests.get("http://{}:{}@{}//cgi-bin/hi3510/preset.cgi?-act=goto&-number={}".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP, i))
-                    sleep(5)
-                    r = requests.get("http://{}:{}@{}/tmpfs/auto.jpg".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), stream=True)
+
+            if LABEL == "INESUN":
+                postdata = {"flag": 4,
+                            "existFlag": 1,
+                            "language": "cn",
+                            "presetNum": 0
+                }
+                r = requests.post("http://{}:{}@{}/form/presetSet".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), data=postdata)
+                sleep(3)
+                for i in range(0, NUMFRAMES):
+                    fname = os.path.join(DATADIR, str(uuid.uuid4())+".jpg")
+                    postdata = {"flag": 4,
+                                "existFlag": 1,
+                                "language": "cn",
+                                "presetNum": i
+                    }
+                    r = requests.post("http://{}:{}@{}/form/presetSet".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), data=postdata)
+                    sleep(3)
+                    r = requests.get("http://{}:{}@{}/jpgimage/1/image.jpg".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), stream=True)
                     if r.status_code == 200:
                         with open(fname, 'wb') as f:
                             r.raw.decode_content = True
                             shutil.copyfileobj(r.raw, f)
-                            print("CAPTURED {} PICT {}".format(LABEL, i))
-                            cameradata.append({"fname": fname, "label": LABEL + " {}".format(i)})
-                except:
-                    pass
+                            print("CAPTURED {} PICT {}".format(LABEL, i+1))
+                            cameradata.append({"fname": fname, "label": LABEL + " {}".format(i+1)})        
+                    
+            else:
+                requests.get("http://{}:{}@{}//cgi-bin/hi3510/preset.cgi?-act=goto&-number=0".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))    
+                sleep(5)
+                for i in range(1, NUMFRAMES + 1):
+                    fname = os.path.join(DATADIR, str(uuid.uuid4())+".jpg")
+                    try:
+                        requests.get("http://{}:{}@{}//cgi-bin/hi3510/preset.cgi?-act=goto&-number={}".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP, i))
+                        sleep(5)
+                        r = requests.get("http://{}:{}@{}/tmpfs/auto.jpg".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), stream=True)
+                        if r.status_code == 200:
+                            with open(fname, 'wb') as f:
+                                r.raw.decode_content = True
+                                shutil.copyfileobj(r.raw, f)
+                                print("CAPTURED {} PICT {}".format(LABEL, i))
+                                cameradata.append({"fname": fname, "label": LABEL + " {}".format(i)})
+                    except:
+                        pass
 
                 
     serialdata['uuid'] = suuid
