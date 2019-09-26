@@ -192,16 +192,10 @@ def post_data(token, suuid):
             CAMERA_IP = CAMERA['CAMERA_IP']
             NUMFRAMES = CAMERA['NUMFRAMES']
             LABEL = CAMERA['LABEL']
-
+            image_downloaded = False
             if LABEL == "INESUN":
-                postdata = {"flag": 4,
-                            "existFlag": 1,
-                            "language": "cn",
-                            "presetNum": 0
-                }
-                r = requests.post("http://{}:{}@{}/form/presetSet".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), data=postdata)
-                sleep(3)
                 for i in range(0, NUMFRAMES):
+                    
                     fname = os.path.join(DATADIR, str(uuid.uuid4())+".jpg")
                     postdata = {"flag": 4,
                                 "existFlag": 1,
@@ -209,15 +203,17 @@ def post_data(token, suuid):
                                 "presetNum": i
                     }
                     r = requests.post("http://{}:{}@{}/form/presetSet".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), data=postdata)
-                    sleep(3)
-                    r = requests.get("http://{}:{}@{}/jpgimage/1/image.jpg".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), stream=True)
-                    if r.status_code == 200:
-                        with open(fname, 'wb') as f:
-                            r.raw.decode_content = True
-                            shutil.copyfileobj(r.raw, f)
-                            print("CAPTURED {} PICT {}".format(LABEL, i+1))
-                            cameradata.append({"fname": fname, "label": LABEL + " {}".format(i+1)})        
+                    sleep(4)
+                    rtsp = cv2.VideoCapture("rtsp://{}:{}@{}:554/1/h264major".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))
+                    #for rng in range(10):
+                    check, frame = rtsp.read()
+                    #    sleep(1)
+                    showPic = cv2.imwrite(fname, frame)
+                    print("CAPTURED {} PICT {}".format(LABEL, i+1))
+                    cameradata.append({"fname": fname, "label": LABEL + " {}".format(i+1)})
+                    rtsp.release()
                     
+
             else:
                 requests.get("http://{}:{}@{}//cgi-bin/hi3510/preset.cgi?-act=goto&-number=0".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))    
                 sleep(5)
