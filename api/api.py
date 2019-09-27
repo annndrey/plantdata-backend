@@ -314,23 +314,25 @@ class StatsAPI(Resource):
                 if not os.path.exists(fpath):
                     os.makedirs(fpath)
                 fdata = pict.read()
+                original = Image.open(io.BytesIO(fdata))
+                FORMAT = original.format
                 fuuid = str(uuid.uuid4())
-                fname = fuuid + '.jpg'
+                fname = fuuid + "." + FORMAT
                 fullpath = os.path.join(fpath, fname)
                 partpath = os.path.join(user.login, sensor.uuid, fname)
                 with open(fullpath, 'wb') as outf:
                     outf.write(fdata)
-
+                    
                 imglabel = uplname    
                 if CLASSIFY_ZONES and CF_TOKEN:
                     zones = CROP_SETTINGS.get(uplname, None)
                     if zones:
                         responses = []
-                        original = Image.open(fullpath)
+                        #original = Image.open(fullpath)
                         for zone in zones:
                             cropped = original.crop((zone['left'], zone['top'], zone['right'], zone['bottom']))
                             img_io = io.BytesIO()
-                            cropped.save(img_io, 'JPEG', quality=100)
+                            cropped.save(img_io, FORMAT, quality=100)
                             img_io.seek(0)
                             dr = ImageDraw.Draw(original)
                             dr.rectangle((zone['left'], zone['top'], zone['right'], zone['bottom']), outline = '#fbb040', width=3)

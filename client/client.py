@@ -197,7 +197,7 @@ def post_data(token, suuid):
             if LABEL == "INESUN":
                 for i in range(0, NUMFRAMES):
                     
-                    fname = os.path.join(DATADIR, str(uuid.uuid4())+".jpg")
+                    fname = os.path.join(DATADIR, str(uuid.uuid4())+".png")
                     postdata = {"flag": 4,
                                 "existFlag": 1,
                                 "language": "cn",
