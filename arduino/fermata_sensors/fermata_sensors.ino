@@ -59,10 +59,10 @@ void setup()
   //Serial.println("Barometer Initialization completed");
   scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN, 64);
   scale.set_scale();
-  scale.tare();
+  scale.set_offset();
   //Code added by Dan 18/9/2019
-  offset = scale.get_offset();
-  offset = offset - (50*calibration_factor); //substract 50 gramm weight from offset
+  //offset = scale.get_offset();
+  //offset = offset - (50*calibration_factor); //substract 50 gramm weight from offset
   scale.set_offset(offset);
   //scale.begin(A1, A0);
   //scale.set_scale(-15920);
