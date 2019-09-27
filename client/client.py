@@ -46,6 +46,8 @@ SERVER_HOST = "https://plantdata.fermata.tech:5498/api/v1/{}"
 db_file = 'localdata.db'
 DATADIR = "picts"
 LOWLIGHT = 10
+OFFSET = 96249
+SCALE = 452
 
 engine = create_engine('sqlite:///{}'.format(db_file))
 Session = sessionmaker(bind=engine)
@@ -122,7 +124,6 @@ def new_sensor(token):
     return newuuid
 
 def readserialdata(ser, isread):
-
     # read a line until the end to skip incomplete data
     lastchar = ser.read_until(b'\n')
     ser.flushInput()
@@ -158,7 +159,7 @@ def post_data(token, suuid):
     # collect serial data here
     cameradata = []
     
-    ser = serial.Serial('/dev/ttyACM0',9600)
+    ser = serial.Serial('/dev/ttyACM1',9600)
     serialdata = readserialdata(ser, data_read)
     
     for CAMERA in CAMERA_CONFIG:
@@ -242,6 +243,15 @@ def post_data(token, suuid):
     serialdata['uuid'] = suuid
     serialdata['TS'] = datetime.datetime.now(tz)
     #create cache record here with status uploaded False
+
+    #prevwght = session.query(Weight).filter(Weight.label == "WGHT0").first()
+    #if not prevwght:
+    #    whgt = serialdata.get('WGHT0') - OFFSET
+    #    prevwght = Weight(label="WGHT0", value=wght)
+    #    session.add(prevwght)
+    #    session.commit()
+        
+    wght0 = (serialdata.get('WGHT0') - OFFSET) / SCALE
     newdata = SensorData(ts = serialdata['TS'],
                          sensor_uuid = serialdata['uuid'],
                          temp0 = serialdata['T0'],
@@ -253,11 +263,11 @@ def post_data(token, suuid):
                          lux = serialdata['L'],
                          soilmoist = serialdata['M'],
                          co2 = serialdata['CO2'],
-                         wght0 = serialdata.get('WGHT0')/452
+                         wght0 = wght0
     )
     session.add(newdata)
     session.commit()
-    
+
     files = {}
     for i, d in enumerate(cameradata):
         newphoto = Photo(sensordata=newdata, photo_filename=d['fname'], label=d["label"])
