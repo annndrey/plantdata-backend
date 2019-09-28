@@ -218,7 +218,7 @@ def post_data(token, suuid):
                     #for rng in range(10):
                     check, frame = rtsp.read()
                     #    sleep(1)
-                    showPic = cv2.imwrite(fname, frame)
+                    showPic = cv2.imwrite(fname, frame, [cv2.IMWRITE_PNG_COMPRESSION, 9])
                     print("CAPTURED {} PICT {}".format(LABEL, i+1))
                     cameradata.append({"fname": fname, "label": LABEL + " {}".format(i+1)})
                     rtsp.release()
