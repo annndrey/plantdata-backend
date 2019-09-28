@@ -158,8 +158,11 @@ def post_data(token, suuid):
 
     # collect serial data here
     cameradata = []
-    
-    ser = serial.Serial('/dev/ttyACM1',9600)
+    try:
+        ser = serial.Serial('/dev/ttyACM0',9600)
+    except:
+        ser = serial.Serial('/dev/ttyACM1',9600)
+        
     serialdata = readserialdata(ser, data_read)
     
     for CAMERA in CAMERA_CONFIG:
