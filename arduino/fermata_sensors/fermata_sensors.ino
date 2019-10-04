@@ -2,9 +2,9 @@
 #include <DHT.h>
 #include <HX711.h>
 #include <Digital_Light_TSL2561.h>
-#define DHTPIN0 12
+#define DHTPIN0 2
 #define DHTTYPE0 DHT22
-#define DHTPIN1 13
+#define DHTPIN1 3
 #define DHTTYPE1 DHT22
 #define PIN_MQ135  A5
 #define WEIGHT_SENSORS_AMOUNT 5
@@ -19,8 +19,8 @@ float bar_pressure;
 float bar_temp;
 
 //load cell section
-const int LOADCELL_DOUT_PIN[WEIGHT_SENSORS_AMOUNT] = {3, 5, 7, 9, 11};
-const int LOADCELL_SCK_PIN[WEIGHT_SENSORS_AMOUNT] = {2, 4, 6, 8, 10};
+const int LOADCELL_DOUT_PIN[WEIGHT_SENSORS_AMOUNT] = {5, 7, 9, 11, 13};
+const int LOADCELL_SCK_PIN[WEIGHT_SENSORS_AMOUNT] = {4, 6, 8, 10, 12};
 float calibration_factor = 452;
 long offset = 0;
 float scaleunits;
