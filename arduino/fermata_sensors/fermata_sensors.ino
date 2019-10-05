@@ -56,7 +56,7 @@ void setup()
   //Serial.println("DHT0 Initialization completed");
   dht1.begin();
   TSL2561.init();
-  Serial.println("DHT1 Initialization completed");
+  //Serial.println("DHT1 Initialization completed");
   //Serial.println("Barometer Initialization completed");
   //Initialazing weight sensors
   for(int i = 0; i < WEIGHT_SENSORS_AMOUNT; i++)
@@ -86,7 +86,6 @@ void loop()
   float t0 = dht0.readTemperature();  // считывание температуры
   float h1 = dht1.readHumidity();   // считывание влажности
   float t1 = dht1.readTemperature();  // считывание температуры
-  Serial.println("Brake5");
   bar_pressure = 0;//barometer.readPressureMillibars();
   bar_temp = 0;//barometer.readTemperatureC();
 
