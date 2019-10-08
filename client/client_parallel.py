@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import sys
+
+sys.path.append('/home/pi/lib/python3.5/site-packages')
+
 import requests
 import pickle
 import os
@@ -14,9 +18,9 @@ import pytz
 import functools
 import yaml
 
+import logging
 
-import asyncio
-import aiohttp
+from multiprocessing import Pool
 
 #from picamera import PiCamera
 from time import sleep
@@ -27,6 +31,13 @@ from sqlalchemy import create_engine, or_, func
 
 from models import Base, SensorData, Photo
 import logging
+
+
+logging.basicConfig(filename='client_parallel.log',
+                    filemode='w',
+                    format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+                    datefmt='%H:%M:%S',
+                    level=logging.DEBUG)
 
 
 #logging.basicConfig()
@@ -50,7 +61,7 @@ with open("config.yaml", 'r') as stream:
     try:
         CAMERA_CONFIG = yaml.safe_load(stream)
     except yaml.YAMLError as exc:
-        print(exc)
+        logging.debug(exc)
 
 SERVER_LOGIN = "plantuser@plantdata.com"
 SERVER_PASSWORD = "plantpassword"
@@ -67,32 +78,26 @@ session = Session()
 
 Base.metadata.create_all(engine, checkfirst=True)
 
-asyncsession = aiohttp.ClientSession()
-
-async def send_patch_request(fname=None, flabel=None, data_id=None, photo_id=None, header=None):
+def send_patch_request(fname, flabel, data_id, photo_id, header):
     files = {}
     files['{}'.format(flabel)] = open(fname, 'rb')
     url_str = "data/{}".format(data_id)
-    print("SENDING PATCH REQUEST FOR {} {}".format(data_id, flabel))
-    async with asyncsession.patch(SERVER_HOST.format(url_str), data=files, headers=header) as resp:
-            print(await resp.text())
-            if resp.status == 200:
-                os.unlink(fname)
-                session = Session()
-                dbphoto = session.query(Photo).filter(Photo.photo_id == photo_id).first()
-                if dbphoto:
-                    dbphoto.uploaded = True
-                    session.add(dbphoto)
-                    session.commit()
-                session.close()
-                print("LOCAL PHOTO REMOVED {fname} {flabel}")
-            return resp.status
-            # print(await resp.text())
-            #await requests.patch(SERVER_HOST.format(url_str), files=files, headers=header)
-            #print("SERVER RESPONSE", patch_resp.status_code)
-            #if resp.status_code == 200:
-            #    print("PICTURE SAVED")
-            #    return photo_id
+    logging.debug("SENDING PATCH REQUEST FOR {} {}".format(data_id, flabel))
+    
+    resp = requests.patch(SERVER_HOST.format(url_str), files=files, headers=header)
+    if resp.status_code == 200:
+        os.unlink(fname)
+        session = Session()
+        dbphoto = session.query(Photo).filter(Photo.photo_id == photo_id).first()
+        if dbphoto:
+            #dbphoto.uploaded = True
+            session.delete(dbphoto)
+            session.commit()
+            logging.debug("LOCAL PHOTO REMOVED {} {}".format(fname, flabel))
+        session.close()
+
+        #print(resp.json())
+        return resp.status_code
 
 def get_token():
     data_sent = False
@@ -105,7 +110,7 @@ def get_token():
             res = requests.post(SERVER_HOST.format("token"), json=login_data)
             data_sent = True
         except requests.exceptions.ConnectionError:
-            print("Trying to reconnect")
+            logging.debug("Trying to reconnect")
             sleep(3)
             
     if res.status_code == 200:
@@ -136,7 +141,7 @@ def get_sensor_uuid():
     with open('sensor.dat', 'rb') as f:
         try:
             data = pickle.load(f)
-            print(data)
+            logging.debug(data)
             sensor_uuid = data['uuid']
             token = data['token']
         except:
@@ -152,12 +157,11 @@ def new_sensor(token):
     location = {'lat': 111, 'lon': 111, 'address': 'test address 1'}
     while not data_sent:
         try:
-
             response = requests.post(SERVER_HOST.format("sensors"), json=location, headers=head)
             data_sent = True
         except requests.exceptions.ConnectionError:
             sleep(2)
-            print("Trying to connect")
+            logging.debug("Trying to connect")
 
     newuuid = response.json().get('uuid')
     return newuuid
@@ -168,7 +172,7 @@ def readserialdata(ser, isread):
     ser.flushInput()
     ser.flushOutput()
     # read complete line
-    print(lastchar)
+    logging.debug(lastchar)
     #sleep(1)
     serialdata = ser.readline().decode('utf-8')
     serialdata = serialdata.replace("\r\n", '')
@@ -178,7 +182,7 @@ def readserialdata(ser, isread):
     serialdata = serialdata.replace(", ,", ", ")
     serialdata = serialdata.replace(", }", "} ")
     serialdata = serialdata.replace("nan", "-1")
-    print(serialdata)
+    logging.debug(serialdata)
     serialdata = json.loads(serialdata)
     data_read = True
     return serialdata
@@ -192,7 +196,7 @@ def post_data(token, suuid, take_photos=False):
         os.makedirs(DATADIR)
     
     if not token:
-        print('Not allowed')
+        logging.debug('Not allowed')
     head = {'Authorization': 'Bearer ' + token}
 
     # collect serial data here
@@ -220,7 +224,7 @@ def post_data(token, suuid, take_photos=False):
                     showPic = cv2.imwrite(fname, frame)
                     camdata = {"fname": fname, "label": CAMERA["LABEL"]}
                     v.release()
-                    print("Captured {}".format(CAMERA['LABEL']))
+                    logging.debug("Captured {}".format(CAMERA['LABEL']))
     
                     # Check for black images
                     fimg = Image.open(camdata['fname'])
@@ -253,14 +257,14 @@ def post_data(token, suuid, take_photos=False):
                                         r = requests.post("http://{}:{}@{}/form/presetSet".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), data=postdata)
                                         comm_sent = True
                                     except:
-                                        print("Failed to connect to camera")
+                                        logging.debug("Failed to connect to camera")
                                         sleep(2)
                             
                             sleep(4)
                             rtsp = cv2.VideoCapture("rtsp://{}:{}@{}:554/1/h264major".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))
                             check, frame = rtsp.read()
                             showPic = cv2.imwrite(fname, frame)#, [cv2.IMWRITE_PNG_COMPRESSION, 9])
-                            print("CAPTURED {} PICT {}".format(LABEL, i+1))
+                            logging.debug("CAPTURED {} PICT {}".format(LABEL, i+1))
                             cameradata.append({"fname": fname, "label": LABEL + " {}".format(i+1)})
                             rtsp.release()
                     
@@ -278,7 +282,7 @@ def post_data(token, suuid, take_photos=False):
                                     with open(fname, 'wb') as f:
                                         r.raw.decode_content = True
                                         shutil.copyfileobj(r.raw, f)
-                                        print("CAPTURED {} PICT {}".format(LABEL, i))
+                                        logging.debug("CAPTURED {} PICT {}".format(LABEL, i))
                                         cameradata.append({"fname": fname, "label": LABEL + " {}".format(i)})
                             except:
                                 pass
@@ -311,14 +315,20 @@ def post_data(token, suuid, take_photos=False):
             newphoto = Photo(sensordata=newdata, photo_filename=d['fname'], label=d["label"])
             session.add(newphoto)
             session.commit()
+    else:
+        files = None
             
     # All data saved
     numretries = 0
     #while not data_sent:
+            
     try:
+        # cleanup
+        data_uploaded = session.query(SensorData).filter(SensorData.uploaded.is_(True)).delete()
+        session.commit()
         # try to send all cached data
         cacheddata = session.query(SensorData).filter(SensorData.uploaded.is_(False)).all()
-        print("CACHED DATA", [(c.sensor_uuid, c.ts) for c in cacheddata])
+        logging.debug("CACHED DATA {}".format([(c.sensor_uuid, c.ts) for c in cacheddata]))
         for cd in cacheddata:
             serialdata = {'uuid': cd.sensor_uuid,
                           'ts': cd.ts,
@@ -333,9 +343,12 @@ def post_data(token, suuid, take_photos=False):
                           'CO2': cd.co2,
                           'WGHT0':cd.wght0
             }
-            print("SENDING POST REQUEST")
-            response = requests.post(SERVER_HOST.format("data"), data=serialdata, files=files, headers=head)
-            print("SERVER RESPONSE", response.status_code, response.text)
+            logging.debug("SENDING POST REQUEST")
+            if files:
+                response = requests.post(SERVER_HOST.format("data"), data=serialdata, files=files, headers=head)
+            else:
+                response = requests.post(SERVER_HOST.format("data"), data=serialdata, headers=head)
+            logging.debug("SERVER RESPONSE {} {}".format(response.status_code, response.text))
             if response.status_code == 201:
                 resp_data = json.loads(response.text)
                 cd.remote_data_id = resp_data['id']
@@ -347,41 +360,49 @@ def post_data(token, suuid, take_photos=False):
         # Send all cached photos
         if take_photos:
             cachedphotos = session.query(Photo).filter(Photo.uploaded.is_(False)).all()
-            loop = asyncio.get_event_loop()
-            alltasks = []
+            p = Pool(processes=10)
+            argslist = []
             for i, f in enumerate(cachedphotos):
                 if f.sensordata.remote_data_id:
-                    alltasks.append(send_patch_request(fname=f.photo_filename, flabel=f.label, data_id=f.sensordata.remote_data_id, photo_id=f.photo_id, header=head))
-            print("START LOOP")
-            result=loop.run_until_complete(asyncio.wait(alltasks))
-            loop.close()
-            # TODO
+                    argslist.append([f.photo_filename, f.label, f.sensordata.remote_data_id, f.photo_id, head])
+                    #alltasks.append(send_patch_request(fname=f.photo_filename, flabel=f.label, data_id=f.sensordata.remote_data_id, photo_id=f.photo_id, header=head))
+                    
+            logging.debug("START LOOP")
+            data = p.starmap(send_patch_request, argslist)
+            p.close()
+            totalcount = data.count(200)
             # Обрабатывать неотправленные фото, не удалять их
             # и не удалять отправленные данные
             # помечать данные как sent
             # и после отправки всех фото
             # если у данных не осталось отправленных фото, от удалять
-            print("PHOTOS SENT", result)
-            #session.commit()
-            # for ph in cd.photos:
-            #    os.unlink(ph.photo_filename)
-            #    print("LOCAL DATA DELETED")
+            logging.debug("PHOTOS SENT {}".format(totalcount))
             # remove cached data here
     except requests.exceptions.ConnectionError:
         sleep(2)
         numretries =+ 1
-        print("Network error, trying to connect")
+        logging.debug("Network error, trying to connect")
 
 if __name__ == '__main__':
     sensor_uuid, token = get_sensor_uuid()
+    # data -> data only
+    # photos -> data & photos
+    tocollect = 'data'
+    
+    if len(sys.argv) > 1:
+        tocollect = sys.argv[1]
+
     if not sensor_uuid:
         token = get_token()
         sensor_uuid = register_sensor(token)
    # else:
         #for i in range(3):
-    while True:
+    #while True:
+    if tocollect == 'data':
+        post_data(token, sensor_uuid, take_photos=False)
+    elif tocollect == 'photos':
         post_data(token, sensor_uuid, take_photos=True)
-        #sleep(60)
-        sleep(3600)
+    #sleep(60)
+    #sleep(3600)
 
         
