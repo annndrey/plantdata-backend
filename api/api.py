@@ -62,6 +62,7 @@ FONTSIZE = app.config['FONTSIZE']
 zonefont = ImageFont.truetype(FONT, size=FONTSIZE)
 
 CLASSIFY_ZONES = app.config['CLASSIFY_ZONES']
+
 if CLASSIFY_ZONES:
     with open("cropsettings.yaml", 'r') as stream:
         try:
@@ -162,6 +163,66 @@ def access_picture(path):
     return response
 
 
+def parse_request_pictures(req_files, user_login, sensor_uuid):
+    picts = []
+    
+    for uplname in sorted(request.files):
+        app.logger.debug("SAVE FILE")
+
+        pict = request.files.get(uplname)
+        fpath = os.path.join(current_app.config['FILE_PATH'], user_login, sensor_uuid)
+        app.logger.debug(fpath)
+        if not os.path.exists(fpath):
+
+            os.makedirs(fpath)
+        fdata = pict.read()
+        original = Image.open(io.BytesIO(fdata))
+        FORMAT = original.format
+        fuuid = str(uuid.uuid4())
+        fname = fuuid + "." + FORMAT.lower()
+        fullpath = os.path.join(fpath, fname)
+        partpath = os.path.join(user_login, sensor_uuid, fname)
+        with open(fullpath, 'wb') as outf:
+            outf.write(fdata)
+                    
+        imglabel = uplname
+        app.logger.debug("FILE SAVED")
+        if CLASSIFY_ZONES and CF_TOKEN:
+            zones = CROP_SETTINGS.get(uplname, None)
+            cf_headers = {'Authorization': 'Bearer ' + CF_TOKEN}
+
+            if zones:
+                responses = []
+                #original = Image.open(fullpath)
+                for zone in zones:
+                    cropped = original.crop((zone['left'], zone['top'], zone['right'], zone['bottom']))
+                    img_io = io.BytesIO()
+                    cropped.save(img_io, FORMAT, quality=100)
+                    img_io.seek(0)
+                    dr = ImageDraw.Draw(original)
+                    dr.rectangle((zone['left'], zone['top'], zone['right'], zone['bottom']), outline = '#fbb040', width=3)
+                    dr.text((zone['right'], zone['bottom']), zone['label'], font=zonefont)
+                    # Now take an original image, crop the zones, send it to the
+                    # CF server and get back the response for each
+                    # Draw rectangle zones on the original image & save it
+                    # Modify the image lzbel with zones results
+                    # send CF request
+                    response = requests.post(CF_HOST.format("loadimage"), headers=cf_headers, files = {'croppedfile': img_io}, data={'index':0, 'filename': ''})
+                    if response.status_code == 200:
+                        responses.append("{}: {}".format(zone['label'], response.json().get('objtype')))
+                    else:
+                        responses.append("{}".format(zone['label']))
+                                         
+                original.save(fullpath)
+                imglabel = imglabel + " Results: {}".format(", ".join(responses))
+                        
+        newpicture = DataPicture(fpath=partpath, label=imglabel)
+        db.session.add(newpicture)
+        db.session.commit()
+        picts.append(newpicture)
+        app.logger.debug("NEW PICTURE ADDED")
+    return picts
+
 
 @app.route('/api/v1/token', methods=['POST'])
 @cross_origin(supports_credentials=True)
@@ -255,8 +316,10 @@ class StatsAPI(Resource):
 
     @token_required
     @cross_origin()
-    def get(self, sensorid=None, dataid=None):
-        suuid = request.args['uuid']
+    def get(self):
+        
+        suuid = request.args.get('uuid', None)
+        dataid = request.args.get('dataid', None)
         auth_headers = request.headers.get('Authorization', '').split()
         token = auth_headers[1]
         data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
@@ -265,19 +328,15 @@ class StatsAPI(Resource):
             abort(404)
         if not suuid:
             abort(404)
-            
         if not dataid:
             sensordata = db.session.query(Data).join(Sensor).filter(Sensor.uuid == suuid).order_by(Data.ts).all()
             if sensordata:
                 return jsonify(self.m_schema.dump(sensordata).data), 200
         else:
-            sensordata = db.session.query(Data).filter(Data.sensor_id == sensorid).filter(Data.id == dataid).first()
+            sensordata = db.session.query(Data).filter(Data.sensor.has(uuid=suuid)).filter(Data.id == dataid).first()
             if sensordata:
                 return jsonify(self.schema.dump(sensordata).data), 200
             
-        # return data here
-        #if not id:
-        #    return jsonify(self.schema.dump(user).data), 200
         return abort(404)
 
     @token_required
@@ -289,9 +348,7 @@ class StatsAPI(Resource):
         user = User.query.filter_by(login=udata['sub']).first()
         suuid = request.form.get('uuid')
         sensor = db.session.query(Sensor).filter(Sensor.uuid == suuid).first()
-        if CF_TOKEN:
-            cf_headers = {'Authorization': 'Bearer ' + CF_TOKEN}
-        
+      
         if sensor:
             if sensor.user != user:
                 abort(403)
@@ -306,57 +363,9 @@ class StatsAPI(Resource):
             soilmoist = int(request.form.get("M"))
             co2 = int(request.form.get("CO2"))
             ts = request.form.get("ts")
-            picts = []
             
-            for uplname in sorted(request.files):
-                pict = request.files.get(uplname)
-                fpath = os.path.join(current_app.config['FILE_PATH'], user.login, sensor.uuid)
-                if not os.path.exists(fpath):
-                    os.makedirs(fpath)
-                fdata = pict.read()
-                original = Image.open(io.BytesIO(fdata))
-                FORMAT = original.format
-                fuuid = str(uuid.uuid4())
-                fname = fuuid + "." + FORMAT
-                fullpath = os.path.join(fpath, fname)
-                partpath = os.path.join(user.login, sensor.uuid, fname)
-                with open(fullpath, 'wb') as outf:
-                    outf.write(fdata)
-                    
-                imglabel = uplname    
-                if CLASSIFY_ZONES and CF_TOKEN:
-                    zones = CROP_SETTINGS.get(uplname, None)
-                    if zones:
-                        responses = []
-                        #original = Image.open(fullpath)
-                        for zone in zones:
-                            cropped = original.crop((zone['left'], zone['top'], zone['right'], zone['bottom']))
-                            img_io = io.BytesIO()
-                            cropped.save(img_io, FORMAT, quality=100)
-                            img_io.seek(0)
-                            dr = ImageDraw.Draw(original)
-                            dr.rectangle((zone['left'], zone['top'], zone['right'], zone['bottom']), outline = '#fbb040', width=3)
-                            dr.text((zone['right'], zone['bottom']), zone['label'], font=zonefont)
-                            # Now take an original image, crop the zones, send it to the
-                            # CF server and get back the response for each
-                            # Draw rectangle zones on the original image & save it
-                            # Modify the image lzbel with zones results
-                            # send CF request
-                            response = requests.post(CF_HOST.format("loadimage"), headers=cf_headers, files = {'croppedfile': img_io}, data={'index':0, 'filename': ''})
-                            if response.status_code == 200:
-                                
-                                responses.append("{}: {}".format(zone['label'], response.json().get('objtype')))
-                        original.save(fullpath)
-                        imglabel = imglabel + " Results: {}".format(", ".join(responses))
-                        
-                newpicture = DataPicture(fpath=partpath, label=imglabel)
-                db.session.add(newpicture)
-                db.session.commit()
-                picts.append(newpicture)
+            picts = parse_request_pictures(request.files, user.login, sensor.uuid)
             
-            app.logger.debug(["REQUEST", request.json, user, sensor])
-            app.logger.debug(["DATA", request.form])
-            app.logger.debug(["FILES", request.files])
             newdata = Data(sensor_id=sensor.id,
                            wght0 = wght0,
                            ts = ts,
@@ -377,9 +386,39 @@ class StatsAPI(Resource):
                 p.data_id = newdata.id
                 db.session.add(p)
                 db.session.commit()
+        app.logger.debug(["REQUEST", request.json, user.login, sensor.uuid])
             
-        return jsonify("DATA ADDED {}".format(datetime.datetime.now())), 201
+        return jsonify(self.schema.dump(newdata).data), 201
 
+    @token_required
+    @cross_origin()
+    def patch(self, id=None):
+        if not id:
+            abort(400)
+        app.logger.debug("Patch Data")
+        auth_headers = request.headers.get('Authorization', '').split()
+        token = auth_headers[1]
+        udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
+        user = User.query.filter_by(login=udata['sub']).first()
+        if not user:
+            abort(403)
+            
+        data = db.session.query(Data).filter(Data.id == id).first()
+        if data:
+            sensor = data.sensor
+            if sensor.user != user:
+                abort(403)
+            picts = parse_request_pictures(request.files, user.login, sensor.uuid)
+            app.logger.debug(picts)
+            if picts:
+                for p in picts:
+                    data.pictures.append(p)
+            db.session.add(data)
+            db.session.commit()
+            
+            return jsonify(self.schema.dump(data).data)
+        abort(404)
+    
 
 class SensorAPI(Resource):
     def __init__(self):
@@ -435,11 +474,14 @@ class SensorAPI(Resource):
     @cross_origin()
     def patch(self, id):
         print("REQUEST", request.remote_addr)
+
         auth_headers = request.headers.get('Authorization', '').split()
         token = auth_headers[1]
         udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         user = User.query.filter_by(login=udata['sub']).first()
-        #
+        if not user:
+            abort(403)
+            
         return jsonify("OK {}".format(datetime.datetime.now()))
 
     @token_required
@@ -547,7 +589,7 @@ class UserAPI(Resource):
 
         
 api.add_resource(UserAPI, '/users', '/users/<int:id>', endpoint='users')
-api.add_resource(StatsAPI, '/data', endpoint='savedata')
+api.add_resource(StatsAPI, '/data', '/data/<int:id>', endpoint='savedata')
 api.add_resource(SensorAPI, '/sensors', '/sensors/<int:id>', endpoint='sensors')
 api.add_resource(PictAPI, "/p/<path:path>", endpoint="picts")
 

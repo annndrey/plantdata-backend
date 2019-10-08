@@ -17,7 +17,7 @@ import datetime
 import pytz
 import functools
 import yaml
-
+import schedule
 import logging
 
 from multiprocessing import Pool
@@ -166,15 +166,33 @@ def new_sensor(token):
     newuuid = response.json().get('uuid')
     return newuuid
 
+def tryserial(ser):
+    try:
+        #lastchar = ser.read_until(b'\n')
+        #ser.flushInput()
+        #ser.flushOutput()
+        # read complete line
+        #logging.debug(lastchar)
+        serialdata = ser.readline().decode('utf-8')
+        print("data read")
+    except:
+        print("try again")
+        return tryserial(ser)
+    else:
+        print("return")
+        return serialdata
+
 def readserialdata(ser, isread):
     # read a line until the end to skip incomplete data
+    sleep(1)
     lastchar = ser.read_until(b'\n')
     ser.flushInput()
     ser.flushOutput()
     # read complete line
     logging.debug(lastchar)
-    #sleep(1)
     serialdata = ser.readline().decode('utf-8')
+    
+    #serialdata =  tryserial(ser)#ser.readline().decode('utf-8')
     serialdata = serialdata.replace("\r\n", '')
     serialdata = serialdata.replace("'", '"')
     serialdata = serialdata.replace("CO2", '"CO2"')
@@ -187,11 +205,11 @@ def readserialdata(ser, isread):
     data_read = True
     return serialdata
 
-def post_data(token, suuid, take_photos=False):
+def post_data(token, suuid, ser, take_photos):
     data_read = False
     data_sent = False
     data_cached = False
-
+    logging.debug("Start post_data")
     if not os.path.exists(DATADIR):
         os.makedirs(DATADIR)
     
@@ -201,10 +219,6 @@ def post_data(token, suuid, take_photos=False):
 
     # collect serial data here
     cameradata = []
-    try:
-        ser = serial.Serial('/dev/ttyACM0',9600)
-    except:
-        ser = serial.Serial('/dev/ttyACM1',9600)
         
     serialdata = readserialdata(ser, data_read)
     if take_photos:
@@ -398,10 +412,21 @@ if __name__ == '__main__':
    # else:
         #for i in range(3):
     #while True:
-    if tocollect == 'data':
-        post_data(token, sensor_uuid, take_photos=False)
-    elif tocollect == 'photos':
-        post_data(token, sensor_uuid, take_photos=True)
+    try:
+        ser = serial.Serial('/dev/ttyACM0',9600)
+    except:
+        ser = serial.Serial('/dev/ttyACM1',9600)
+
+
+    schedule.every(5).minutes.do(post_data, token, sensor_uuid, ser, False)
+    schedule.every().hour.do(post_data, token, sensor_uuid, ser, True)
+    while 1:
+        schedule.run_pending()
+        sleep(1)
+    #if tocollect == 'data':
+    #    post_data(token, sensor_uuid, ser, take_photos=False)
+    #elif tocollect == 'photos':
+    #    post_data(token, sensor_uuid, ser, take_photos=True)
     #sleep(60)
     #sleep(3600)
 
