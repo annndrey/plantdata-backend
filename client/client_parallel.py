@@ -169,39 +169,48 @@ def new_sensor(token):
 def tryserial(ser):
     try:
         #lastchar = ser.read_until(b'\n')
-        #ser.flushInput()
-        #ser.flushOutput()
+        #ser.reset_input_buffer()#flushInput()
+        #ser.reset_output_buffer()#flushOutput()
         # read complete line
         #logging.debug(lastchar)
-        serialdata = ser.readline().decode('utf-8')
-        print("data read")
-    except:
-        print("try again")
+        # Restart arduino
+        ser.setDTR(False)
+        sleep(1)
+        ser.flushInput()#reset_input_buffer()
+        ser.setDTR(True)
+        sleep(10)
+        serialdata = ser.readline()
+        logging.debug(serialdata)
+        serialdata = serialdata.decode('utf-8')
+        serialdata = serialdata.replace("\r\n", '')
+        serialdata = serialdata.replace("'", '"')
+        serialdata = serialdata.replace("CO2", '"CO2"')
+        #serialdata = serialdata.replace("WGHT0", '"WGHT0"')
+        serialdata = serialdata.replace(", ,", ", ")
+        serialdata = serialdata.replace(", }", "} ")
+        serialdata = serialdata.replace("nan", "-1")
+        logging.debug(serialdata)
+        serialdata = json.loads(serialdata)
+        logging.debug("data read")
+    except Exception as e:
+        logging.debug("json next try {}".format(e))
+        sleep(2)
         return tryserial(ser)
     else:
-        print("return")
+        logging.debug("json read")
         return serialdata
 
 def readserialdata(ser, isread):
     # read a line until the end to skip incomplete data
-    sleep(1)
-    lastchar = ser.read_until(b'\n')
-    ser.flushInput()
-    ser.flushOutput()
+    #sleep(1)
+    #lastchar = ser.read_until(b'\n')
+    #ser.flushInput()
+    #ser.flushOutput()
     # read complete line
-    logging.debug(lastchar)
-    serialdata = ser.readline().decode('utf-8')
+    #logging.debug(lastchar)
+    # serialdata = #ser.readline().decode('utf-8')
     
-    #serialdata =  tryserial(ser)#ser.readline().decode('utf-8')
-    serialdata = serialdata.replace("\r\n", '')
-    serialdata = serialdata.replace("'", '"')
-    serialdata = serialdata.replace("CO2", '"CO2"')
-    #serialdata = serialdata.replace("WGHT0", '"WGHT0"')
-    serialdata = serialdata.replace(", ,", ", ")
-    serialdata = serialdata.replace(", }", "} ")
-    serialdata = serialdata.replace("nan", "-1")
-    logging.debug(serialdata)
-    serialdata = json.loads(serialdata)
+    serialdata = tryserial(ser)#ser.readline().decode('utf-8')
     data_read = True
     return serialdata
 
@@ -413,12 +422,12 @@ if __name__ == '__main__':
         #for i in range(3):
     #while True:
     try:
-        ser = serial.Serial('/dev/ttyACM0',9600)
+        ser = serial.Serial('/dev/ttyACM0', 9600, timeout=5)
     except:
-        ser = serial.Serial('/dev/ttyACM1',9600)
+        ser = serial.Serial('/dev/ttyACM1', 9600, timeout=5)
 
 
-    schedule.every(5).minutes.do(post_data, token, sensor_uuid, ser, False)
+    schedule.every(1).minutes.do(post_data, token, sensor_uuid, ser, False)
     schedule.every().hour.do(post_data, token, sensor_uuid, ser, True)
     while 1:
         schedule.run_pending()
