@@ -177,38 +177,27 @@ def new_sensor(token):
     return newuuid
 
 def tryserial(ser):
-    #try:
-        #lastchar = ser.read_until(b'\n')
-        #ser.reset_input_buffer()#flushInput()
-        #ser.reset_output_buffer()#flushOutput()
-        # read complete line
-        #logging.debug(lastchar)
-        # Restart arduino
-    ser.setDTR(False)
-    sleep(10)
-    #ser.flushInput()#reset_input_buffer()
-    ser.setDTR(True)
-    sleep(10)
-    ser.reset_input_buffer()
-    serialdata = ser.readline()
-    logging.debug(serialdata)
-    serialdata = serialdata.decode('utf-8')
-    serialdata = serialdata.replace("\r\n", '')
-    serialdata = serialdata.replace("'", '"')
-    serialdata = serialdata.replace("CO2", '"CO2"')
-    serialdata = serialdata.replace(", ,", ", ")
-    serialdata = serialdata.replace(", }", "} ")
-    serialdata = serialdata.replace("nan", "-1")
-    logging.debug(serialdata)
-    serialdata = json.loads(serialdata)
-    logging.debug("data read")
-    #except Exception as e:
-    #    logging.debug("json next try {}".format(repr(e)))
-    #    sleep(2)
-    #    return tryserial(ser)
-    #else:
-    logging.debug("json read")
-    return serialdata
+    try:
+        bufferstr = ""
+        for i in range(3):
+            bufferstr = bufferstr + ser.readline().decode("utf-8")
+            sleep(2)
+        serialdata = bufferstr.split("\n")[-2]
+        serialdata = serialdata.replace("'", '"')
+        serialdata = serialdata.replace("CO2", '"CO2"')
+        serialdata = serialdata.replace(", ,", ", ")
+        serialdata = serialdata.replace(", }", "} ")
+        serialdata = serialdata.replace("nan", "-1")
+        logging.debug(serialdata)
+        serialdata = json.loads(serialdata)
+        logging.debug("data read")
+    except Exception as e:
+        logging.debug("json next try {}".format(repr(e)))
+        sleep(2)
+        return tryserial(ser)
+    else:
+        logging.debug("json read")
+        return serialdata
 
 def readserialdata(ser, isread):
     # read a line until the end to skip incomplete data
@@ -449,8 +438,8 @@ if __name__ == '__main__':
         ser = serial.Serial('/dev/ttyACM1', 9600, timeout=5)
 
 
-    schedule.every(1).minutes.do(post_data, token, sensor_uuid, ser, False)
-    #schedule.every().hour.do(post_data, token, sensor_uuid, ser, True)
+    schedule.every(5).minutes.do(post_data, token, sensor_uuid, ser, False)
+    schedule.every().hour.do(post_data, token, sensor_uuid, ser, True)
     while 1:
         schedule.run_pending()
         sleep(1)
