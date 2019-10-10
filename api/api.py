@@ -353,6 +353,10 @@ class StatsAPI(Resource):
             if sensor.user != user:
                 abort(403)
             wght0 = float(request.form.get('WGHT0', -1))
+            wght1 = float(request.form.get('WGHT1', -1))
+            wght2 = float(request.form.get('WGHT2', -1))
+            wght3 = float(request.form.get('WGHT3', -1))
+            wght4 = float(request.form.get('WGHT4', -1))
             temp0 = float(request.form.get('T0'))
             temp1 = float(request.form.get("T1"))
             tempA = float(request.form.get("TA"))
@@ -368,6 +372,10 @@ class StatsAPI(Resource):
             
             newdata = Data(sensor_id=sensor.id,
                            wght0 = wght0,
+                           wght1 = wght1,
+                           wght2 = wght2,
+                           wght3 = wght3,
+                           wght4 = wght4,
                            ts = ts,
                            temp0 = temp0,
                            temp1 = temp1,
