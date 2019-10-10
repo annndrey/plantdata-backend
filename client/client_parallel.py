@@ -69,8 +69,18 @@ SERVER_HOST = "https://plantdata.fermata.tech:5498/api/v1/{}"
 db_file = 'localdata.db'
 DATADIR = "picts"
 LOWLIGHT = 10
-OFFSET = 96249
-SCALE = 452
+# Weights
+OFFSET0 = 96249
+SCALE0 = 452
+OFFSET1 = 25400
+SCALE1 = 560
+OFFSET2 = 49000
+SCALE2 = 614
+OFFSET3 = 60600
+SCALE3 = 576
+OFFSET4 = 123553
+SCALE4 = 639
+
 
 engine = create_engine('sqlite:///{}'.format(db_file))
 Session = sessionmaker(bind=engine)
@@ -167,38 +177,38 @@ def new_sensor(token):
     return newuuid
 
 def tryserial(ser):
-    try:
+    #try:
         #lastchar = ser.read_until(b'\n')
         #ser.reset_input_buffer()#flushInput()
         #ser.reset_output_buffer()#flushOutput()
         # read complete line
         #logging.debug(lastchar)
         # Restart arduino
-        ser.setDTR(False)
-        sleep(1)
-        ser.flushInput()#reset_input_buffer()
-        ser.setDTR(True)
-        sleep(10)
-        serialdata = ser.readline()
-        logging.debug(serialdata)
-        serialdata = serialdata.decode('utf-8')
-        serialdata = serialdata.replace("\r\n", '')
-        serialdata = serialdata.replace("'", '"')
-        serialdata = serialdata.replace("CO2", '"CO2"')
-        #serialdata = serialdata.replace("WGHT0", '"WGHT0"')
-        serialdata = serialdata.replace(", ,", ", ")
-        serialdata = serialdata.replace(", }", "} ")
-        serialdata = serialdata.replace("nan", "-1")
-        logging.debug(serialdata)
-        serialdata = json.loads(serialdata)
-        logging.debug("data read")
-    except Exception as e:
-        logging.debug("json next try {}".format(e))
-        sleep(2)
-        return tryserial(ser)
-    else:
-        logging.debug("json read")
-        return serialdata
+    ser.setDTR(False)
+    sleep(10)
+    #ser.flushInput()#reset_input_buffer()
+    ser.setDTR(True)
+    sleep(10)
+    ser.reset_input_buffer()
+    serialdata = ser.readline()
+    logging.debug(serialdata)
+    serialdata = serialdata.decode('utf-8')
+    serialdata = serialdata.replace("\r\n", '')
+    serialdata = serialdata.replace("'", '"')
+    serialdata = serialdata.replace("CO2", '"CO2"')
+    serialdata = serialdata.replace(", ,", ", ")
+    serialdata = serialdata.replace(", }", "} ")
+    serialdata = serialdata.replace("nan", "-1")
+    logging.debug(serialdata)
+    serialdata = json.loads(serialdata)
+    logging.debug("data read")
+    #except Exception as e:
+    #    logging.debug("json next try {}".format(repr(e)))
+    #    sleep(2)
+    #    return tryserial(ser)
+    #else:
+    logging.debug("json read")
+    return serialdata
 
 def readserialdata(ser, isread):
     # read a line until the end to skip incomplete data
@@ -315,7 +325,11 @@ def post_data(token, suuid, ser, take_photos):
     serialdata['TS'] = datetime.datetime.now(tz)
     #create cache record here with status uploaded False
 
-    wght0 = (serialdata.get('WGHT0') - OFFSET) / SCALE
+    wght0 = (serialdata.get('WGHT0') - OFFSET0) / SCALE0
+    wght1 = (serialdata.get('WGHT1') - OFFSET1) / SCALE1
+    wght2 = (serialdata.get('WGHT2') - OFFSET2) / SCALE2
+    wght3 = (serialdata.get('WGHT3') - OFFSET3) / SCALE3
+    wght4 = (serialdata.get('WGHT4') - OFFSET4) / SCALE4
     newdata = SensorData(ts = serialdata['TS'],
                          sensor_uuid = serialdata['uuid'],
                          temp0 = serialdata['T0'],
@@ -327,7 +341,12 @@ def post_data(token, suuid, ser, take_photos):
                          lux = serialdata['L'],
                          soilmoist = serialdata['M'],
                          co2 = serialdata['CO2'],
-                         wght0 = wght0
+                         wght0 = wght0,
+                         wght1 = wght1,
+                         wght2 = wght2,
+                         wght3 = wght3,
+                         wght4 = wght4
+                         
     )
     session.add(newdata)
     session.commit()
@@ -364,7 +383,11 @@ def post_data(token, suuid, ser, take_photos):
                           'L': cd.lux,
                           'M': cd.soilmoist,
                           'CO2': cd.co2,
-                          'WGHT0':cd.wght0
+                          'WGHT0':cd.wght0,
+                          'WGHT1':cd.wght1,
+                          'WGHT2':cd.wght2,
+                          'WGHT3':cd.wght3,
+                          'WGHT4':cd.wght4
             }
             logging.debug("SENDING POST REQUEST")
             if files:
@@ -388,7 +411,6 @@ def post_data(token, suuid, ser, take_photos):
             for i, f in enumerate(cachedphotos):
                 if f.sensordata.remote_data_id:
                     argslist.append([f.photo_filename, f.label, f.sensordata.remote_data_id, f.photo_id, head])
-                    #alltasks.append(send_patch_request(fname=f.photo_filename, flabel=f.label, data_id=f.sensordata.remote_data_id, photo_id=f.photo_id, header=head))
                     
             logging.debug("START LOOP")
             data = p.starmap(send_patch_request, argslist)
@@ -428,15 +450,9 @@ if __name__ == '__main__':
 
 
     schedule.every(1).minutes.do(post_data, token, sensor_uuid, ser, False)
-    schedule.every().hour.do(post_data, token, sensor_uuid, ser, True)
+    #schedule.every().hour.do(post_data, token, sensor_uuid, ser, True)
     while 1:
         schedule.run_pending()
         sleep(1)
-    #if tocollect == 'data':
-    #    post_data(token, sensor_uuid, ser, take_photos=False)
-    #elif tocollect == 'photos':
-    #    post_data(token, sensor_uuid, ser, take_photos=True)
-    #sleep(60)
-    #sleep(3600)
 
         
