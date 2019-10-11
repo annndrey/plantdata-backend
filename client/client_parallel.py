@@ -56,6 +56,12 @@ logging.basicConfig(filename='client_parallel.log',
 
 tz = pytz.timezone('Europe/Moscow')
 
+try:
+    ser = serial.Serial('/dev/ttyACM0', 9600, timeout=5)
+except:
+    ser = serial.Serial('/dev/ttyACM1', 9600, timeout=5)
+
+
 
 with open("config.yaml", 'r') as stream:
     try:
@@ -192,8 +198,12 @@ def tryserial(ser):
         serialdata = json.loads(serialdata)
         logging.debug("data read")
     except Exception as e:
+        ser.close()
         logging.debug("json next try {}".format(repr(e)))
-        sleep(2)
+        sleep(10)
+        ser = serial.Serial('/dev/ttyACM0',9600)
+        # toss any data already received, see
+        # http://pyserial.sourceforge.net/pyserial_api.html#serial.Serial.flushInput
         return tryserial(ser)
     else:
         logging.debug("json read")
@@ -321,15 +331,15 @@ def post_data(token, suuid, ser, take_photos):
     wght4 = (serialdata.get('WGHT4') - OFFSET4) / SCALE4
     newdata = SensorData(ts = serialdata['TS'],
                          sensor_uuid = serialdata['uuid'],
-                         temp0 = serialdata['T0'],
-                         temp1 = serialdata['T1'],
-                         hum0 = serialdata['H0'],
-                         hum1 = serialdata['H1'],
-                         tempA = serialdata['TA'],
-                         uv = serialdata['UV'],
-                         lux = serialdata['L'],
-                         soilmoist = serialdata['M'],
-                         co2 = serialdata['CO2'],
+                         temp0 = serialdata.get('T0', -1),
+                         temp1 = serialdata.get('T1', -1),
+                         hum0 = serialdata.get('H0', -1),
+                         hum1 = serialdata.get('H1', -1),
+                         tempA = serialdata.get('TA', -1),
+                         uv = serialdata.get('UV', -1),
+                         lux = serialdata.get('L', -1),
+                         soilmoist = serialdata.get('M', -1),
+                         co2 = serialdata.get('CO2', -1),
                          wght0 = wght0,
                          wght1 = wght1,
                          wght2 = wght2,
@@ -432,10 +442,6 @@ if __name__ == '__main__':
    # else:
         #for i in range(3):
     #while True:
-    try:
-        ser = serial.Serial('/dev/ttyACM0', 9600, timeout=5)
-    except:
-        ser = serial.Serial('/dev/ttyACM1', 9600, timeout=5)
 
 
     schedule.every(5).minutes.do(post_data, token, sensor_uuid, ser, False)
