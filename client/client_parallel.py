@@ -56,10 +56,6 @@ logging.basicConfig(filename='client_parallel.log',
 
 tz = pytz.timezone('Europe/Moscow')
 
-try:
-    ser = serial.Serial('/dev/ttyACM0', 9600, timeout=5)
-except:
-    ser = serial.Serial('/dev/ttyACM1', 9600, timeout=5)
 
 
 
@@ -93,6 +89,14 @@ Session = sessionmaker(bind=engine)
 session = Session()
 
 Base.metadata.create_all(engine, checkfirst=True)
+
+def connect_serial(portnum=0):
+    try:
+        ser = serial.Serial('/dev/ttyACM{}'.format(portnum), 9600, timeout=5)
+    except serial.serialutil.SerialException:
+        return connect_serial(portnum=portnum+1)
+    else:
+        return ser
 
 def send_patch_request(fname, flabel, data_id, photo_id, header):
     files = {}
@@ -201,7 +205,7 @@ def tryserial(ser):
         ser.close()
         logging.debug("json next try {}".format(repr(e)))
         sleep(10)
-        ser = serial.Serial('/dev/ttyACM0',9600)
+        ser = connect_serial()
         # toss any data already received, see
         # http://pyserial.sourceforge.net/pyserial_api.html#serial.Serial.flushInput
         return tryserial(ser)
@@ -443,9 +447,9 @@ if __name__ == '__main__':
         #for i in range(3):
     #while True:
 
-
+    ser = connect_serial()
     schedule.every(5).minutes.do(post_data, token, sensor_uuid, ser, False)
-    schedule.every().hour.do(post_data, token, sensor_uuid, ser, True)
+    schedule.every(30).minutes.do(post_data, token, sensor_uuid, ser, True)
     while 1:
         schedule.run_pending()
         sleep(1)
