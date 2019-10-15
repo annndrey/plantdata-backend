@@ -322,14 +322,32 @@ class StatsAPI(Resource):
         dataid = request.args.get('dataid', None)
         auth_headers = request.headers.get('Authorization', '').split()
         token = auth_headers[1]
+        datefrom = request.args.get('datefrom', None)
+        dateto = request.args.get('dateto', None)
+        
         data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
+        daystart = dayend = None
+        # By default show data for the last recorded day
+        # 
         user = User.query.filter_by(login=data['sub']).first()
         if not user:
             abort(404)
         if not suuid:
             abort(404)
         if not dataid:
-            sensordata = db.session.query(Data).join(Sensor).filter(Sensor.uuid == suuid).order_by(Data.ts).all()
+            if not (all([datefrom, dateto])):
+                last_rec_day = db.session.query(sql_func.max(Data.ts)).filter(Data.sensor.has(Sensor.uuid == suuid)).first()[0]
+                day_st = last_rec_day.replace(hour=0, minute=0)
+                day_end = last_rec_day.replace(hour=23, minute=59, second=59)
+            else:
+                day_st = datetime.datetime.strptime(datefrom, '%d-%m-%Y')
+                day_st = day_st.replace(hour=0, minute=0)
+                day_end = datetime.datetime.strptime(dateto, '%d-%m-%Y')
+                day_end = day_end.replace(hour=23, minute=59, second=59)
+                
+            app.logger.debug("DATES {} {} {} {}".format(datefrom, dateto, day_st, day_end))
+            sensordata = db.session.query(Data).join(Sensor).filter(Sensor.uuid == suuid).order_by(Data.ts).filter(Data.ts >= day_st).filter(Data.ts <= day_end).all()
+            app.logger.debug(len(sensordata))
             if sensordata:
                 return jsonify(self.m_schema.dump(sensordata).data), 200
         else:
