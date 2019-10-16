@@ -83,6 +83,15 @@ class Sensor(db.Model):
     @hybrid_property
     def numrecords(self):
         return len(self.data)
+
+    @hybrid_property
+    def mindate(self):
+        return min([d.ts for d in self.data])
+    
+    @hybrid_property
+    def maxdate(self):
+        return max([d.ts for d in self.data])
+    
 # Locations
 # descr
 # lat
@@ -117,6 +126,7 @@ class Data(db.Model):
     soilmoist = db.Column(db.Integer)
     co2 = db.Column(db.Integer)
     fpath = db.Column(db.Text())
+    
 
 class DataPicture(db.Model):
     id = db.Column(db.Integer, primary_key=True)

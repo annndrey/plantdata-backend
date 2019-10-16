@@ -249,15 +249,20 @@ class UserSchema(ma.ModelSchema):
     class Meta:
         model = User
 
+        
 class SensorSchema(ma.ModelSchema):
     class Meta:
         model = Sensor
     numrecords = ma.Function(lambda obj: obj.numrecords)
+    mindate = ma.Function(lambda obj: obj.mindate)
+    maxdate = ma.Function(lambda obj: obj.maxdate)
+    
 
 class DataPictureSchema(ma.ModelSchema):
     class Meta:
         model = DataPicture
 
+        
 class LocationSchema(ma.ModelSchema):
     class Meta:
         model = Location
@@ -335,8 +340,9 @@ class StatsAPI(Resource):
         if not suuid:
             abort(404)
         if not dataid:
+            first_rec_day = db.session.query(sql_func.min(Data.ts)).filter(Data.sensor.has(Sensor.uuid == suuid)).first()[0]
+            last_rec_day = db.session.query(sql_func.max(Data.ts)).filter(Data.sensor.has(Sensor.uuid == suuid)).first()[0]
             if not (all([datefrom, dateto])):
-                last_rec_day = db.session.query(sql_func.max(Data.ts)).filter(Data.sensor.has(Sensor.uuid == suuid)).first()[0]
                 day_st = last_rec_day.replace(hour=0, minute=0)
                 day_end = last_rec_day.replace(hour=23, minute=59, second=59)
             else:
@@ -344,12 +350,17 @@ class StatsAPI(Resource):
                 day_st = day_st.replace(hour=0, minute=0)
                 day_end = datetime.datetime.strptime(dateto, '%d-%m-%Y')
                 day_end = day_end.replace(hour=23, minute=59, second=59)
-                
-            app.logger.debug("DATES {} {} {} {}".format(datefrom, dateto, day_st, day_end))
+ 
             sensordata = db.session.query(Data).join(Sensor).filter(Sensor.uuid == suuid).order_by(Data.ts).filter(Data.ts >= day_st).filter(Data.ts <= day_end).all()
             app.logger.debug(len(sensordata))
             if sensordata:
-                return jsonify(self.m_schema.dump(sensordata).data), 200
+                res = {"numrecords": len(sensordata),
+                       'mindate': first_rec_day,
+                       'maxdate': last_rec_day,
+                       'data': self.m_schema.dump(sensordata).data
+                }
+
+                return jsonify(res), 200
         else:
             sensordata = db.session.query(Data).filter(Data.sensor.has(uuid=suuid)).filter(Data.id == dataid).first()
             if sensordata:
