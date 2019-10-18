@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from functools import wraps
-from flask import Flask, g, make_response, request, current_app
+from flask import Flask, g, make_response, request, current_app, send_file
 from flask_restful import Resource, Api, reqparse, abort, marshal_with
 from flask.json import jsonify
 from flask_migrate import Migrate
@@ -27,6 +27,7 @@ from dateutil.relativedelta import relativedelta
 import jwt
 import json
 import yaml
+import csv
 
 import io
 import requests
@@ -329,7 +330,7 @@ class StatsAPI(Resource):
         token = auth_headers[1]
         datefrom = request.args.get('datefrom', None)
         dateto = request.args.get('dateto', None)
-        
+        export_data = request.args.get('export', False)
         data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         daystart = dayend = None
         # By default show data for the last recorded day
@@ -342,9 +343,12 @@ class StatsAPI(Resource):
         if not dataid:
             first_rec_day = db.session.query(sql_func.min(Data.ts)).filter(Data.sensor.has(Sensor.uuid == suuid)).first()[0]
             last_rec_day = db.session.query(sql_func.max(Data.ts)).filter(Data.sensor.has(Sensor.uuid == suuid)).first()[0]
-            if not (all([datefrom, dateto])):
-                day_st = last_rec_day.replace(hour=0, minute=0)
-                day_end = last_rec_day.replace(hour=23, minute=59, second=59)
+            if not all([datefrom, dateto]):
+                if all([first_rec_day, last_rec_day]):
+                    day_st = last_rec_day.replace(hour=0, minute=0)
+                    day_end = last_rec_day.replace(hour=23, minute=59, second=59)
+                else:
+                    abort(404)
             else:
                 day_st = datetime.datetime.strptime(datefrom, '%d-%m-%Y')
                 day_st = day_st.replace(hour=0, minute=0)
@@ -354,13 +358,54 @@ class StatsAPI(Resource):
             sensordata = db.session.query(Data).join(Sensor).filter(Sensor.uuid == suuid).order_by(Data.ts).filter(Data.ts >= day_st).filter(Data.ts <= day_end).all()
             app.logger.debug(len(sensordata))
             if sensordata:
-                res = {"numrecords": len(sensordata),
-                       'mindate': first_rec_day,
-                       'maxdate': last_rec_day,
-                       'data': self.m_schema.dump(sensordata).data
-                }
-
-                return jsonify(res), 200
+                if not export_data:
+                    res = {"numrecords": len(sensordata),
+                           'mindate': first_rec_day,
+                           'maxdate': last_rec_day,
+                           'data': self.m_schema.dump(sensordata).data
+                    }
+                    return jsonify(res), 200
+                else:
+                    app.logger.debug(f"EXPORT DATA, {export_data}")
+                    proxy = io.StringIO()
+                    writer = csv.writer(proxy, delimiter=';', quotechar='"',quoting=csv.QUOTE_MINIMAL)
+                    writer.writerow(['sensor_id',
+                                     'timestamp'
+                                     'wght0',
+                                     'wght1',
+                                     'wght2',
+                                     'wght3',
+                                     'wght4',
+                                     'temp0',
+                                     'temp1',
+                                     'hum0',
+                                     'hum1',
+                                     'tempA0',
+                                     'lux',
+                                     'co2'
+                    ])
+                    for r in sensordata:
+                        writer.writerow([r.sensor.id,
+                                         r.ts,
+                                         r.wght0,
+                                         r.wght1,
+                                         r.wght2,
+                                         r.wght3,
+                                         r.wght4,
+                                         r.temp0,
+                                         r.temp1,
+                                         r.hum0,
+                                         r.hum1,
+                                         r.tempA,
+                                         r.lux,
+                                         r.co2
+                        ])
+                    mem = io.BytesIO()
+                    mem.write(proxy.getvalue().encode('utf-8'))
+                    mem.seek(0)
+                    proxy.close()
+                    
+                    return send_file(mem, mimetype='text/csv', attachment_filename="file.csv", as_attachment=True)
         else:
             sensordata = db.session.query(Data).filter(Data.sensor.has(uuid=suuid)).filter(Data.id == dataid).first()
             if sensordata:
