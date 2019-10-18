@@ -370,7 +370,7 @@ class StatsAPI(Resource):
                     proxy = io.StringIO()
                     writer = csv.writer(proxy, delimiter=';', quotechar='"',quoting=csv.QUOTE_MINIMAL)
                     writer.writerow(['sensor_id',
-                                     'timestamp'
+                                     'timestamp',
                                      'wght0',
                                      'wght1',
                                      'wght2',
