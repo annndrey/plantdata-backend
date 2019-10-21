@@ -9,6 +9,7 @@ import requests
 import pickle
 import os
 import serial
+import serial.tools.list_ports
 import json
 import cv2
 import shutil
@@ -17,8 +18,6 @@ import datetime
 import pytz
 import functools
 import yaml
-import schedule
-import logging
 
 from multiprocessing import Pool
 
@@ -30,7 +29,11 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine, or_, func
 
 from models import Base, SensorData, Photo
+
 import logging
+from traceback import format_exc
+from schedule import Scheduler
+
 
 
 logging.basicConfig(filename='client_parallel.log',
@@ -53,9 +56,34 @@ logging.basicConfig(filename='client_parallel.log',
 # http://XXX.XXX.XXX.XXX/cgi-bin/hi3510/preset.cgi?-act=goto&-status=1&-number=[0-7] :: перейти к заданной позиции
 # http://192.168.1.225/web/cgi-bin/hi3510/ptzctrl.cgi?-step=0&-act=zoomout&-speed=45 zoom
 
-
 tz = pytz.timezone('Europe/Moscow')
 
+class SafeScheduler(Scheduler):
+    """
+    An implementation of Scheduler that catches jobs that fail, logs their
+    exception tracebacks as errors, optionally reschedules the jobs for their
+    next run time, and keeps going.
+    
+    Use this to run jobs that may or may not crash without worrying about
+    whether other jobs will run or if they'll crash the entire script.
+    """
+
+    def __init__(self, reschedule_on_failure=True):
+        """
+        If reschedule_on_failure is True, jobs will be rescheduled for their
+        next run as if they had completed successfully. If False, they'll run
+        on the next run_pending() tick.
+        """
+        self.reschedule_on_failure = reschedule_on_failure
+        super().__init__()
+        
+        def _run_job(self, job):
+            try:
+                super()._run_job(job)
+            except Exception:
+                logger.error(format_exc())
+                job.last_run = datetime.datetime.now()
+                job._schedule_next_run()
 
 
 
@@ -90,11 +118,14 @@ session = Session()
 
 Base.metadata.create_all(engine, checkfirst=True)
 
-def connect_serial(portnum=0):
+def connect_serial():
+    # list available serial ports
+    ser_device = [x.device for x in serial.tools.list_ports.comports() if x.serial_number][-1]
+    logging.debug("Connecting to {ser_device}".format(ser_device))
     try:
-        ser = serial.Serial('/dev/ttyACM{}'.format(portnum), 9600, timeout=5)
-    except serial.serialutil.SerialException:
-        return connect_serial(portnum=portnum+1)
+        ser = serial.Serial(ser_device, 9600, timeout=5)
+    except:
+        return connect_serial()
     else:
         return ser
 
@@ -202,7 +233,7 @@ def tryserial(ser):
         serialdata = json.loads(serialdata)
         logging.debug("data read")
     except Exception as e:
-        ser.close()
+        #ser.close()
         logging.debug("json next try {}".format(repr(e)))
         sleep(10)
         ser = connect_serial()
@@ -294,15 +325,15 @@ def post_data(token, suuid, ser, take_photos):
                                         comm_sent = True
                                     except:
                                         logging.debug("Failed to connect to camera")
-                                        sleep(2)
+                                        sleep(5)
                             
-                            sleep(4)
                             rtsp = cv2.VideoCapture("rtsp://{}:{}@{}:554/1/h264major".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))
                             check, frame = rtsp.read()
                             showPic = cv2.imwrite(fname, frame)#, [cv2.IMWRITE_PNG_COMPRESSION, 9])
                             logging.debug("CAPTURED {} PICT {}".format(LABEL, i+1))
                             cameradata.append({"fname": fname, "label": LABEL + " {}".format(i+1)})
                             rtsp.release()
+                            sleep(10)
                     
 
                     else:
@@ -344,7 +375,7 @@ def post_data(token, suuid, ser, take_photos):
                          lux = serialdata.get('L', -1),
                          soilmoist = serialdata.get('M', -1),
                          co2 = serialdata.get('CO2', -1),
-                         wght0 = wght0,
+                         wght0 = -1,#wght0,
                          wght1 = wght1,
                          wght2 = wght2,
                          wght3 = wght3,
@@ -412,8 +443,9 @@ def post_data(token, suuid, ser, take_photos):
             p = Pool(processes=10)
             argslist = []
             for i, f in enumerate(cachedphotos):
-                if f.sensordata.remote_data_id:
-                    argslist.append([f.photo_filename, f.label, f.sensordata.remote_data_id, f.photo_id, head])
+                if f.sensordata:
+                    if f.sensordata.remote_data_id:
+                        argslist.append([f.photo_filename, f.label, f.sensordata.remote_data_id, f.photo_id, head])
                     
             logging.debug("START LOOP")
             data = p.starmap(send_patch_request, argslist)
@@ -448,10 +480,11 @@ if __name__ == '__main__':
     #while True:
 
     ser = connect_serial()
-    schedule.every(5).minutes.do(post_data, token, sensor_uuid, ser, False)
-    schedule.every(30).minutes.do(post_data, token, sensor_uuid, ser, True)
+    scheduler = SafeScheduler()
+    scheduler.every(5).minutes.do(post_data, token, sensor_uuid, ser, False)
+    scheduler.every(60).minutes.do(post_data, token, sensor_uuid, ser, True)
     while 1:
-        schedule.run_pending()
+        scheduler.run_pending()
         sleep(1)
 
         
