@@ -1,0 +1,197 @@
+<html>
+  <head>
+    <!--<base href="http://admin:plantdata@24209ec4.eu.ngrok.io">-->
+<!--<base href="http://admin:plantdata@1110866e.eu.ngrok.io">-->
+<!-- base href="http://admin:admin@0b744a4a.eu.ngrok.io/" -->
+<!-- base href="http://admin:admin@shvernik.rinet.ru:8079/" -->
+<!-- <base href="http://admin:admin@172.31.253.253/"> -->
+<title>Embedded password</title>
+<meta content="text/html; charset=utf-8" http-equiv="content-type">
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+<script src="https://code.jquery.com/jquery-3.4.1.min.js"  crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+
+<script language="javascript">
+  var img = new Image();
+  var imgObj;
+  var moveData = {'command': 1,
+		  'ZFSpeed': 0,
+		  'PTSpeed': 0,
+		  'panSpeed': 8,
+		  'tiltSpeed': 8,
+		  'focusSpeed': 2,
+		  'zoomSpeed': 2
+		 }
+  // move to preset:
+  // POST url: [camerahost]/form/presetSet
+  // POST data
+  // "flag": 4
+  // "existFlag": 1,
+  // "language": "cn",
+  // "presetNum": i
+
+  // set preset:
+  // flag	3
+  // existFlag	1
+  // language	cn
+  // presetNum	i
+  
+  // Move camera:
+  // up:
+  // form/setPTZCfg
+  // command	1
+  // ZFSpeed	0
+  // PTSpeed	0
+  // panSpeed	8
+  // tiltSpeed	8
+  // focusSpeed	2
+  // zoomSpeed	2
+
+  // down:
+  // command	2
+  // ZFSpeed	0
+  // PTSpeed	0
+  // panSpeed	8
+  // tiltSpeed	8
+  // focusSpeed	2
+  // zoomSpeed	2
+
+  // left:
+  // command	3
+  // ZFSpeed	0
+  // PTSpeed	0
+  // panSpeed	8
+  // tiltSpeed	8
+  // focusSpeed	2
+  // zoomSpeed	2
+
+  // right:
+  // command	4
+  // ZFSpeed	0
+  // PTSpeed	0
+  // panSpeed	8
+  // tiltSpeed	8
+  // focusSpeed	2
+  // zoomSpeed	2
+
+  // zoom in
+  // command	13
+  // ZFSpeed	0
+  // PTSpeed	0
+  // panSpeed	8
+  // tiltSpeed	8
+  // focusSpeed	2
+  // zoomSpeed	2
+
+  // zoom out
+  // command	14
+  // ZFSpeed	0
+  // PTSpeed	0
+  // panSpeed	8
+  // tiltSpeed	8
+  // focusSpeed	2
+  // zoomSpeed	2
+  
+  
+  function preload()
+  {
+      //img.src='http://admin:plantdata@http://24209ec4.eu.ngrok.io/browse/mjpeg/shot.htm';
+  }
+
+  function changesrc()
+  {
+      img1.src=img.src;
+      preload();
+      setTimeout(changesrc,3500);
+  }
+  
+  function update()
+  {
+      imgObj = document.getElementById('img1');
+      imgObj.src = img.src;
+      img.src = "tmpfs/auto.jpg?" + (new Date()).getTime();
+  }
+
+  function takeError()
+  {
+      img.src = "tmpfs/auto.jpg?" + (new Date()).getTime();
+  }
+  
+  function startonload()
+  {
+      img.src = "tmpfs/auto.jpg?" + (new Date()).getTime();
+      img.onerror=takeError;
+      img.onload=update;
+  }
+
+  function load()
+  {
+      if (navigator.appName.indexOf("Microsoft IE Mobile") != -1)
+      {
+	  preload();
+	  changesrc();
+	  return;
+      }
+	startonload();
+  }
+  
+  function ptzMove(cmd) {
+      console.log(cmd)
+      moveData.command = cmd
+      var saveData = $.ajax({
+	  type: 'POST',
+	  url: "http://admin:plantdata@24209ec4.eu.ngrok.io/form/setPTZCfg",
+	  data: moveData,
+	  dataType: "json",
+	  success: function(resultData) { console.log("Save Complete") },
+	  error: function(xhr, ajaxOptions, thrownError) { console.log(xhr) }
+	  
+      });
+  }
+  
+</script>
+</head>
+  <body onLoad="load()">
+    <div class="container">
+      <div class="row">
+	<div class="col-md-12">
+	  <button type="button" class="btn btn-secondary"  onClick="ptzMove(13)">ZoomIn</button>
+	  <button type="button" class="btn btn-secondary"  onClick="ptzMove(14)">ZoomOut</button>
+	  <button type="button" class="btn btn-secondary"  onClick="ptzMove()">&#8593</button>
+	  <button type="button" class="btn btn-secondary"  onClick="ptzMove()">&#8595</button>
+	  <button type="button" class="btn btn-secondary"  onClick="ptzMove()">&#8592</button>
+	  <button type="button" class="btn btn-secondary"  onClick="ptzMove()">&#8594</button>
+	</div>
+      </div>
+      <div class="row mt-2">
+	<div class="col-md-12">
+	
+	  <form method="get" action="cgi-bin/hi3510/preset.cgi" target="test">
+	    <input type=hidden name="-status" value="1">
+	    <select name="-act" size="1" >
+	      <option selected value="goto">goto</option>
+	      <option value="set">set</option>
+	    </select>
+	    <select name="-number" size="1" >
+	      <option selected value="1">1</option>
+	      <option value="2">2</option>
+	      <option value="3">3</option>
+	      <option value="4">4</option>
+	      <option value="5">5</option>
+	      <option value="6">6</option>
+	      <option value="7">7</option>
+	      <option value="8">8</option>
+	    </select>
+	    <input type="button" class="btn btn-secondary" type=submit value="go/set">
+	  </form>
+	</div>
+      </div>
+      <div class="row">
+	<div class="col-md-12">
+	  <img id="img1" border="0" src="http://24209ec4.eu.ngrok.io/jpgimage/1/image.jpg">
+	</div>
+      </div>
+    </div>
+  </body>
+</html>
