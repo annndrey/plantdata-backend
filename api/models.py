@@ -133,4 +133,5 @@ class DataPicture(db.Model):
     data_id = db.Column(db.Integer, ForeignKey('data.id'))
     data = relationship("Data", backref=backref("pictures", uselist=True))
     fpath = db.Column(db.Text())
+    thumbnail = db.Column(db.Text())
     label = db.Column(db.String(255))

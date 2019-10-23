@@ -174,15 +174,18 @@ def parse_request_pictures(req_files, user_login, sensor_uuid):
         fpath = os.path.join(current_app.config['FILE_PATH'], user_login, sensor_uuid)
         app.logger.debug(fpath)
         if not os.path.exists(fpath):
-
             os.makedirs(fpath)
         fdata = pict.read()
         original = Image.open(io.BytesIO(fdata))
         FORMAT = original.format
         fuuid = str(uuid.uuid4())
         fname = fuuid + "." + FORMAT.lower()
+        thumbname = fuuid + "_thumb." + FORMAT.lower()
         fullpath = os.path.join(fpath, fname)
+        thumbpath = os.path.join(fpath, thumbname)
         partpath = os.path.join(user_login, sensor_uuid, fname)
+        partthumbpath = os.path.join(user_login, sensor_uuid, thumbname)
+
         with open(fullpath, 'wb') as outf:
             outf.write(fdata)
                     
@@ -215,9 +218,11 @@ def parse_request_pictures(req_files, user_login, sensor_uuid):
                         responses.append("{}".format(zone['label']))
                                          
                 original.save(fullpath)
+                original.thumbnail((400, 400), Image.BICUBIC)
+                original.save(thumbpath)
                 imglabel = imglabel + " Results: {}".format(", ".join(responses))
                         
-        newpicture = DataPicture(fpath=partpath, label=imglabel)
+        newpicture = DataPicture(fpath=partpath, label=imglabel, thumbnail=partthumbpath)
         db.session.add(newpicture)
         db.session.commit()
         picts.append(newpicture)
