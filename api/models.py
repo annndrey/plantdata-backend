@@ -86,11 +86,21 @@ class Sensor(db.Model):
 
     @hybrid_property
     def mindate(self):
+        ts = [d.ts for d in self.data]
+        if ts:
+            return min(ts)
+        else:
+            return 0
+
         return min([d.ts for d in self.data])
     
     @hybrid_property
     def maxdate(self):
-        return max([d.ts for d in self.data])
+        ts = [d.ts for d in self.data]
+        if ts:
+            return max(ts)
+        else:
+            return 0
     
 # Locations
 # descr
