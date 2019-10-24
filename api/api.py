@@ -218,9 +218,11 @@ def parse_request_pictures(req_files, user_login, sensor_uuid):
                         responses.append("{}".format(zone['label']))
                                          
                 original.save(fullpath)
-                original.thumbnail((400, 400), Image.BICUBIC)
-                original.save(thumbpath)
+                    
                 imglabel = imglabel + " Results: {}".format(", ".join(responses))
+        # Thumbnails 
+        original.thumbnail((400, 400), Image.ANTIALIAS)
+        original.save(thumbpath, FORMAT)
                         
         newpicture = DataPicture(fpath=partpath, label=imglabel, thumbnail=partthumbpath)
         db.session.add(newpicture)
