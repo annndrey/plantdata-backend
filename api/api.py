@@ -28,7 +28,7 @@ import jwt
 import json
 import yaml
 import csv
-
+import pandas as pd
 import io
 import requests
 from PIL import Image, ImageDraw, ImageFont
@@ -181,14 +181,19 @@ def parse_request_pictures(req_files, user_login, sensor_uuid):
         fuuid = str(uuid.uuid4())
         fname = fuuid + "." + FORMAT.lower()
         thumbname = fuuid + "_thumb." + FORMAT.lower()
+        origname = fuuid + "_orig." + FORMAT.lower()
         fullpath = os.path.join(fpath, fname)
         thumbpath = os.path.join(fpath, thumbname)
+        origpath = os.path.join(fpath, origname)
         partpath = os.path.join(user_login, sensor_uuid, fname)
         partthumbpath = os.path.join(user_login, sensor_uuid, thumbname)
-
+        partorigpath = os.path.join(user_login, sensor_uuid, origname)
+        
         with open(fullpath, 'wb') as outf:
             outf.write(fdata)
-                    
+            
+        original.save(origpath)
+        
         imglabel = uplname
         app.logger.debug("FILE SAVED")
         if CLASSIFY_ZONES and CF_TOKEN:
@@ -224,7 +229,7 @@ def parse_request_pictures(req_files, user_login, sensor_uuid):
         original.thumbnail((400, 400), Image.ANTIALIAS)
         original.save(thumbpath, FORMAT)
                         
-        newpicture = DataPicture(fpath=partpath, label=imglabel, thumbnail=partthumbpath)
+        newpicture = DataPicture(fpath=partpath, label=imglabel, thumbnail=partthumbpath, original=partorigpath)
         db.session.add(newpicture)
         db.session.commit()
         picts.append(newpicture)
@@ -269,6 +274,7 @@ class SensorSchema(ma.ModelSchema):
 class DataPictureSchema(ma.ModelSchema):
     class Meta:
         model = DataPicture
+    preview = ma.Function(lambda obj: obj.thumbnail if obj.thumbnail and os.path.exists(os.path.join(current_app.config['FILE_PATH'], obj.thumbnail)) else obj.fpath)
 
         
 class LocationSchema(ma.ModelSchema):
@@ -279,9 +285,9 @@ class LocationSchema(ma.ModelSchema):
 class DataSchema(ma.ModelSchema):
     class Meta:
         model = Data
-    pictures = ma.Nested("DataPictureSchema", many=True)
+    pictures = ma.Nested("DataPictureSchema", many=True, exclude=['thumbnail',])
 
-
+    
 class PictAPI(Resource):
     def __init__(self):
         self.schema = DataPictureSchema()
@@ -316,7 +322,6 @@ class PictAPI(Resource):
         response = make_response("")
         response.headers["X-Accel-Redirect"] = redirect_path
         return response
-
     
     
 class StatsAPI(Resource):
@@ -324,19 +329,44 @@ class StatsAPI(Resource):
         self.schema = DataSchema()
         self.m_schema = DataSchema(many=True)
         self.method_decorators = []
+        
     def options(self, *args, **kwargs):
         return jsonify([])
 
+    def fill_empty_dates(self, query):
+        pictures = {p.id: p.pictures for p in query.all()}
+
+        df = pd.read_sql(query.statement, query.session.bind)
+        df = df.assign(ts=df.ts.dt.round('T'))
+        r = pd.date_range(start=df.ts.min(), end=df.ts.max(), freq="T")
+        df = df.set_index('ts').reindex(r).fillna(0.0).rename_axis('ts').reset_index()
+        app.logger.debug("FILLING EMPTY DATES")
+        #app.logger.debug(df.to_dict('records'))
+        app.logger.debug(df)
+        #app.logger.debug(r)
+        #return df.values.tolist()
+        #return query.all()
+        res = df.to_dict('records')
+        # restore data pictures
+        for d in res:
+            if d['id'] == 0:
+                d['pictures'] = []
+            else:
+                d['pictures'] = pictures[int(d['id'])]
+            
+        return res
+    
     @token_required
     @cross_origin()
     def get(self):
-        
+        # here the data should be scaled or not
         suuid = request.args.get('uuid', None)
         dataid = request.args.get('dataid', None)
         auth_headers = request.headers.get('Authorization', '').split()
         token = auth_headers[1]
         datefrom = request.args.get('datefrom', None)
         dateto = request.args.get('dateto', None)
+        fill_date = request.args.get('fill_date', False)
         export_data = request.args.get('export', False)
         data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         daystart = dayend = None
@@ -361,10 +391,12 @@ class StatsAPI(Resource):
                 day_st = day_st.replace(hour=0, minute=0)
                 day_end = datetime.datetime.strptime(dateto, '%d-%m-%Y')
                 day_end = day_end.replace(hour=23, minute=59, second=59)
- 
-            sensordata = db.session.query(Data).join(Sensor).filter(Sensor.uuid == suuid).order_by(Data.ts).filter(Data.ts >= day_st).filter(Data.ts <= day_end).all()
-            app.logger.debug(len(sensordata))
+            
+            sensordata_query = db.session.query(Data).join(Sensor).filter(Sensor.uuid == suuid).order_by(Data.ts).filter(Data.ts >= day_st).filter(Data.ts <= day_end)
+            sensordata = sensordata_query.all()
             if sensordata:
+                if fill_date:
+                    sensordata = self.fill_empty_dates(sensordata_query)
                 if not export_data:
                     res = {"numrecords": len(sensordata),
                            'mindate': first_rec_day,

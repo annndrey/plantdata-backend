@@ -145,3 +145,5 @@ class DataPicture(db.Model):
     fpath = db.Column(db.Text())
     thumbnail = db.Column(db.Text())
     label = db.Column(db.String(255))
+    original = db.Column(db.Text())
+
