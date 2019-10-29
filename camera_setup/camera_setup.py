@@ -8,7 +8,10 @@ from PIL import Image, ImageTk
 from io import BytesIO
 import time
 
-base_url = "http://admin:plantdata@c56352d9.eu.ngrok.io"
+# base_url = "http://admin:plantdata@c56352d9.eu.ngrok.io"
+# base_url = "http://admin:plantdata@192.168.0.201"
+# base_url = "http://admin:plantdata@192.168.0.202"
+base_url = "http://admin:plantdata@e3fd6634.eu.ngrok.io"
 
 def open_img():
     #img_url = "https://placeimg.com/640/480/any"
@@ -19,7 +22,7 @@ def open_img():
     label1.image = img
     label1.configure(image = img)
     root.update_idletasks()
-    root.after(1000, open_img)
+    root.after(500, open_img)
 
     
 def move_command(cmd):
@@ -34,6 +37,7 @@ def move_command(cmd):
     }
     requests.post(cmd_url, data=cmd_data)
     cmd_data['command'] = 0
+    time.sleep(0.5)
     requests.post(cmd_url, data=cmd_data)
 
 def preset_command(preset_num, cmd):
