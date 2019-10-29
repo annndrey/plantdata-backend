@@ -93,8 +93,8 @@ with open("config.yaml", 'r') as stream:
     except yaml.YAMLError as exc:
         logging.debug(exc)
 
-SERVER_LOGIN = "plantuser@plantdata.com"
-SERVER_PASSWORD = "plantpassword"
+SERVER_LOGIN = "test@test.com"
+SERVER_PASSWORD = "testpassword"
 SERVER_HOST = "https://plantdata.fermata.tech:5498/api/v1/{}"
 db_file = 'localdata.db'
 DATADIR = "picts"
@@ -121,7 +121,7 @@ Base.metadata.create_all(engine, checkfirst=True)
 def connect_serial():
     # list available serial ports
     ser_device = [x.device for x in serial.tools.list_ports.comports() if x.serial_number][-1]
-    logging.debug("Connecting to {ser_device}".format(ser_device))
+    logging.debug("Connecting to {}".format(ser_device))
     try:
         ser = serial.Serial(ser_device, 9600, timeout=5)
     except:
@@ -358,12 +358,24 @@ def post_data(token, suuid, ser, take_photos):
     serialdata['uuid'] = suuid
     serialdata['TS'] = datetime.datetime.now(tz)
     #create cache record here with status uploaded False
-
-    wght0 = (serialdata.get('WGHT0') - OFFSET0) / SCALE0
-    wght1 = (serialdata.get('WGHT1') - OFFSET1) / SCALE1
-    wght2 = (serialdata.get('WGHT2') - OFFSET2) / SCALE2
-    wght3 = (serialdata.get('WGHT3') - OFFSET3) / SCALE3
-    wght4 = (serialdata.get('WGHT4') - OFFSET4) / SCALE4
+    wght0 = serialdata.get('WGHT0', -1)
+    if wght0 > 0:
+        wght0 = (wght0 - OFFSET0) / SCALE0
+    wght1 = serialdata.get('WGHT1', -1)
+    if wght1 > 0:
+        wght1 = (wght1 - OFFSET1) / SCALE1
+        
+    wght2 = serialdata.get('WGHT2', -1)
+    if wght2 > 0:
+        wght2 = (wght2 - OFFSET2) / SCALE2
+        
+    wght3 = serialdata.get('WGHT3', -1)
+    if wght3 > 0:
+        wght3 = (wght3 - OFFSET3) / SCALE3
+    wght4 = serialdata.get('WGHT4', -1)
+    if wght4 > 0:
+        wght4 = (wght4 - OFFSET4) / SCALE4
+        
     newdata = SensorData(ts = serialdata['TS'],
                          sensor_uuid = serialdata['uuid'],
                          temp0 = serialdata.get('T0', -1),
@@ -482,7 +494,7 @@ if __name__ == '__main__':
     ser = connect_serial()
     scheduler = SafeScheduler()
     scheduler.every(5).minutes.do(post_data, token, sensor_uuid, ser, False)
-    scheduler.every(60).minutes.do(post_data, token, sensor_uuid, ser, True)
+    #scheduler.every(60).minutes.do(post_data, token, sensor_uuid, ser, True)
     while 1:
         scheduler.run_pending()
         sleep(1)
