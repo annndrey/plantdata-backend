@@ -144,6 +144,6 @@ class DataPicture(db.Model):
     data = relationship("Data", backref=backref("pictures", uselist=True))
     fpath = db.Column(db.Text())
     thumbnail = db.Column(db.Text())
-    label = db.Column(db.String(255))
+    label = db.Column(db.Text())
     original = db.Column(db.Text())
 
