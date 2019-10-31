@@ -308,53 +308,44 @@ def post_data(token, suuid, ser, take_photos):
                     NUMFRAMES = CAMERA['NUMFRAMES']
                     LABEL = CAMERA['LABEL']
                     NUMRETRIES = 10
-                    if LABEL == "INESUN":
-                        for i in range(0, NUMFRAMES):
+                    # Turn lights on
+                    # /form/IRset
+                    ir_data = {"IRmode": 1,
+                               "c2bwthr": 20,
+                               "bw2cthr": 70,
+                               "IRenable": 1,
+                               "IRdelay": 3
+                               }
+                    ir_respr = requests.post("http://{}:{}@{}/form/IRset".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), data=ir_data)
                     
-                            fname = os.path.join(DATADIR, str(uuid.uuid4())+".jpg")
-                            postdata = {"flag": 4,
-                                        "existFlag": 1,
-                                        "language": "cn",
-                                        "presetNum": i
-                            }
-                            comm_sent = False
-                            for n in range(NUMRETRIES):
-                                if not comm_sent:
-                                    try:
-                                        r = requests.post("http://{}:{}@{}/form/presetSet".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), data=postdata)
-                                        comm_sent = True
-                                    except:
-                                        logging.debug("Failed to connect to camera")
-                                        sleep(5)
+                    for i in range(0, NUMFRAMES):
+                        fname = os.path.join(DATADIR, str(uuid.uuid4())+".jpg")
+                        postdata = {"flag": 4,
+                                    "existFlag": 1,
+                                    "language": "cn",
+                                    "presetNum": i + 1
+                        }
+                        comm_sent = False
+                        for n in range(NUMRETRIES):
+                            if not comm_sent:
+                                try:
+                                    r = requests.post("http://{}:{}@{}/form/presetSet".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), data=postdata)
+                                    comm_sent = True
+                                except:
+                                    logging.debug("Failed to connect to camera")
+                                    sleep(5)
                             
-                            rtsp = cv2.VideoCapture("rtsp://{}:{}@{}:554/1/h264major".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))
-                            check, frame = rtsp.read()
-                            showPic = cv2.imwrite(fname, frame)#, [cv2.IMWRITE_PNG_COMPRESSION, 9])
-                            logging.debug("CAPTURED {} PICT {}".format(LABEL, i+1))
-                            cameradata.append({"fname": fname, "label": LABEL + " {}".format(i+1)})
-                            rtsp.release()
-                            sleep(10)
+                        rtsp = cv2.VideoCapture("rtsp://{}:{}@{}:554/1/h264major".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))
+                        check, frame = rtsp.read()
+                        showPic = cv2.imwrite(fname, frame)#, [cv2.IMWRITE_PNG_COMPRESSION, 9])
+                        logging.debug("CAPTURED {} PICT {}".format(LABEL, i+1))
+                        cameradata.append({"fname": fname, "label": LABEL + " {}".format(i+1)})
+                        rtsp.release()
+                        sleep(10)
+                    # turn lights off
+                    ir_data['IRenable'] = 0
+                    ir_respr = requests.post("http://{}:{}@{}/form/IRset".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), data=ir_data)
                     
-
-                    else:
-                        requests.get("http://{}:{}@{}//cgi-bin/hi3510/preset.cgi?-act=goto&-number=0".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))    
-                        sleep(5)
-                        for i in range(1, NUMFRAMES + 1):
-                            fname = os.path.join(DATADIR, str(uuid.uuid4())+".jpg")
-                            try:
-                                requests.get("http://{}:{}@{}//cgi-bin/hi3510/preset.cgi?-act=goto&-number={}".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP, i))
-                                sleep(5)
-                                r = requests.get("http://{}:{}@{}/tmpfs/auto.jpg".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), stream=True)
-                                if r.status_code == 200:
-                                    with open(fname, 'wb') as f:
-                                        r.raw.decode_content = True
-                                        shutil.copyfileobj(r.raw, f)
-                                        logging.debug("CAPTURED {} PICT {}".format(LABEL, i))
-                                        cameradata.append({"fname": fname, "label": LABEL + " {}".format(i)})
-                            except:
-                                pass
-                        
-                
     serialdata['uuid'] = suuid
     serialdata['TS'] = datetime.datetime.now(tz)
     #create cache record here with status uploaded False
@@ -387,7 +378,7 @@ def post_data(token, suuid, ser, take_photos):
                          lux = serialdata.get('L', -1),
                          soilmoist = serialdata.get('M', -1),
                          co2 = serialdata.get('CO2', -1),
-                         wght0 = -1,#wght0,
+                         wght0 = wght0,
                          wght1 = wght1,
                          wght2 = wght2,
                          wght3 = wght3,
@@ -494,7 +485,7 @@ if __name__ == '__main__':
     ser = connect_serial()
     scheduler = SafeScheduler()
     scheduler.every(5).minutes.do(post_data, token, sensor_uuid, ser, False)
-    #scheduler.every(60).minutes.do(post_data, token, sensor_uuid, ser, True)
+    scheduler.every(60).minutes.do(post_data, token, sensor_uuid, ser, True)
     while 1:
         scheduler.run_pending()
         sleep(1)
