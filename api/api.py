@@ -199,7 +199,7 @@ def parse_request_pictures(req_files, user_login, sensor_uuid):
         if CLASSIFY_ZONES and CF_TOKEN:
             zones = CROP_SETTINGS.get(uplname, None)
             cf_headers = {'Authorization': 'Bearer ' + CF_TOKEN}
-
+            # 2592x1944
             if zones:
                 responses = []
                 #original = Image.open(fullpath)
@@ -210,7 +210,7 @@ def parse_request_pictures(req_files, user_login, sensor_uuid):
                     img_io.seek(0)
                     dr = ImageDraw.Draw(original)
                     dr.rectangle((zone['left'], zone['top'], zone['right'], zone['bottom']), outline = '#fbb040', width=3)
-                    dr.text((zone['right'], zone['bottom']), zone['label'], font=zonefont)
+                    dr.text((zone['top'], zone['left']), zone['label'], font=zonefont)
                     # Now take an original image, crop the zones, send it to the
                     # CF server and get back the response for each
                     # Draw rectangle zones on the original image & save it
