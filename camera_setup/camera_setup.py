@@ -11,7 +11,11 @@ import time
 # base_url = "http://admin:plantdata@c56352d9.eu.ngrok.io"
 # base_url = "http://admin:plantdata@192.168.0.201"
 # base_url = "http://admin:plantdata@192.168.0.202"
-base_url = "http://admin:plantdata@e3fd6634.eu.ngrok.io"
+# C2 55e1a9ce.eu.ngrok.io
+# C3 76722efb.eu.ngrok.io
+# C1 e3fd6634.eu.ngrok.io
+
+base_url = "http://admin:plantdata@76722efb.eu.ngrok.io"
 
 def open_img():
     #img_url = "https://placeimg.com/640/480/any"
@@ -24,6 +28,18 @@ def open_img():
     root.update_idletasks()
     root.after(500, open_img)
 
+
+def ir_command(cmd):
+    cmd_url = base_url + "/form/IRset"
+    cmd_data = {"IRmode": 1,
+               "c2bwthr": 20,
+               "bw2cthr": 70,
+               "IRenable": cmd,
+               "IRdelay": 3
+    }
+                               }
+    requests.post(cmd_url, data=cmd_data)
+    
     
 def move_command(cmd):
     cmd_url = base_url + "/form/setPTZCfg"
@@ -87,6 +103,12 @@ b_call = tkinter.Button(root, text = "call", command = lambda: preset_command(pr
 
 b_set.grid(row=2, column=2, sticky=W+E)
 b_call.grid(row=2, column=3, sticky=W+E)
+
+b_l_on = tkinter.Button(root, text = "IR on", command = lambda: ir_command(1))
+b_l_off = tkinter.Button(root, text = "IR off", command = lambda: ir_command(0))
+b_l_on.grid(row=2, column=4, sticky=W+E)
+b_l_off.grid(row=2, column=5, sticky=W+E)
+
 
 open_img()
 
