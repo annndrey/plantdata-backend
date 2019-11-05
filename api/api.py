@@ -19,11 +19,17 @@ from models import db, User, Sensor, Location, Data, DataPicture
 import logging
 import os
 import uuid
+import tempfile
+import shutil
+import zipfile
+
+from celery import Celery
 
 import click
 import datetime
 import calendar
 from dateutil.relativedelta import relativedelta
+from dateutil import parser
 import jwt
 import json
 import yaml
@@ -64,6 +70,9 @@ zonefont = ImageFont.truetype(FONT, size=FONTSIZE)
 
 CLASSIFY_ZONES = app.config['CLASSIFY_ZONES']
 
+app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379/0'
+app.config['CELERY_RESULT_BACKEND'] = 'redis://localhost:6379/0'
+
 if CLASSIFY_ZONES:
     with open("cropsettings.yaml", 'r') as stream:
         try:
@@ -71,20 +80,22 @@ if CLASSIFY_ZONES:
         except yaml.YAMLError as exc:
             app.logger.debug(exc)
 
-@app.before_first_request
-def login_to_classifier():
-    app.logger.debug("Logging to CF server")
-    login_data = {"username": CF_LOGIN,
-                  "password": CF_PASSWORD
-                  }
-    
-    global CF_TOKEN
-    try:
-        res = requests.post(CF_HOST.format("token"), json=login_data)
-        if res.status_code == 200:
-            CF_TOKEN = res.json().get('token')
-    except:
-        CF_TOKEN = None
+
+def make_celery(app):
+    celery = Celery(app.import_name, broker=app.config['CELERY_BROKER_URL'])
+    celery.conf.update(app.config)
+    TaskBase = celery.Task
+    class ContextTask(TaskBase):
+        abstract = True
+        def __call__(self, *args, **kwargs):
+            with app.app_context():
+                return TaskBase.__call__(self, *args, **kwargs)
+    celery.Task = ContextTask
+    return celery
+
+
+celery = make_celery(app)
+
 
 def get_zones():
     #2592х1944 224
@@ -107,6 +118,53 @@ def get_zones():
             }
             res[f'zone{n}'] = zone
     return res
+
+
+@celery.task
+def crop_zones(results):
+    zones = get_zones()
+    temp_dir = tempfile.TemporaryDirectory()
+    app.logger.debug(temp_dir)
+    with tempfile.TemporaryDirectory() as temp_dir:
+        for d in results:
+            for p in d['pictures']:
+                orig_fpath = os.path.join(current_app.config['FILE_PATH'], p['original'])
+                original = Image.open(orig_fpath)
+                for z in zones.keys():
+                    cropped = original.crop((zones[z]['left'], zones[z]['top'], zones[z]['right'], zones[z]['bottom']))
+                    ts = parser.isoparse(d['ts']).strftime("%d-%m-%Y_%H-%M-")
+                    bpath = ts+os.path.splitext(os.path.basename(p['fpath']))[0]
+                    outdir = os.path.join(temp_dir, bpath)
+                    if not os.path.exists(outdir):
+                        os.makedirs(outdir)
+                    cropped_path = os.path.join(outdir, z+".jpg")
+                    cropped.save(cropped_path, 'JPEG', quality=100)
+        zfname = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-") + 'cropped_zones.zip'
+        zipname = os.path.join(temp_dir, zfname)
+        zipf = zipfile.ZipFile(zipname, 'w', zipfile.ZIP_DEFLATED)
+        for root, dirs, files in os.walk(temp_dir):
+            for file in files:
+                if file != 'zfname':
+                    zipf.write(os.path.join(root, file))
+        zipf.close()
+        shutil.move(zipname, os.path.join('/home/annndrey/Dropbox/plantdata', zfname))
+        
+
+@app.before_first_request
+def login_to_classifier():
+    app.logger.debug("Logging to CF server")
+    login_data = {"username": CF_LOGIN,
+                  "password": CF_PASSWORD
+                  }
+    
+    global CF_TOKEN
+    try:
+        res = requests.post(CF_HOST.format("token"), json=login_data)
+        if res.status_code == 200:
+            CF_TOKEN = res.json().get('token')
+    except:
+        CF_TOKEN = None
+
         
 def token_required(f):  
     @wraps(f)
@@ -464,26 +522,8 @@ class StatsAPI(Resource):
                     app.logger.debug(f"EXPORT ZONES, {export_zones}")
                     
                     res_data = sensordata_query.filter(Data.pictures.any()).all()
-                    paths = []
-                    zones = get_zones()
-                    for d in res_data:
-                        for p in d.pictures:
-                            orig_fpath = os.path.join(current_app.config['FILE_PATH'], p.original)
-                            original = Image.open(orig_fpath)
-                            for z in zones.keys():
-                                cropped = original.crop((zones[z]['left'], zones[z]['top'], zones[z]['right'], zones[z]['bottom']))
-                                bpath = os.path.splitext(os.path.basename(p.fpath))[0]
-                                outdir = os.path.join('/home/annndrey/desktop/cropped', bpath)
-                                if not os.path.exists(outdir):
-                                    os.makedirs(outdir)
-                                cropped_path = os.path.join('/home/annndrey/desktop/cropped', bpath, z+".jpg")
-                                dr = ImageDraw.Draw(cropped)
-                                dr.text((zones['zone1']['left'], zones['zone1']['top']), z, font=zonefont)
-                                cropped.save(cropped_path, 'JPEG', quality=100)
-                                
-                            # app.logger.debug([d.ts.strftime("%d-%m-%y_%H-%M")])
-                            # app.logger.debug(orig_fpath)
-                            
+                    crop_zones.delay(self.m_schema.dump(res_data).data)
+                    
                     res = {"numrecords": len(res_data),
                            'mindate': first_rec_day,
                            'maxdate': last_rec_day,
