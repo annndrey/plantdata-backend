@@ -130,6 +130,7 @@ def crop_zones(results):
             for p in d['pictures']:
                 orig_fpath = os.path.join(current_app.config['FILE_PATH'], p['original'])
                 original = Image.open(orig_fpath)
+                label = "-".join(p['label'].split(" ")[:2])
                 for z in zones.keys():
                     cropped = original.crop((zones[z]['left'], zones[z]['top'], zones[z]['right'], zones[z]['bottom']))
                     ts = parser.isoparse(d['ts']).strftime("%d-%m-%Y_%H-%M-")
@@ -139,7 +140,7 @@ def crop_zones(results):
                         os.makedirs(outdir)
                     cropped_path = os.path.join(outdir, z+".jpg")
                     cropped.save(cropped_path, 'JPEG', quality=100)
-        zfname = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-") + 'cropped_zones.zip'
+        zfname = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-") + label + '-cropped_zones.zip'
         zipname = os.path.join(temp_dir, zfname)
         zipf = zipfile.ZipFile(zipname, 'w', zipfile.ZIP_DEFLATED)
         for root, dirs, files in os.walk(temp_dir):
@@ -277,20 +278,21 @@ def parse_request_pictures(req_files, user_login, sensor_uuid):
         imglabel = uplname
         app.logger.debug("FILE SAVED")
         if CLASSIFY_ZONES and CF_TOKEN:
-            zones = CROP_SETTINGS.get(uplname, None)
+            # zones = CROP_SETTINGS.get(uplname, None)
+            zones = get_zones()
             cf_headers = {'Authorization': 'Bearer ' + CF_TOKEN}
             # 2592x1944
             if zones:
                 responses = []
                 #original = Image.open(fullpath)
-                for zone in zones:
-                    cropped = original.crop((zone['left'], zone['top'], zone['right'], zone['bottom']))
+                for z in zones.keys():
+                    cropped = original.crop((zones[z]['left'], zones[z]['top'], zones[z]['right'], zones[z]['bottom']))
                     img_io = io.BytesIO()
                     cropped.save(img_io, FORMAT, quality=100)
                     img_io.seek(0)
                     dr = ImageDraw.Draw(original)
-                    dr.rectangle((zone['left'], zone['top'], zone['right'], zone['bottom']), outline = '#fbb040', width=3)
-                    dr.text((zone['left'], zone['top']), zone['label'], font=zonefont)
+                    dr.rectangle((zones[z]['left'], zones[z]['top'], zones[z]['right'], zones[z]['bottom']), outline = '#fbb040', width=3)
+                    dr.text((zones[z]['left'], zones[z]['top']), zones[z]['label'], font=zonefont)
                     # Now take an original image, crop the zones, send it to the
                     # CF server and get back the response for each
                     # Draw rectangle zones on the original image & save it
@@ -298,9 +300,9 @@ def parse_request_pictures(req_files, user_login, sensor_uuid):
                     # send CF request
                     response = requests.post(CF_HOST.format("loadimage"), headers=cf_headers, files = {'croppedfile': img_io}, data={'index':0, 'filename': ''})
                     if response.status_code == 200:
-                        responses.append("{}: {}".format(zone['label'], response.json().get('objtype')))
+                        responses.append("{}: {}".format(z, response.json().get('objtype')))
                     else:
-                        responses.append("{}".format(zone['label']))
+                        responses.append("{}".format(z))
                                          
                 original.save(fullpath)
                     
@@ -373,6 +375,7 @@ class PictAPI(Resource):
         self.schema = DataPictureSchema()
         self.m_schema = DataPictureSchema(many=True)
         self.method_decorators = []
+        
     def options(self, *args, **kwargs):
         return jsonify([])
 
@@ -401,6 +404,7 @@ class PictAPI(Resource):
         redirect_path = "/pictures/" + realpath
         response = make_response("")
         response.headers["X-Accel-Redirect"] = redirect_path
+        response.headers['Access-Control-Allow-Origin'] = '*'
         return response
     
     
