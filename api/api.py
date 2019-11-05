@@ -86,6 +86,28 @@ def login_to_classifier():
     except:
         CF_TOKEN = None
 
+def get_zones():
+    #2592х1944 224
+    #for a in range(1,12) :
+    #    print (224*a)
+    p = 2592/4
+    q = 1944/3
+    #p==q
+    n = 0
+    res = {}
+    for a in range(0,4) :
+        #    print (int (p*a) )
+        for b in range(0,3) :
+            #        print (int (q*b) )
+            n += 1
+            zone = {'left': int(a*p),
+                    'top': int(b*q),
+                    'right': int((a+1)*p),
+                    'bottom': int((b+1)*q)
+            }
+            res[f'zone{n}'] = zone
+    return res
+        
 def token_required(f):  
     @wraps(f)
     def _verify(*args, **kwargs):
@@ -210,7 +232,7 @@ def parse_request_pictures(req_files, user_login, sensor_uuid):
                     img_io.seek(0)
                     dr = ImageDraw.Draw(original)
                     dr.rectangle((zone['left'], zone['top'], zone['right'], zone['bottom']), outline = '#fbb040', width=3)
-                    dr.text((zone['top'], zone['left']), zone['label'], font=zonefont)
+                    dr.text((zone['left'], zone['top']), zone['label'], font=zonefont)
                     # Now take an original image, crop the zones, send it to the
                     # CF server and get back the response for each
                     # Draw rectangle zones on the original image & save it
@@ -367,6 +389,7 @@ class StatsAPI(Resource):
         datefrom = request.args.get('datefrom', None)
         dateto = request.args.get('dateto', None)
         fill_date = request.args.get('fill_date', False)
+        export_zones = request.args.get('export_zones', False)
         export_data = request.args.get('export', False)
         data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         daystart = dayend = None
@@ -397,14 +420,7 @@ class StatsAPI(Resource):
             if sensordata:
                 if fill_date:
                     sensordata = self.fill_empty_dates(sensordata_query)
-                if not export_data:
-                    res = {"numrecords": len(sensordata),
-                           'mindate': first_rec_day,
-                           'maxdate': last_rec_day,
-                           'data': self.m_schema.dump(sensordata).data
-                    }
-                    return jsonify(res), 200
-                else:
+                if export_data:
                     app.logger.debug(f"EXPORT DATA, {export_data}")
                     proxy = io.StringIO()
                     writer = csv.writer(proxy, delimiter=';', quotechar='"',quoting=csv.QUOTE_MINIMAL)
@@ -443,8 +459,46 @@ class StatsAPI(Resource):
                     mem.write(proxy.getvalue().encode('utf-8'))
                     mem.seek(0)
                     proxy.close()
-                    
                     return send_file(mem, mimetype='text/csv', attachment_filename="file.csv", as_attachment=True)
+                if export_zones:
+                    app.logger.debug(f"EXPORT ZONES, {export_zones}")
+                    
+                    res_data = sensordata_query.filter(Data.pictures.any()).all()
+                    paths = []
+                    zones = get_zones()
+                    for d in res_data:
+                        for p in d.pictures:
+                            orig_fpath = os.path.join(current_app.config['FILE_PATH'], p.original)
+                            original = Image.open(orig_fpath)
+                            for z in zones.keys():
+                                cropped = original.crop((zones[z]['left'], zones[z]['top'], zones[z]['right'], zones[z]['bottom']))
+                                bpath = os.path.splitext(os.path.basename(p.fpath))[0]
+                                outdir = os.path.join('/home/annndrey/desktop/cropped', bpath)
+                                if not os.path.exists(outdir):
+                                    os.makedirs(outdir)
+                                cropped_path = os.path.join('/home/annndrey/desktop/cropped', bpath, z+".jpg")
+                                dr = ImageDraw.Draw(cropped)
+                                dr.text((zones['zone1']['left'], zones['zone1']['top']), z, font=zonefont)
+                                cropped.save(cropped_path, 'JPEG', quality=100)
+                                
+                            # app.logger.debug([d.ts.strftime("%d-%m-%y_%H-%M")])
+                            # app.logger.debug(orig_fpath)
+                            
+                    res = {"numrecords": len(res_data),
+                           'mindate': first_rec_day,
+                           'maxdate': last_rec_day,
+                           'data': self.m_schema.dump(res_data).data
+                    }
+                    return jsonify(res), 200
+                    
+                else:
+                    res = {"numrecords": len(sensordata),
+                           'mindate': first_rec_day,
+                           'maxdate': last_rec_day,
+                           'data': self.m_schema.dump(sensordata).data
+                    }
+                    return jsonify(res), 200
+
         else:
             sensordata = db.session.query(Data).filter(Data.sensor.has(uuid=suuid)).filter(Data.id == dataid).first()
             if sensordata:
