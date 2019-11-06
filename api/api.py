@@ -73,6 +73,8 @@ CLASSIFY_ZONES = app.config['CLASSIFY_ZONES']
 app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379/0'
 app.config['CELERY_RESULT_BACKEND'] = 'redis://localhost:6379/0'
 
+TMPDIR = app.config['TEMPDIR']
+
 if CLASSIFY_ZONES:
     with open("cropsettings.yaml", 'r') as stream:
         try:
@@ -125,11 +127,14 @@ def crop_zones(results):
     zones = get_zones()
     temp_dir = tempfile.TemporaryDirectory()
     app.logger.debug(temp_dir)
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with tempfile.TemporaryDirectory(dir=TMPDIR) as temp_dir:
         for d in results:
             for p in d['pictures']:
                 orig_fpath = os.path.join(current_app.config['FILE_PATH'], p['original'])
+                orig_newpath = os.path.join(temp_dir, os.path.basename(p['original']))
                 original = Image.open(orig_fpath)
+                original.save(orig_newpath, 'JPEG', quality=100)
+                
                 label = "-".join(p['label'].split(" ")[:2])
                 for z in zones.keys():
                     cropped = original.crop((zones[z]['left'], zones[z]['top'], zones[z]['right'], zones[z]['bottom']))
