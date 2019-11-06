@@ -125,24 +125,23 @@ def get_zones():
 @celery.task
 def crop_zones(results):
     zones = get_zones()
-    temp_dir = tempfile.TemporaryDirectory()
-    app.logger.debug(temp_dir)
     with tempfile.TemporaryDirectory(dir=TMPDIR) as temp_dir:
+        app.logger.debug(temp_dir)
         for d in results:
             for p in d['pictures']:
                 orig_fpath = os.path.join(current_app.config['FILE_PATH'], p['original'])
-                orig_newpath = os.path.join(temp_dir, os.path.basename(p['original']))
+                ts = parser.isoparse(d['ts']).strftime("%d-%m-%Y_%H-%M-")
+                bpath = ts+os.path.splitext(os.path.basename(p['fpath']))[0]
+                outdir = os.path.join(temp_dir, bpath)
+                if not os.path.exists(outdir):
+                    os.makedirs(outdir)
+                orig_newpath = os.path.join(outdir, os.path.basename(p['original']))
                 original = Image.open(orig_fpath)
                 original.save(orig_newpath, 'JPEG', quality=100)
                 
                 label = "-".join(p['label'].split(" ")[:2])
                 for z in zones.keys():
                     cropped = original.crop((zones[z]['left'], zones[z]['top'], zones[z]['right'], zones[z]['bottom']))
-                    ts = parser.isoparse(d['ts']).strftime("%d-%m-%Y_%H-%M-")
-                    bpath = ts+os.path.splitext(os.path.basename(p['fpath']))[0]
-                    outdir = os.path.join(temp_dir, bpath)
-                    if not os.path.exists(outdir):
-                        os.makedirs(outdir)
                     cropped_path = os.path.join(outdir, z+".jpg")
                     cropped.save(cropped_path, 'JPEG', quality=100)
         zfname = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-") + label + '-cropped_zones.zip'
