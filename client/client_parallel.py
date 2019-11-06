@@ -337,7 +337,7 @@ def post_data(token, suuid, ser, take_photos):
                             
                         rtsp = cv2.VideoCapture("rtsp://{}:{}@{}:554/1/h264major".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))
                         check, frame = rtsp.read()
-                        showPic = cv2.imwrite(fname, frame)#, [cv2.IMWRITE_PNG_COMPRESSION, 9])
+                        showPic = cv2.imwrite(fname, frame, [cv2.IMWRITE_JPEG_QUALITY, 100])
                         logging.debug("CAPTURED {} PICT {}".format(LABEL, i+1))
                         cameradata.append({"fname": fname, "label": LABEL + " {}".format(i+1)})
                         rtsp.release()
