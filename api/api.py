@@ -292,7 +292,7 @@ def parse_request_pictures(req_files, user_login, sensor_uuid):
                     img_io.seek(0)
                     dr = ImageDraw.Draw(original)
                     dr.rectangle((zones[z]['left'], zones[z]['top'], zones[z]['right'], zones[z]['bottom']), outline = '#fbb040', width=3)
-                    dr.text((zones[z]['left'], zones[z]['top']), zones[z]['label'], font=zonefont)
+                    dr.text((zones[z]['left'], zones[z]['top']), z, font=zonefont)
                     # Now take an original image, crop the zones, send it to the
                     # CF server and get back the response for each
                     # Draw rectangle zones on the original image & save it
@@ -309,7 +309,7 @@ def parse_request_pictures(req_files, user_login, sensor_uuid):
                 imglabel = imglabel + " Results: {}".format(", ".join(responses))
         # Thumbnails 
         original.thumbnail((400, 400), Image.ANTIALIAS)
-        original.save(thumbpath, FORMAT)
+        original.save(thumbpath, FORMAT, quality=100)
                         
         newpicture = DataPicture(fpath=partpath, label=imglabel, thumbnail=partthumbpath, original=partorigpath)
         db.session.add(newpicture)
