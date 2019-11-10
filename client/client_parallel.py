@@ -43,12 +43,6 @@ logging.basicConfig(filename='client_parallel.log',
                     level=logging.DEBUG)
 
 
-#logging.basicConfig()
-#logging.getLogger().setLevel(logging.DEBUG)
-#requests_log = logging.getLogger("requests.packages.urllib3")
-#requests_log.setLevel(logging.DEBUG)
-#requests_log.propagate = True
-
 # Some useful camera commands
 # http://XXX.XXX.XXX.XXX/cgi-bin/hi3510/preset.cgi?-act=set&-status=1&-number=[0-7] :: установить позицию
 # http://XXX.XXX.XXX.XXX/cgi-bin/hi3510/ptzctrl.cgi?-step=1&-act=down :: Переход на один шаг вниз
@@ -316,7 +310,17 @@ def post_data(token, suuid, ser, take_photos):
                                "IRenable": 1,
                                "IRdelay": 3
                                }
-                    ir_respr = requests.post("http://{}:{}@{}/form/IRset".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), data=ir_data)
+                    
+                    ir_set = False
+                    for n in range(NUMRETRIES):
+                        if not ir_set:
+                            try:
+                                ir_respr = requests.post("http://{}:{}@{}/form/IRset".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), data=ir_data)
+                                ir_set = True
+                            except:
+                                logging.debug("Failed to connect to camera")
+                                sleep(5)
+
                     
                     for i in range(0, NUMFRAMES):
                         fname = os.path.join(DATADIR, str(uuid.uuid4())+".jpg")
@@ -334,16 +338,31 @@ def post_data(token, suuid, ser, take_photos):
                                 except:
                                     logging.debug("Failed to connect to camera")
                                     sleep(5)
-                            
+                        # Delay for camera to get into the proper position
+                        sleep(5)
                         rtsp = cv2.VideoCapture("rtsp://{}:{}@{}:554/1/h264major".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))
-                        check, frame = rtsp.read()
+                        # Read 5 frames and save the fifth one
+                        # 
+                        for j in range(5):
+                            check, frame = rtsp.read()
+                            sleep(1)
                         showPic = cv2.imwrite(fname, frame, [cv2.IMWRITE_JPEG_QUALITY, 100])
                         logging.debug("CAPTURED {} PICT {}".format(LABEL, i+1))
                         cameradata.append({"fname": fname, "label": LABEL + " {}".format(i+1)})
                         rtsp.release()
-                        sleep(10)
+                        #sleep(10)
                     # turn lights off
                     ir_data['IRenable'] = 0
+                    ir_set = False
+                    for n in range(NUMRETRIES):
+                        if not ir_set:
+                            try:
+                                ir_respr = requests.post("http://{}:{}@{}/form/IRset".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), data=ir_data)
+                                ir_set = True
+                            except:
+                                logging.debug("Failed to connect to camera")
+                                sleep(5)
+
                     ir_respr = requests.post("http://{}:{}@{}/form/IRset".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), data=ir_data)
                     
     serialdata['uuid'] = suuid
@@ -486,6 +505,7 @@ if __name__ == '__main__':
     scheduler = SafeScheduler()
     scheduler.every(5).minutes.do(post_data, token, sensor_uuid, ser, False)
     scheduler.every(60).minutes.do(post_data, token, sensor_uuid, ser, True)
+    #post_data(token, sensor_uuid, ser, True)
     while 1:
         scheduler.run_pending()
         sleep(1)
