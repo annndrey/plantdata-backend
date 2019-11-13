@@ -87,8 +87,8 @@ with open("config.yaml", 'r') as stream:
     except yaml.YAMLError as exc:
         logging.debug(exc)
 
-SERVER_LOGIN = "test@test.com"
-SERVER_PASSWORD = "testpassword"
+SERVER_LOGIN = "plantuser@plantdata.com"
+SERVER_PASSWORD = "plantpassword"
 SERVER_HOST = "https://plantdata.fermata.tech:5498/api/v1/{}"
 db_file = 'localdata.db'
 DATADIR = "picts"
@@ -163,11 +163,12 @@ def get_token():
     return token
 
 
-def register_sensor(token):
-    sensor_uuid = None
+def register_sensor(token, suuid=None):
+    sensor_uuid = suuid
     with open('sensor.dat', 'wb') as f:
         try:
-            sensor_uuid = new_sensor(token)
+            if not sensor_uuid:
+                sensor_uuid = new_sensor(token)
             data = {'uuid': sensor_uuid, 'token': token}
             pickle.dump(data, f)
         except:
@@ -363,7 +364,7 @@ def post_data(token, suuid, ser, take_photos):
                                 logging.debug("Failed to connect to camera")
                                 sleep(5)
 
-                    ir_respr = requests.post("http://{}:{}@{}/form/IRset".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), data=ir_data)
+                    # ir_respr = requests.post("http://{}:{}@{}/form/IRset".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), data=ir_data)
                     
     serialdata['uuid'] = suuid
     serialdata['TS'] = datetime.datetime.now(tz)
@@ -486,6 +487,11 @@ def post_data(token, suuid, ser, take_photos):
         logging.debug("Network error, trying to connect")
 
 if __name__ == '__main__':
+    # In case of change the data ownership: 
+    # token = get_token()
+    # register_sensor(token, suuid='a98e23e9-0b09-4ce6-9b09-cd2fbe817604')
+    # sys.exit(1)
+
     sensor_uuid, token = get_sensor_uuid()
     # data -> data only
     # photos -> data & photos
