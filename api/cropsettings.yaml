@@ -1,38 +1,1220 @@
-Bottom Black Camera 1:
+CAM3 1:
  - label: zone 1
-   left: 150
-   top: 600
-   right: 550
-   bottom: 1000
+   left:  0
+   top:  0
+   right:  648
+   bottom:  648
  - label: zone 2
-   left: 600
-   top: 200
-   right: 1000
-   bottom: 600
+   left:  0
+   top:  648
+   right:  648
+   bottom:  1296
  - label: zone 3
-   left: 1000
-   top: 100
-   right: 1400
-   bottom: 500
-Bottom Black Camera 3:
+   left:  0
+   top:  1296
+   right:  648
+   bottom:  1944
+ - label: zone 4
+   left:  648
+   top:  0
+   right:  1296
+   bottom:  648
+ - label: zone 5
+   left:  648
+   top:  648
+   right:  1296
+   bottom:  1296
+ - label: zone 6
+   left:  648
+   top:  1296
+   right:  1296
+   bottom:  1944
+ - label: zone 7
+   left:  1296
+   top:  0
+   right:  1944
+   bottom:  648
+ - label: zone 8
+   left:  1296
+   top:  648
+   right:  1944
+   bottom:  1296
+ - label: zone 9
+   left:  1296
+   top:  1296
+   right:  1944
+   bottom:  1944
+ - label: zone 10
+   left:  1944
+   top:  0
+   right:  2592
+   bottom:  648
+ - label: zone 11
+   left:  1944
+   top:  648
+   right:  2592
+   bottom:  1296
+ - label: zone 12
+   left:  1944
+   top:  1296
+   right:  2592
+   bottom:  1944
+CAM3 2:
  - label: zone 1
-   left: 700
-   top: 150
-   right: 1200
-   bottom: 650
+   left:  0
+   top:  0
+   right:  648
+   bottom:  648
  - label: zone 2
-   left: 1400
-   top: 600
-   right: 2000
-   bottom: 1000
-Top White Camera 1:
+   left:  0
+   top:  648
+   right:  648
+   bottom:  1296
+ - label: zone 3
+   left:  0
+   top:  1296
+   right:  648
+   bottom:  1944
+ - label: zone 4
+   left:  648
+   top:  0
+   right:  1296
+   bottom:  648
+ - label: zone 5
+   left:  648
+   top:  648
+   right:  1296
+   bottom:  1296
+ - label: zone 6
+   left:  648
+   top:  1296
+   right:  1296
+   bottom:  1944
+ - label: zone 7
+   left:  1296
+   top:  0
+   right:  1944
+   bottom:  648
+ - label: zone 8
+   left:  1296
+   top:  648
+   right:  1944
+   bottom:  1296
+ - label: zone 9
+   left:  1296
+   top:  1296
+   right:  1944
+   bottom:  1944
+ - label: zone 10
+   left:  1944
+   top:  0
+   right:  2592
+   bottom:  648
+ - label: zone 11
+   left:  1944
+   top:  648
+   right:  2592
+   bottom:  1296
+ - label: zone 12
+   left:  1944
+   top:  1296
+   right:  2592
+   bottom:  1944
+CAM3 4:
  - label: zone 1
-   left: 900
-   top: 780
-   right: 1200
-   bottom: 1080
+   left:  0
+   top:  0
+   right:  648
+   bottom:  648
  - label: zone 2
-   left: 1200
-   top: 100
-   right: 1500
-   bottom: 400
+   left:  0
+   top:  648
+   right:  648
+   bottom:  1296
+ - label: zone 3
+   left:  0
+   top:  1296
+   right:  648
+   bottom:  1944
+ - label: zone 4
+   left:  648
+   top:  0
+   right:  1296
+   bottom:  648
+ - label: zone 5
+   left:  648
+   top:  648
+   right:  1296
+   bottom:  1296
+ - label: zone 6
+   left:  648
+   top:  1296
+   right:  1296
+   bottom:  1944
+ - label: zone 7
+   left:  1296
+   top:  0
+   right:  1944
+   bottom:  648
+ - label: zone 8
+   left:  1296
+   top:  648
+   right:  1944
+   bottom:  1296
+ - label: zone 9
+   left:  1296
+   top:  1296
+   right:  1944
+   bottom:  1944
+ - label: zone 10
+   left:  1944
+   top:  0
+   right:  2592
+   bottom:  648
+ - label: zone 11
+   left:  1944
+   top:  648
+   right:  2592
+   bottom:  1296
+ - label: zone 12
+   left:  1944
+   top:  1296
+   right:  2592
+   bottom:  1944
+CAM3 5:
+ - label: zone 1
+   left:  0
+   top:  0
+   right:  648
+   bottom:  648
+ - label: zone 2
+   left:  0
+   top:  648
+   right:  648
+   bottom:  1296
+ - label: zone 3
+   left:  0
+   top:  1296
+   right:  648
+   bottom:  1944
+ - label: zone 4
+   left:  648
+   top:  0
+   right:  1296
+   bottom:  648
+ - label: zone 5
+   left:  648
+   top:  648
+   right:  1296
+   bottom:  1296
+ - label: zone 6
+   left:  648
+   top:  1296
+   right:  1296
+   bottom:  1944
+ - label: zone 7
+   left:  1296
+   top:  0
+   right:  1944
+   bottom:  648
+ - label: zone 8
+   left:  1296
+   top:  648
+   right:  1944
+   bottom:  1296
+ - label: zone 9
+   left:  1296
+   top:  1296
+   right:  1944
+   bottom:  1944
+ - label: zone 10
+   left:  1944
+   top:  0
+   right:  2592
+   bottom:  648
+ - label: zone 11
+   left:  1944
+   top:  648
+   right:  2592
+   bottom:  1296
+ - label: zone 12
+   left:  1944
+   top:  1296
+   right:  2592
+   bottom:  1944
+CAM3 6:
+ - label: zone 1
+   left:  0
+   top:  0
+   right:  648
+   bottom:  648
+ - label: zone 2
+   left:  0
+   top:  648
+   right:  648
+   bottom:  1296
+ - label: zone 3
+   left:  0
+   top:  1296
+   right:  648
+   bottom:  1944
+ - label: zone 4
+   left:  648
+   top:  0
+   right:  1296
+   bottom:  648
+ - label: zone 5
+   left:  648
+   top:  648
+   right:  1296
+   bottom:  1296
+ - label: zone 6
+   left:  648
+   top:  1296
+   right:  1296
+   bottom:  1944
+ - label: zone 7
+   left:  1296
+   top:  0
+   right:  1944
+   bottom:  648
+ - label: zone 8
+   left:  1296
+   top:  648
+   right:  1944
+   bottom:  1296
+ - label: zone 9
+   left:  1296
+   top:  1296
+   right:  1944
+   bottom:  1944
+ - label: zone 10
+   left:  1944
+   top:  0
+   right:  2592
+   bottom:  648
+ - label: zone 11
+   left:  1944
+   top:  648
+   right:  2592
+   bottom:  1296
+ - label: zone 12
+   left:  1944
+   top:  1296
+   right:  2592
+   bottom:  1944
+CAM3 7:
+ - label: zone 1
+   left:  0
+   top:  0
+   right:  648
+   bottom:  648
+ - label: zone 2
+   left:  0
+   top:  648
+   right:  648
+   bottom:  1296
+ - label: zone 3
+   left:  0
+   top:  1296
+   right:  648
+   bottom:  1944
+ - label: zone 4
+   left:  648
+   top:  0
+   right:  1296
+   bottom:  648
+ - label: zone 5
+   left:  648
+   top:  648
+   right:  1296
+   bottom:  1296
+ - label: zone 6
+   left:  648
+   top:  1296
+   right:  1296
+   bottom:  1944
+ - label: zone 7
+   left:  1296
+   top:  0
+   right:  1944
+   bottom:  648
+ - label: zone 8
+   left:  1296
+   top:  648
+   right:  1944
+   bottom:  1296
+ - label: zone 9
+   left:  1296
+   top:  1296
+   right:  1944
+   bottom:  1944
+ - label: zone 10
+   left:  1944
+   top:  0
+   right:  2592
+   bottom:  648
+ - label: zone 11
+   left:  1944
+   top:  648
+   right:  2592
+   bottom:  1296
+ - label: zone 12
+   left:  1944
+   top:  1296
+   right:  2592
+   bottom:  1944
+CAM3 8:
+ - label: zone 1
+   left:  0
+   top:  0
+   right:  648
+   bottom:  648
+ - label: zone 2
+   left:  0
+   top:  648
+   right:  648
+   bottom:  1296
+ - label: zone 3
+   left:  0
+   top:  1296
+   right:  648
+   bottom:  1944
+ - label: zone 4
+   left:  648
+   top:  0
+   right:  1296
+   bottom:  648
+ - label: zone 5
+   left:  648
+   top:  648
+   right:  1296
+   bottom:  1296
+ - label: zone 6
+   left:  648
+   top:  1296
+   right:  1296
+   bottom:  1944
+ - label: zone 7
+   left:  1296
+   top:  0
+   right:  1944
+   bottom:  648
+ - label: zone 8
+   left:  1296
+   top:  648
+   right:  1944
+   bottom:  1296
+ - label: zone 9
+   left:  1296
+   top:  1296
+   right:  1944
+   bottom:  1944
+ - label: zone 10
+   left:  1944
+   top:  0
+   right:  2592
+   bottom:  648
+ - label: zone 11
+   left:  1944
+   top:  648
+   right:  2592
+   bottom:  1296
+ - label: zone 12
+   left:  1944
+   top:  1296
+   right:  2592
+   bottom:  1944
+CAM3 9:
+ - label: zone 1
+   left:  0
+   top:  0
+   right:  648
+   bottom:  648
+ - label: zone 2
+   left:  0
+   top:  648
+   right:  648
+   bottom:  1296
+ - label: zone 3
+   left:  0
+   top:  1296
+   right:  648
+   bottom:  1944
+ - label: zone 4
+   left:  648
+   top:  0
+   right:  1296
+   bottom:  648
+ - label: zone 5
+   left:  648
+   top:  648
+   right:  1296
+   bottom:  1296
+ - label: zone 6
+   left:  648
+   top:  1296
+   right:  1296
+   bottom:  1944
+ - label: zone 7
+   left:  1296
+   top:  0
+   right:  1944
+   bottom:  648
+ - label: zone 8
+   left:  1296
+   top:  648
+   right:  1944
+   bottom:  1296
+ - label: zone 9
+   left:  1296
+   top:  1296
+   right:  1944
+   bottom:  1944
+ - label: zone 10
+   left:  1944
+   top:  0
+   right:  2592
+   bottom:  648
+ - label: zone 11
+   left:  1944
+   top:  648
+   right:  2592
+   bottom:  1296
+ - label: zone 12
+   left:  1944
+   top:  1296
+   right:  2592
+   bottom:  1944
+CAM1 1:
+ - label: zone 1
+   left:  0
+   top:  0
+   right:  648
+   bottom:  648
+ - label: zone 2
+   left:  0
+   top:  648
+   right:  648
+   bottom:  1296
+ - label: zone 3
+   left:  0
+   top:  1296
+   right:  648
+   bottom:  1944
+ - label: zone 4
+   left:  648
+   top:  0
+   right:  1296
+   bottom:  648
+ - label: zone 5
+   left:  648
+   top:  648
+   right:  1296
+   bottom:  1296
+ - label: zone 6
+   left:  648
+   top:  1296
+   right:  1296
+   bottom:  1944
+ - label: zone 7
+   left:  1296
+   top:  0
+   right:  1944
+   bottom:  648
+ - label: zone 8
+   left:  1296
+   top:  648
+   right:  1944
+   bottom:  1296
+ - label: zone 9
+   left:  1296
+   top:  1296
+   right:  1944
+   bottom:  1944
+ - label: zone 10
+   left:  1944
+   top:  0
+   right:  2592
+   bottom:  648
+ - label: zone 11
+   left:  1944
+   top:  648
+   right:  2592
+   bottom:  1296
+ - label: zone 12
+   left:  1944
+   top:  1296
+   right:  2592
+   bottom:  1944
+CAM1 2:
+ - label: zone 1
+   left:  0
+   top:  0
+   right:  648
+   bottom:  648
+ - label: zone 2
+   left:  0
+   top:  648
+   right:  648
+   bottom:  1296
+ - label: zone 3
+   left:  0
+   top:  1296
+   right:  648
+   bottom:  1944
+ - label: zone 4
+   left:  648
+   top:  0
+   right:  1296
+   bottom:  648
+ - label: zone 5
+   left:  648
+   top:  648
+   right:  1296
+   bottom:  1296
+ - label: zone 6
+   left:  648
+   top:  1296
+   right:  1296
+   bottom:  1944
+ - label: zone 7
+   left:  1296
+   top:  0
+   right:  1944
+   bottom:  648
+ - label: zone 8
+   left:  1296
+   top:  648
+   right:  1944
+   bottom:  1296
+ - label: zone 9
+   left:  1296
+   top:  1296
+   right:  1944
+   bottom:  1944
+ - label: zone 10
+   left:  1944
+   top:  0
+   right:  2592
+   bottom:  648
+ - label: zone 11
+   left:  1944
+   top:  648
+   right:  2592
+   bottom:  1296
+ - label: zone 12
+   left:  1944
+   top:  1296
+   right:  2592
+   bottom:  1944
+CAM1 3:
+ - label: zone 1
+   left:  0
+   top:  0
+   right:  648
+   bottom:  648
+ - label: zone 2
+   left:  0
+   top:  648
+   right:  648
+   bottom:  1296
+ - label: zone 3
+   left:  0
+   top:  1296
+   right:  648
+   bottom:  1944
+ - label: zone 4
+   left:  648
+   top:  0
+   right:  1296
+   bottom:  648
+ - label: zone 5
+   left:  648
+   top:  648
+   right:  1296
+   bottom:  1296
+ - label: zone 6
+   left:  648
+   top:  1296
+   right:  1296
+   bottom:  1944
+ - label: zone 7
+   left:  1296
+   top:  0
+   right:  1944
+   bottom:  648
+ - label: zone 8
+   left:  1296
+   top:  648
+   right:  1944
+   bottom:  1296
+ - label: zone 9
+   left:  1296
+   top:  1296
+   right:  1944
+   bottom:  1944
+ - label: zone 10
+   left:  1944
+   top:  0
+   right:  2592
+   bottom:  648
+ - label: zone 11
+   left:  1944
+   top:  648
+   right:  2592
+   bottom:  1296
+ - label: zone 12
+   left:  1944
+   top:  1296
+   right:  2592
+   bottom:  1944
+CAM2 1:
+ - label: zone 1
+   left:  0
+   top:  0
+   right:  648
+   bottom:  648
+ - label: zone 2
+   left:  0
+   top:  648
+   right:  648
+   bottom:  1296
+ - label: zone 3
+   left:  0
+   top:  1296
+   right:  648
+   bottom:  1944
+ - label: zone 4
+   left:  648
+   top:  0
+   right:  1296
+   bottom:  648
+ - label: zone 5
+   left:  648
+   top:  648
+   right:  1296
+   bottom:  1296
+ - label: zone 6
+   left:  648
+   top:  1296
+   right:  1296
+   bottom:  1944
+ - label: zone 7
+   left:  1296
+   top:  0
+   right:  1944
+   bottom:  648
+ - label: zone 8
+   left:  1296
+   top:  648
+   right:  1944
+   bottom:  1296
+ - label: zone 9
+   left:  1296
+   top:  1296
+   right:  1944
+   bottom:  1944
+ - label: zone 10
+   left:  1944
+   top:  0
+   right:  2592
+   bottom:  648
+ - label: zone 11
+   left:  1944
+   top:  648
+   right:  2592
+   bottom:  1296
+ - label: zone 12
+   left:  1944
+   top:  1296
+   right:  2592
+   bottom:  1944
+CAM2 2:
+ - label: zone 1
+   left:  0
+   top:  0
+   right:  648
+   bottom:  648
+ - label: zone 2
+   left:  0
+   top:  648
+   right:  648
+   bottom:  1296
+ - label: zone 3
+   left:  0
+   top:  1296
+   right:  648
+   bottom:  1944
+ - label: zone 4
+   left:  648
+   top:  0
+   right:  1296
+   bottom:  648
+ - label: zone 5
+   left:  648
+   top:  648
+   right:  1296
+   bottom:  1296
+ - label: zone 6
+   left:  648
+   top:  1296
+   right:  1296
+   bottom:  1944
+ - label: zone 7
+   left:  1296
+   top:  0
+   right:  1944
+   bottom:  648
+ - label: zone 8
+   left:  1296
+   top:  648
+   right:  1944
+   bottom:  1296
+ - label: zone 9
+   left:  1296
+   top:  1296
+   right:  1944
+   bottom:  1944
+ - label: zone 10
+   left:  1944
+   top:  0
+   right:  2592
+   bottom:  648
+ - label: zone 11
+   left:  1944
+   top:  648
+   right:  2592
+   bottom:  1296
+ - label: zone 12
+   left:  1944
+   top:  1296
+   right:  2592
+   bottom:  1944
+CAM2 3:
+ - label: zone 1
+   left:  0
+   top:  0
+   right:  648
+   bottom:  648
+ - label: zone 2
+   left:  0
+   top:  648
+   right:  648
+   bottom:  1296
+ - label: zone 3
+   left:  0
+   top:  1296
+   right:  648
+   bottom:  1944
+ - label: zone 4
+   left:  648
+   top:  0
+   right:  1296
+   bottom:  648
+ - label: zone 5
+   left:  648
+   top:  648
+   right:  1296
+   bottom:  1296
+ - label: zone 6
+   left:  648
+   top:  1296
+   right:  1296
+   bottom:  1944
+ - label: zone 7
+   left:  1296
+   top:  0
+   right:  1944
+   bottom:  648
+ - label: zone 8
+   left:  1296
+   top:  648
+   right:  1944
+   bottom:  1296
+ - label: zone 9
+   left:  1296
+   top:  1296
+   right:  1944
+   bottom:  1944
+ - label: zone 10
+   left:  1944
+   top:  0
+   right:  2592
+   bottom:  648
+ - label: zone 11
+   left:  1944
+   top:  648
+   right:  2592
+   bottom:  1296
+ - label: zone 12
+   left:  1944
+   top:  1296
+   right:  2592
+   bottom:  1944
+CAM2 4:
+ - label: zone 1
+   left:  0
+   top:  0
+   right:  648
+   bottom:  648
+ - label: zone 2
+   left:  0
+   top:  648
+   right:  648
+   bottom:  1296
+ - label: zone 3
+   left:  0
+   top:  1296
+   right:  648
+   bottom:  1944
+ - label: zone 4
+   left:  648
+   top:  0
+   right:  1296
+   bottom:  648
+ - label: zone 5
+   left:  648
+   top:  648
+   right:  1296
+   bottom:  1296
+ - label: zone 6
+   left:  648
+   top:  1296
+   right:  1296
+   bottom:  1944
+ - label: zone 7
+   left:  1296
+   top:  0
+   right:  1944
+   bottom:  648
+ - label: zone 8
+   left:  1296
+   top:  648
+   right:  1944
+   bottom:  1296
+ - label: zone 9
+   left:  1296
+   top:  1296
+   right:  1944
+   bottom:  1944
+ - label: zone 10
+   left:  1944
+   top:  0
+   right:  2592
+   bottom:  648
+ - label: zone 11
+   left:  1944
+   top:  648
+   right:  2592
+   bottom:  1296
+ - label: zone 12
+   left:  1944
+   top:  1296
+   right:  2592
+   bottom:  1944
+CAM2 5:
+ - label: zone 1
+   left:  0
+   top:  0
+   right:  648
+   bottom:  648
+ - label: zone 2
+   left:  0
+   top:  648
+   right:  648
+   bottom:  1296
+ - label: zone 3
+   left:  0
+   top:  1296
+   right:  648
+   bottom:  1944
+ - label: zone 4
+   left:  648
+   top:  0
+   right:  1296
+   bottom:  648
+ - label: zone 5
+   left:  648
+   top:  648
+   right:  1296
+   bottom:  1296
+ - label: zone 6
+   left:  648
+   top:  1296
+   right:  1296
+   bottom:  1944
+ - label: zone 7
+   left:  1296
+   top:  0
+   right:  1944
+   bottom:  648
+ - label: zone 8
+   left:  1296
+   top:  648
+   right:  1944
+   bottom:  1296
+ - label: zone 9
+   left:  1296
+   top:  1296
+   right:  1944
+   bottom:  1944
+ - label: zone 10
+   left:  1944
+   top:  0
+   right:  2592
+   bottom:  648
+ - label: zone 11
+   left:  1944
+   top:  648
+   right:  2592
+   bottom:  1296
+ - label: zone 12
+   left:  1944
+   top:  1296
+   right:  2592
+   bottom:  1944
+CAM2 7:
+ - label: zone 1
+   left:  0
+   top:  0
+   right:  648
+   bottom:  648
+ - label: zone 2
+   left:  0
+   top:  648
+   right:  648
+   bottom:  1296
+ - label: zone 3
+   left:  0
+   top:  1296
+   right:  648
+   bottom:  1944
+ - label: zone 4
+   left:  648
+   top:  0
+   right:  1296
+   bottom:  648
+ - label: zone 5
+   left:  648
+   top:  648
+   right:  1296
+   bottom:  1296
+ - label: zone 6
+   left:  648
+   top:  1296
+   right:  1296
+   bottom:  1944
+ - label: zone 7
+   left:  1296
+   top:  0
+   right:  1944
+   bottom:  648
+ - label: zone 8
+   left:  1296
+   top:  648
+   right:  1944
+   bottom:  1296
+ - label: zone 9
+   left:  1296
+   top:  1296
+   right:  1944
+   bottom:  1944
+ - label: zone 10
+   left:  1944
+   top:  0
+   right:  2592
+   bottom:  648
+ - label: zone 11
+   left:  1944
+   top:  648
+   right:  2592
+   bottom:  1296
+ - label: zone 12
+   left:  1944
+   top:  1296
+   right:  2592
+   bottom:  1944
+CAM2 8:
+ - label: zone 1
+   left:  0
+   top:  0
+   right:  648
+   bottom:  648
+ - label: zone 2
+   left:  0
+   top:  648
+   right:  648
+   bottom:  1296
+ - label: zone 3
+   left:  0
+   top:  1296
+   right:  648
+   bottom:  1944
+ - label: zone 4
+   left:  648
+   top:  0
+   right:  1296
+   bottom:  648
+ - label: zone 5
+   left:  648
+   top:  648
+   right:  1296
+   bottom:  1296
+ - label: zone 6
+   left:  648
+   top:  1296
+   right:  1296
+   bottom:  1944
+ - label: zone 7
+   left:  1296
+   top:  0
+   right:  1944
+   bottom:  648
+ - label: zone 8
+   left:  1296
+   top:  648
+   right:  1944
+   bottom:  1296
+ - label: zone 9
+   left:  1296
+   top:  1296
+   right:  1944
+   bottom:  1944
+ - label: zone 10
+   left:  1944
+   top:  0
+   right:  2592
+   bottom:  648
+ - label: zone 11
+   left:  1944
+   top:  648
+   right:  2592
+   bottom:  1296
+ - label: zone 12
+   left:  1944
+   top:  1296
+   right:  2592
+   bottom:  1944
+CAM2 9:
+ - label: zone 1
+   left:  0
+   top:  0
+   right:  648
+   bottom:  648
+ - label: zone 2
+   left:  0
+   top:  648
+   right:  648
+   bottom:  1296
+ - label: zone 3
+   left:  0
+   top:  1296
+   right:  648
+   bottom:  1944
+ - label: zone 4
+   left:  648
+   top:  0
+   right:  1296
+   bottom:  648
+ - label: zone 5
+   left:  648
+   top:  648
+   right:  1296
+   bottom:  1296
+ - label: zone 6
+   left:  648
+   top:  1296
+   right:  1296
+   bottom:  1944
+ - label: zone 7
+   left:  1296
+   top:  0
+   right:  1944
+   bottom:  648
+ - label: zone 8
+   left:  1296
+   top:  648
+   right:  1944
+   bottom:  1296
+ - label: zone 9
+   left:  1296
+   top:  1296
+   right:  1944
+   bottom:  1944
+ - label: zone 10
+   left:  1944
+   top:  0
+   right:  2592
+   bottom:  648
+ - label: zone 11
+   left:  1944
+   top:  648
+   right:  2592
+   bottom:  1296
+ - label: zone 12
+   left:  1944
+   top:  1296
+   right:  2592
+   bottom:  1944
+CAM2 10:
+ - label: zone 1
+   left:  0
+   top:  0
+   right:  648
+   bottom:  648
+ - label: zone 2
+   left:  0
+   top:  648
+   right:  648
+   bottom:  1296
+ - label: zone 3
+   left:  0
+   top:  1296
+   right:  648
+   bottom:  1944
+ - label: zone 4
+   left:  648
+   top:  0
+   right:  1296
+   bottom:  648
+ - label: zone 5
+   left:  648
+   top:  648
+   right:  1296
+   bottom:  1296
+ - label: zone 6
+   left:  648
+   top:  1296
+   right:  1296
+   bottom:  1944
+ - label: zone 7
+   left:  1296
+   top:  0
+   right:  1944
+   bottom:  648
+ - label: zone 8
+   left:  1296
+   top:  648
+   right:  1944
+   bottom:  1296
+ - label: zone 9
+   left:  1296
+   top:  1296
+   right:  1944
+   bottom:  1944
+ - label: zone 10
+   left:  1944
+   top:  0
+   right:  2592
+   bottom:  648
+ - label: zone 11
+   left:  1944
+   top:  648
+   right:  2592
+   bottom:  1296
+ - label: zone 12
+   left:  1944
+   top:  1296
+   right:  2592
+   bottom:  1944
