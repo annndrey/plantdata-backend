@@ -143,8 +143,40 @@ class DataPicture(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     data_id = db.Column(db.Integer, ForeignKey('data.id'))
     data = relationship("Data", backref=backref("pictures", uselist=True))
+    # Add a link to data with a link to camera position,
+    # one-to one >>>
     fpath = db.Column(db.Text())
     thumbnail = db.Column(db.Text())
     label = db.Column(db.Text())
     original = db.Column(db.Text())
+    results = db.Column(db.Text())
+    ts = db.Column(db.DateTime, default=datetime.datetime.now)
 
+    
+class Camera(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    data_id = db.Column(db.Integer, ForeignKey('data.id'))
+    data = relationship("Data", backref=backref("cameras", uselist=True))
+    label = db.Column(db.Text())
+    url = db.Column(db.Text())
+
+
+class CameraPosition(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    camera_id = db.Column(db.Integer, ForeignKey('camera.id'))
+    camera = relationship("Camera", backref=backref("positions", uselist=True))
+    label = db.Column(db.Text())
+    url = db.Column(db.Text())
+
+
+# TODO:
+# Add
+# camera
+# cameraposition
+# in parse_request_pictures
+# get camera name and camera position
+# link picture to camera name and position
+
+# One Data - many cameras
+# One Camera - many positions
+# One position - one picture
