@@ -155,8 +155,8 @@ class DataPicture(db.Model):
     
 class Camera(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    data_id = db.Column(db.Integer, ForeignKey('data.id'))
-    data = relationship("Data", backref=backref("cameras", uselist=True))
+    sensor_id = db.Column(db.Integer, ForeignKey('sensor.id'))
+    sensor = relationship("Sensor", backref=backref("camera", uselist=True))
     label = db.Column(db.Text())
     url = db.Column(db.Text())
 
@@ -165,7 +165,7 @@ class CameraPosition(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     camera_id = db.Column(db.Integer, ForeignKey('camera.id'))
     camera = relationship("Camera", backref=backref("positions", uselist=True))
-    label = db.Column(db.Text())
+    label = db.Column(db.Integer)
     url = db.Column(db.Text())
 
 
@@ -177,6 +177,6 @@ class CameraPosition(db.Model):
 # get camera name and camera position
 # link picture to camera name and position
 
-# One Data - many cameras
+# One Sensor - many cameras
 # One Camera - many positions
 # One position - one picture

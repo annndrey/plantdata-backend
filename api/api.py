@@ -260,7 +260,7 @@ def access_picture(path):
     return response
 
 
-def parse_request_pictures(req_files, user_login, sensor_uuid):
+def parse_request_pictures(req_files, camname, camposition, user_login, sensor_uuid):
     picts = []
     
     for uplname in sorted(request.files):
@@ -291,9 +291,10 @@ def parse_request_pictures(req_files, user_login, sensor_uuid):
         original.save(origpath)
         
         imglabel = uplname
-        camdate, camtime, camname, camposition = uplname.split(" ")
-        camts = datetime.datetime.strptime(" ".join([camdate, camtime]), "%d-%m-%y %H:%M")
-        camposition = int(camposition)
+        app.logger.debug(["UPLNAME", uplname])
+        #camname, camposition = uplname.split(" ")
+        #camts = datetime.datetime.strptime(" ".join([camdate, camtime]), "%d-%m-%y %H:%M")
+        #camposition = int(camposition)
         # new fields:
         # camname
         # camposition
@@ -338,10 +339,7 @@ def parse_request_pictures(req_files, user_login, sensor_uuid):
                                  label=imglabel,
                                  thumbnail=partthumbpath,
                                  original=partorigpath,
-                                 camname=camname,
-                                 camposition=camposition,
                                  results=classification_results,
-                                 ts=camts
         )
         db.session.add(newpicture)
         db.session.commit()
@@ -615,7 +613,7 @@ class StatsAPI(Resource):
             co2 = int(request.form.get("CO2"))
             ts = request.form.get("ts")
             
-            picts = parse_request_pictures(request.files, user.login, sensor.uuid)
+            # picts = parse_request_pictures(request.files, user.login, sensor.uuid)
             
             newdata = Data(sensor_id=sensor.id,
                            wght0 = wght0,
@@ -637,10 +635,10 @@ class StatsAPI(Resource):
             app.logger.debug("New data saved")
             db.session.add(newdata)
             db.session.commit()
-            for p in picts:
-                p.data_id = newdata.id
-                db.session.add(p)
-                db.session.commit()
+            # for p in picts:
+            #    p.data_id = newdata.id
+            #    db.session.add(p)
+            #    db.session.commit()
         app.logger.debug(["REQUEST", request.json, user.login, sensor.uuid])
             
         return jsonify(self.schema.dump(newdata).data), 201
@@ -655,6 +653,12 @@ class StatsAPI(Resource):
         token = auth_headers[1]
         udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         user = User.query.filter_by(login=udata['sub']).first()
+        camname = request.form.get("camname")
+        camposition = request.form.get("camposition")
+        # If there's no registered CAMNAME & CAMPOSITION for a given data.uuid
+        # add new camera & position
+        # 
+        app.logger.debug(["CAMERA DATA:", camname, camposition])
         if not user:
             abort(403)
             
@@ -663,7 +667,8 @@ class StatsAPI(Resource):
             sensor = data.sensor
             if sensor.user != user:
                 abort(403)
-            picts = parse_request_pictures(request.files, user.login, sensor.uuid)
+                
+            picts = parse_request_pictures(request.files, camname, camposition, user.login, sensor.uuid)
             app.logger.debug(picts)
             if picts:
                 for p in picts:
