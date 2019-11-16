@@ -291,15 +291,6 @@ def parse_request_pictures(req_files, user_login, sensor_uuid):
         original.save(origpath)
         
         imglabel = uplname
-        camdate, camtime, camname, camposition = uplname.split(" ")
-        camts = datetime.datetime.strptime(" ".join([camdate, camtime]), "%d-%m-%y %H:%M")
-        camposition = int(camposition)
-        # new fields:
-        # camname
-        # camposition
-        # results
-        # ts
-        classification_results = ""
         app.logger.debug("FILE SAVED")
         if CLASSIFY_ZONES and CF_TOKEN:
             # zones = CROP_SETTINGS.get(uplname, None)
@@ -329,20 +320,13 @@ def parse_request_pictures(req_files, user_login, sensor_uuid):
                         responses.append("{}".format(z))
                                          
                 original.save(fullpath)
-                classification_results = "Results: {}".format(", ".join(responses))
-                imglabel = " ".join([imglabel, classification_results])
+                    
+                imglabel = imglabel + " Results: {}".format(", ".join(responses))
         # Thumbnails 
         original.thumbnail((400, 400), Image.ANTIALIAS)
         original.save(thumbpath, FORMAT, quality=100)
-        newpicture = DataPicture(fpath=partpath,
-                                 label=imglabel,
-                                 thumbnail=partthumbpath,
-                                 original=partorigpath,
-                                 camname=camname,
-                                 camposition=camposition,
-                                 results=classification_results,
-                                 ts=camts
-        )
+                        
+        newpicture = DataPicture(fpath=partpath, label=imglabel, thumbnail=partthumbpath, original=partorigpath)
         db.session.add(newpicture)
         db.session.commit()
         picts.append(newpicture)
