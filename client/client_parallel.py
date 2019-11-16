@@ -123,13 +123,13 @@ def connect_serial():
     else:
         return ser
 
-def send_patch_request(fname, flabel, data_id, photo_id, header):
+def send_patch_request(fname, flabel, fcamname, fcamposition, data_id, photo_id, header):
     files = {}
     files['{}'.format(flabel)] = open(fname, 'rb')
     url_str = "data/{}".format(data_id)
     logging.debug("SENDING PATCH REQUEST FOR {} {}".format(data_id, flabel))
-    
-    resp = requests.patch(SERVER_HOST.format(url_str), files=files, headers=header)
+    # send camera_name, camera position
+    resp = requests.patch(SERVER_HOST.format(url_str), data={"camname": fcamname, "camposition": fcamposition}, headers=header, files=files)
     if resp.status_code == 200:
         os.unlink(fname)
         session = Session()
@@ -284,7 +284,7 @@ def post_data(token, suuid, ser, take_photos):
         
                     fname = os.path.join(DATADIR, str(uuid.uuid4())+".jpg")
                     showPic = cv2.imwrite(fname, frame)
-                    camdata = {"fname": fname, "label": CAMERA["LABEL"]}
+                    camdata = {"fname": fname, "label": CAMERA["LABEL"], "cameraname": CAMERA["LABEL"], "cameraposition": 1}
                     v.release()
                     logging.debug("Captured {}".format(CAMERA['LABEL']))
     
@@ -349,7 +349,7 @@ def post_data(token, suuid, ser, take_photos):
                             sleep(1)
                         showPic = cv2.imwrite(fname, frame, [cv2.IMWRITE_JPEG_QUALITY, 100])
                         logging.debug("CAPTURED {} PICT {}".format(LABEL, i+1))
-                        cameradata.append({"fname": fname, "label": LABEL + " {}".format(i+1)})
+                        cameradata.append({"fname": fname, "label": LABEL + " {}".format(i+1), "cameraname": LABEL, "cameraposition": i+1})
                         rtsp.release()
                         #sleep(10)
                     # turn lights off
@@ -411,7 +411,7 @@ def post_data(token, suuid, ser, take_photos):
     if take_photos:
         files = {}
         for i, d in enumerate(cameradata):
-            newphoto = Photo(sensordata=newdata, photo_filename=d['fname'], label=d["label"])
+            newphoto = Photo(sensordata=newdata, photo_filename=d['fname'], label=d["label"], camname=d["cameraname"], camposition=d["cameraposition"])
             session.add(newphoto)
             session.commit()
     else:
@@ -468,7 +468,7 @@ def post_data(token, suuid, ser, take_photos):
             for i, f in enumerate(cachedphotos):
                 if f.sensordata:
                     if f.sensordata.remote_data_id:
-                        argslist.append([f.photo_filename, f.label, f.sensordata.remote_data_id, f.photo_id, head])
+                        argslist.append([f.photo_filename, f.label, f.camname, f.camposition, f.sensordata.remote_data_id, f.photo_id, head])
                     
             logging.debug("START LOOP")
             data = p.starmap(send_patch_request, argslist)
@@ -510,8 +510,9 @@ if __name__ == '__main__':
     ser = connect_serial()
     scheduler = SafeScheduler()
     scheduler.every(5).minutes.do(post_data, token, sensor_uuid, ser, False)
-    scheduler.every(60).minutes.do(post_data, token, sensor_uuid, ser, True)
-    #post_data(token, sensor_uuid, ser, True)
+    scheduler.every(5).minutes.do(post_data, token, sensor_uuid, ser, True)
+    # post_data(token, sensor_uuid, ser, True)
+    # sys.exit(1)
     while 1:
         scheduler.run_pending()
         sleep(1)
