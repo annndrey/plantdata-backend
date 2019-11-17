@@ -158,7 +158,7 @@ class DataPicture(db.Model):
 class Camera(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     sensor_id = db.Column(db.Integer, ForeignKey('sensor.id'))
-    sensor = relationship("Sensor", backref=backref("camera", uselist=True))
+    sensor = relationship("Sensor", backref=backref("cameras", uselist=True))
     label = db.Column(db.Text())
     url = db.Column(db.Text())
 

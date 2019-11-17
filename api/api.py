@@ -15,7 +15,7 @@ from flask_cors import CORS, cross_origin
 from flask_restful.utils import cors
 from marshmallow import fields
 from marshmallow_enum import EnumField
-from models import db, User, Sensor, Location, Data, DataPicture
+from models import db, User, Sensor, Location, Data, DataPicture, Camera, CameraPosition
 import logging
 import os
 import uuid
@@ -246,9 +246,6 @@ def verify_password(username_or_token, password):
     g.user = user
     return True
 
-
-#@cross_origin(origin=='localhost',headers=['Content- Type','Authorization'])
-#@cross_origin(supports_credentials=True)
 @token_required
 def access_picture(path):
     print("PATH")
@@ -293,14 +290,6 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
         
         imglabel = uplname
         app.logger.debug(["UPLNAME", uplname])
-        #camname, camposition = uplname.split(" ")
-        #camts = datetime.datetime.strptime(" ".join([camdate, camtime]), "%d-%m-%y %H:%M")
-        #camposition = int(camposition)
-        # new fields:
-        # camname
-        # camposition
-        # results
-        # ts
         classification_results = ""
         app.logger.debug("FILE SAVED")
         if CLASSIFY_ZONES and CF_TOKEN:
@@ -341,6 +330,8 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
                                  thumbnail=partthumbpath,
                                  original=partorigpath,
                                  results=classification_results,
+                                 camera=camname,
+                                 camera_position=camposition,
         )
         db.session.add(newpicture)
         db.session.commit()
@@ -375,6 +366,16 @@ class UserSchema(ma.ModelSchema):
         model = User
 
         
+class CameraSchema(ma.ModelSchema):
+    class Meta:
+        model = Camera
+        
+        
+class CameraPositionSchema(ma.ModelSchema):
+    class Meta:
+        model = CameraPosition
+
+        
 class SensorSchema(ma.ModelSchema):
     class Meta:
         model = Sensor
@@ -387,7 +388,8 @@ class DataPictureSchema(ma.ModelSchema):
     class Meta:
         model = DataPicture
     preview = ma.Function(lambda obj: obj.thumbnail if obj.thumbnail and os.path.exists(os.path.join(current_app.config['FILE_PATH'], obj.thumbnail)) else obj.fpath)
-
+    camera = ma.Nested("CameraSchema", many=False)
+    camera_position = ma.Nested("CameraPositionSchema", many=False)
         
 class LocationSchema(ma.ModelSchema):
     class Meta:
@@ -654,11 +656,12 @@ class StatsAPI(Resource):
         token = auth_headers[1]
         udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         user = User.query.filter_by(login=udata['sub']).first()
-        camname = request.form.get("camname")
-        camposition = request.form.get("camposition")
         # If there's no registered CAMNAME & CAMPOSITION for a given data.uuid
         # add new camera & position
-        # 
+        # >>>
+        camname = request.form.get("camname")
+        camposition = request.form.get("camposition")
+        camera_position = None
         app.logger.debug(["CAMERA DATA:", camname, camposition])
         if not user:
             abort(403)
@@ -668,9 +671,21 @@ class StatsAPI(Resource):
             sensor = data.sensor
             if sensor.user != user:
                 abort(403)
+            camera = db.session.query(Camera).join(Sensor).filter(Sensor.uuid == sensor.uuid).filter(Camera.label == camname).first()
+            if not camera:
+                camera = Camera(sensor=sensor, label=camname)
+                db.session.add(camera)
+                db.session.commit()
                 
-            picts = parse_request_pictures(request.files, camname, camposition, user.login, sensor.uuid)
-            app.logger.debug(picts)
+            if not camera_position:
+                camera_position = db.session.query(Camera).join(CameraPosition).filter(Camera.id == camera.id).filter(CameraPosition.label == camposition).first()
+                camera_position = CameraPosition(camera=camera, label=camposition)
+                db.session.add(camera_position)
+                db.session.commit()
+
+            app.logger.debug(["DB CAMERA", camera.label, camera_position.label])
+                
+            picts = parse_request_pictures(request.files, camera, camera_position, user.login, sensor.uuid)
             if picts:
                 for p in picts:
                     data.pictures.append(p)
