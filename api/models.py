@@ -143,8 +143,10 @@ class DataPicture(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     data_id = db.Column(db.Integer, ForeignKey('data.id'))
     data = relationship("Data", backref=backref("pictures", uselist=True))
-    # Add a link to data with a link to camera position,
-    # one-to one >>>
+    camera_id = db.Column(db.Integer, ForeignKey('camera.id'))
+    camera = relationship("Camera", backref=backref("pictures", uselist=True))
+    camera_position_id = db.Column(db.Integer, ForeignKey('camera_position.id'))
+    camera_position = relationship("CameraPosition", backref=backref("picture", uselist=False))
     fpath = db.Column(db.Text())
     thumbnail = db.Column(db.Text())
     label = db.Column(db.Text())
