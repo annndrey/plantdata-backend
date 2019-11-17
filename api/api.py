@@ -369,13 +369,15 @@ class UserSchema(ma.ModelSchema):
 class CameraSchema(ma.ModelSchema):
     class Meta:
         model = Camera
+    positions = ma.Nested("CameraPositionSchema", many=True, exclude=['camera',])
         
         
 class CameraPositionSchema(ma.ModelSchema):
     class Meta:
         model = CameraPosition
+    picture = ma.Nested("DataPictureSchema", many=False, exclude=['thumbnail', 'camera', 'camera_position', 'data'])
 
-        
+    
 class SensorSchema(ma.ModelSchema):
     class Meta:
         model = Sensor
@@ -388,9 +390,10 @@ class DataPictureSchema(ma.ModelSchema):
     class Meta:
         model = DataPicture
     preview = ma.Function(lambda obj: obj.thumbnail if obj.thumbnail and os.path.exists(os.path.join(current_app.config['FILE_PATH'], obj.thumbnail)) else obj.fpath)
-    camera = ma.Nested("CameraSchema", many=False)
-    camera_position = ma.Nested("CameraPositionSchema", many=False)
-        
+    # camera = ma.Nested("CameraSchema", many=False, exclude=['pipctures', 'positions', 'sensor', 'url', 'pictures'])
+    # camera_position = ma.Nested("CameraPositionSchema", many=False, exclude=['camera', ])
+
+    
 class LocationSchema(ma.ModelSchema):
     class Meta:
         model = Location
@@ -399,8 +402,8 @@ class LocationSchema(ma.ModelSchema):
 class DataSchema(ma.ModelSchema):
     class Meta:
         model = Data
-    pictures = ma.Nested("DataPictureSchema", many=True, exclude=['thumbnail',])
-
+    pictures = ma.Nested("DataPictureSchema", many=True, exclude=['thumbnail', 'camera', 'camera_position', 'data'])
+    cameras = ma.Nested("CameraSchema", many=True, exclude=['pictures', 'data', 'sensor'])
     
 class PictAPI(Resource):
     def __init__(self):
@@ -635,9 +638,10 @@ class StatsAPI(Resource):
                            soilmoist = soilmoist,
                            co2 = co2
             )
-            app.logger.debug("New data saved")
             db.session.add(newdata)
             db.session.commit()
+            app.logger.debug(["New data saved", newdata.id])
+                        
             # for p in picts:
             #    p.data_id = newdata.id
             #    db.session.add(p)
@@ -671,20 +675,20 @@ class StatsAPI(Resource):
             sensor = data.sensor
             if sensor.user != user:
                 abort(403)
-            camera = db.session.query(Camera).join(Sensor).filter(Sensor.uuid == sensor.uuid).filter(Camera.label == camname).first()
+            camera = db.session.query(Camera).join(Sensor).filter(Sensor.uuid == sensor.uuid).filter(Camera.camlabel == camname).first()
             if not camera:
-                camera = Camera(sensor=sensor, label=camname)
+                camera = Camera(sensor=sensor, camlabel=camname)
                 db.session.add(camera)
                 db.session.commit()
                 
+            camera_position = db.session.query(CameraPosition).join(Camera).filter(Camera.id == camera.id).filter(CameraPosition.poslabel == camposition).first()
             if not camera_position:
-                camera_position = db.session.query(Camera).join(CameraPosition).filter(Camera.id == camera.id).filter(CameraPosition.label == camposition).first()
-                camera_position = CameraPosition(camera=camera, label=camposition)
+                camera_position = CameraPosition(camera=camera, poslabel=camposition)
                 db.session.add(camera_position)
                 db.session.commit()
 
-            app.logger.debug(["DB CAMERA", camera.label, camera_position.label])
-                
+            app.logger.debug(["DB CAMERA", camera.camlabel, camera_position.poslabel])
+            data.cameras.append(camera)
             picts = parse_request_pictures(request.files, camera, camera_position, user.login, sensor.uuid)
             if picts:
                 for p in picts:
