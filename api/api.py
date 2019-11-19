@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from functools import wraps
-from flask import Flask, g, make_response, request, current_app, send_file
+from flask import Flask, g, make_response, request, current_app, send_file, url_for
 from flask_restful import Resource, Api, reqparse, abort, marshal_with
 from flask.json import jsonify
 from flask_migrate import Migrate
@@ -22,7 +22,7 @@ import uuid
 import tempfile
 import shutil
 import zipfile
-
+import urllib.parse
 from celery import Celery
 
 import click
@@ -389,9 +389,20 @@ class SensorSchema(ma.ModelSchema):
 class DataPictureSchema(ma.ModelSchema):
     class Meta:
         model = DataPicture
-        
-    preview = ma.Function(lambda obj: obj.thumbnail if obj.thumbnail and os.path.exists(os.path.join(current_app.config['FILE_PATH'], obj.thumbnail)) else obj.fpath)
-
+    #_links = ma.Hyperlinks({
+    #'preview': ma.URLFor('picts', path='<thumbnail>'),
+    #})
+    #preview = ma.Function(lambda obj: str(ma.URLFor('picts', path='<thumbnail>')))
+    #thumbnail = ma.URLFor('picts', thumbnail='<path>')
+    preview = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.thumbnail, _external=True, _scheme='https')))
+    fpath = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.fpath, _external=True, _scheme='https')))
+    original = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.original, _external=True, _scheme='https')))
+    
+    # "fpath"
+    # "label"
+    # "original"
+    # "preview"
+    
     
 class DPictureSchema(ma.ModelSchema):
     class Meta:
