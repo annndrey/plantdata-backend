@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import CheckConstraint, ForeignKey
+from sqlalchemy import CheckConstraint, ForeignKey, Table
 from sqlalchemy.orm import backref, validates, relationship
 from sqlalchemy.ext.hybrid import hybrid_property
 from passlib.apps import custom_app_context as pwd_context
@@ -21,6 +21,12 @@ class Gender(enum.Enum):
     f = u'f'
     n = 'na'
 
+
+data_cameras = db.Table('data_cameras', db.Model.metadata,
+                          db.Column('data_id', db.Integer, db.ForeignKey('data.id')),
+                          db.Column('camera_id', db.Integer, db.ForeignKey('camera.id'))
+)
+    
     
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -137,16 +143,14 @@ class Data(db.Model):
     soilmoist = db.Column(db.Integer)
     co2 = db.Column(db.Integer)
     fpath = db.Column(db.Text())
-    
 
+    
 class DataPicture(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     data_id = db.Column(db.Integer, ForeignKey('data.id'))
     data = relationship("Data", backref=backref("pictures", uselist=True))
-    camera_id = db.Column(db.Integer, ForeignKey('camera.id'))
-    camera = relationship("Camera", backref=backref("pictures", uselist=True))
     camera_position_id = db.Column(db.Integer, ForeignKey('camera_position.id'))
-    camera_position = relationship("CameraPosition", backref=backref("picture", uselist=False))
+    camera_position = relationship("CameraPosition", backref=backref("pictures", uselist=True))
     fpath = db.Column(db.Text())
     thumbnail = db.Column(db.Text())
     label = db.Column(db.Text())
@@ -157,8 +161,6 @@ class DataPicture(db.Model):
     
 class Camera(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    sensor_id = db.Column(db.Integer, ForeignKey('sensor.id'))
-    sensor = relationship("Sensor", backref=backref("cameras", uselist=True))
     data_id = db.Column(db.Integer, ForeignKey('data.id'))
     data = relationship("Data", backref=backref("cameras", uselist=True))
     camlabel = db.Column(db.Text())
@@ -172,15 +174,4 @@ class CameraPosition(db.Model):
     poslabel = db.Column(db.Integer)
     url = db.Column(db.Text())
 
-
-# TODO:
-# Add
-# camera
-# cameraposition
-# in parse_request_pictures
-# get camera name and camera position
-# link picture to camera name and position
-
-# One Sensor - many cameras
-# One Camera - many positions
-# One position - one picture
+        

@@ -325,15 +325,15 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
         # Thumbnails 
         original.thumbnail((400, 400), Image.ANTIALIAS)
         original.save(thumbpath, FORMAT, quality=100)
+        app.logger.debug(["CAMERA TO PICT", camposition.camera.camlabel, camposition.poslabel, imglabel])
         newpicture = DataPicture(fpath=partpath,
                                  label=imglabel,
                                  thumbnail=partthumbpath,
                                  original=partorigpath,
                                  results=classification_results,
-                                 camera=camname,
-                                 camera_position=camposition,
         )
         db.session.add(newpicture)
+        camposition.pictures.append(newpicture)
         db.session.commit()
         picts.append(newpicture)
         app.logger.debug("NEW PICTURE ADDED")
@@ -369,14 +369,14 @@ class UserSchema(ma.ModelSchema):
 class CameraSchema(ma.ModelSchema):
     class Meta:
         model = Camera
-    positions = ma.Nested("CameraPositionSchema", many=True, exclude=['camera',])
-        
+    positions = ma.Nested("CameraPositionSchema", many=True)#, exclude=['camera',])
+    
         
 class CameraPositionSchema(ma.ModelSchema):
     class Meta:
         model = CameraPosition
-    picture = ma.Nested("DataPictureSchema", many=False, exclude=['thumbnail', 'camera', 'camera_position', 'data'])
-
+    pictures = ma.Nested("DataPictureSchema", many=True)#, many=False, exclude=['thumbnail', 'camera', 'camera_position', 'data'])
+    #image = ma.Function(lambda obj: obj.image)
     
 class SensorSchema(ma.ModelSchema):
     class Meta:
@@ -389,10 +389,18 @@ class SensorSchema(ma.ModelSchema):
 class DataPictureSchema(ma.ModelSchema):
     class Meta:
         model = DataPicture
+        
     preview = ma.Function(lambda obj: obj.thumbnail if obj.thumbnail and os.path.exists(os.path.join(current_app.config['FILE_PATH'], obj.thumbnail)) else obj.fpath)
-    # camera = ma.Nested("CameraSchema", many=False, exclude=['pipctures', 'positions', 'sensor', 'url', 'pictures'])
-    # camera_position = ma.Nested("CameraPositionSchema", many=False, exclude=['camera', ])
 
+    
+class DPictureSchema(ma.ModelSchema):
+    class Meta:
+        model = DataPicture
+        
+    preview = ma.Function(lambda obj: obj.thumbnail if obj.thumbnail and os.path.exists(os.path.join(current_app.config['FILE_PATH'], obj.thumbnail)) else obj.fpath)
+
+    #
+    #camera_position = ma.Nested("CameraPositionSchema", many=True, exclude=['pictures', 'data', 'sensor', ''])
     
 class LocationSchema(ma.ModelSchema):
     class Meta:
@@ -402,8 +410,9 @@ class LocationSchema(ma.ModelSchema):
 class DataSchema(ma.ModelSchema):
     class Meta:
         model = Data
-    pictures = ma.Nested("DataPictureSchema", many=True, exclude=['thumbnail', 'camera', 'camera_position', 'data'])
-    cameras = ma.Nested("CameraSchema", many=True, exclude=['pictures', 'data', 'sensor'])
+    pictures = ma.Nested("DPictureSchema", many=True, exclude=['thumbnail', 'data'])
+    cameras = ma.Nested("CameraSchema", many=True)#, exclude=['pictures', 'data', 'sensor'])
+    # images = ma.Function(lambda obj: obj.images)
     
 class PictAPI(Resource):
     def __init__(self):
@@ -576,6 +585,12 @@ class StatsAPI(Resource):
                     return jsonify(res), 200
                     
                 else:
+                    # TODO >>> 
+                    # Fix URL here
+                    # should be "https://plantdata.fermata.tech:5498/api/v1/p/"
+                    sensordata_query = db.session.query(Data, Camera, CameraPosition, DataPicture).join(Sensor).join(Camera).join(CameraPosition).join(DataPicture).filter(Sensor.uuid == suuid).order_by(Data.ts).filter(Data.ts >= day_st).filter(Data.ts <= day_end)                    
+                    app.logger.debug(["HOST URL", request.host])
+                    
                     res = {"numrecords": len(sensordata),
                            'mindate': first_rec_day,
                            'maxdate': last_rec_day,
@@ -666,7 +681,7 @@ class StatsAPI(Resource):
         camname = request.form.get("camname")
         camposition = request.form.get("camposition")
         camera_position = None
-        app.logger.debug(["CAMERA DATA:", camname, camposition])
+        app.logger.debug(["CAMERA DB:", camname, camposition])
         if not user:
             abort(403)
             
@@ -675,9 +690,9 @@ class StatsAPI(Resource):
             sensor = data.sensor
             if sensor.user != user:
                 abort(403)
-            camera = db.session.query(Camera).join(Sensor).filter(Sensor.uuid == sensor.uuid).filter(Camera.camlabel == camname).first()
+            camera = db.session.query(Camera).join(Data).filter(Data.id == data.id).filter(Camera.camlabel == camname).first()
             if not camera:
-                camera = Camera(sensor=sensor, camlabel=camname)
+                camera = Camera(data=data, camlabel=camname)
                 db.session.add(camera)
                 db.session.commit()
                 
@@ -688,7 +703,7 @@ class StatsAPI(Resource):
                 db.session.commit()
 
             app.logger.debug(["DB CAMERA", camera.camlabel, camera_position.poslabel])
-            data.cameras.append(camera)
+            # data.cameras.append(camera)
             picts = parse_request_pictures(request.files, camera, camera_position, user.login, sensor.uuid)
             if picts:
                 for p in picts:
