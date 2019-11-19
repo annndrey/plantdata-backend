@@ -19,11 +19,15 @@
 #define PIN_MQ135  ADC2
 #define WEIGHT_SENSORS_AMOUNT 2
 
+IPAddress local_ip(192, 168, 1, 140); 
+IPAddress gateway(192, 168, 1, 1); 
+IPAddress subnet(255, 255, 255, 0); 
 
-const char* ssid = "STR LOFT";  // Enter SSID here
-const char* password = "MEQ4QBQEM1B";  //Enter Password here
 
-const char* host = "esp32init"; //mDNS host name
+const char* ssid = "aladdin";  // Enter SSID here
+const char* password = "Glin@2913";  //Enter Password here
+
+const char* host = "espinit"; //mDNS host name
 
 WebServer server(80);
 
@@ -49,6 +53,7 @@ void setup()
   Serial.println("Connecting to ");
   Serial.println(ssid);
   WiFi.mode(WIFI_AP_STA);
+  WiFi.config(local_ip, gateway, subnet);
   WiFi.begin(ssid, password);
   //check wi-fi is connected to wi-fi network
   while (WiFi.status() != WL_CONNECTED) {
@@ -57,38 +62,38 @@ void setup()
   }
   Serial.println("");
   Serial.println("WiFi connected..!");
-  Serial.print("Got IP: ");  
+  Serial.print("Got IP: ");
   Serial.println(WiFi.localIP());
   //OTA check section
   MDNS.begin(host);
   //OTA update handler
   server.on("/update", HTTP_POST, []() {
-      server.sendHeader("Connection", "close");
-      server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
-      ESP.restart();
-    }, []() {
-      HTTPUpload& upload = server.upload();
-      if (upload.status == UPLOAD_FILE_START) {
-        Serial.setDebugOutput(true);
-        Serial.printf("Update: %s\n", upload.filename.c_str());
-        if (!Update.begin()) { //start with max available size
-          Update.printError(Serial);
-        }
-      } else if (upload.status == UPLOAD_FILE_WRITE) {
-        if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
-          Update.printError(Serial);
-        }
-      } else if (upload.status == UPLOAD_FILE_END) {
-        if (Update.end(true)) { //true to set the size to the current progress
-          Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
-        } else {
-          Update.printError(Serial);
-        }
-        Serial.setDebugOutput(false);
-      } else {
-        Serial.printf("Update Failed Unexpectedly (likely broken connection): status=%d\n", upload.status);
+    server.sendHeader("Connection", "close");
+    server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
+    ESP.restart();
+  }, []() {
+    HTTPUpload& upload = server.upload();
+    if (upload.status == UPLOAD_FILE_START) {
+      Serial.setDebugOutput(true);
+      Serial.printf("Update: %s\n", upload.filename.c_str());
+      if (!Update.begin()) { //start with max available size
+        Update.printError(Serial);
       }
-    });
+    } else if (upload.status == UPLOAD_FILE_WRITE) {
+      if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+        Update.printError(Serial);
+      }
+    } else if (upload.status == UPLOAD_FILE_END) {
+      if (Update.end(true)) { //true to set the size to the current progress
+        Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
+      } else {
+        Update.printError(Serial);
+      }
+      Serial.setDebugOutput(false);
+    } else {
+      Serial.printf("Update Failed Unexpectedly (likely broken connection): status=%d\n", upload.status);
+    }
+  });
   //
   pinMode(DHTPIN0, INPUT);
   Wire.begin();
@@ -97,15 +102,15 @@ void setup()
   dht1.begin();
   TSL2561.init();
   Serial.println("Light ready!");
-  
-  for(int i = 0; i < WEIGHT_SENSORS_AMOUNT; i++)
+
+  for (int i = 0; i < WEIGHT_SENSORS_AMOUNT; i++)
   {
     scale[i].begin(LOADCELL_DOUT_PIN[i], LOADCELL_SCK_PIN[i], 64);
     scale[i].set_scale();
     scale[i].set_offset();
     Serial.println("WGHT ready");
   }
-  
+
   server.on("/send_data", handle_SendData);
   server.begin();
   MDNS.addService("http", "tcp", 80);
@@ -138,7 +143,7 @@ String ReadSensors()  {
   float tempA = 1.0 / (log(Rt0 / R0) / B + 1 / 298.15) - 273.15;
   //
   double scalevalue[WEIGHT_SENSORS_AMOUNT];
-  for(int i = 0; i < WEIGHT_SENSORS_AMOUNT; i++)
+  for (int i = 0; i < WEIGHT_SENSORS_AMOUNT; i++)
   {
     scalevalue[i] = scale[i].get_value(10);
   }
@@ -155,16 +160,15 @@ String ReadSensors()  {
   sensorData.concat(tempA);
   sensorData.concat(", 'L': ");
   sensorData.concat(lght);
-  sensorData.concat(", CO2: ");
+  sensorData.concat(", 'CO2': ");
   sensorData.concat(sensorCO2Value);
-  sensorData.concat(", ");
-  for(int i = 0; i < WEIGHT_SENSORS_AMOUNT; i++)
+  for (int i = 0; i < WEIGHT_SENSORS_AMOUNT; i++)
   {
+    sensorData.concat(", ");
     sensorData.concat("'WGHT");
     sensorData.concat(i);
     sensorData.concat("': ");
     sensorData.concat(scalevalue[i]);
-    sensorData.concat(", ");
   }
   sensorData.concat("}");
   return sensorData;
