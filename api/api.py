@@ -123,46 +123,37 @@ def get_zones():
 
 
 @celery.task
-def crop_zones(results, cam_name, cam_positions):
+def crop_zones(results, cam_names, cam_positions):
     zones = get_zones()
     results_data = []
     with tempfile.TemporaryDirectory(dir=TMPDIR) as temp_dir:
         app.logger.debug("Start zones extract")
         # filter results
-        app.logger.debug([cam_name, cam_positions])
+        app.logger.debug([cam_names, cam_positions])
         filtered_results = []
 
-        if all([cam_name, cam_positions]):
-            
+        if all([cam_names, cam_positions]):
+            cam_names = [x.strip() for x in cam_names.split(",")]
             cam_positions = [x.strip() for x in cam_positions.split(",")]
             for d in results:
                 for p in d['pictures']:
-                    ts = parser.isoparse(d['ts']).strftime("%d-%m-%Y_%H-%M-")
+                    ts = parser.isoparse(d['ts']).strftime("%d-%m-%Y_%H-%M")
                     camname, position, _  = p['label'].split(" ", 2)
-                    if camname == cam_name and position in cam_positions:
-                        app.logger.debug(f"Filtering results {camname}, {position}")
-                        filtered_results.append(p)
-        else:
+                    if camname in cam_names and position in cam_positions:
+                        app.logger.debug(f"Filtering results {camname}, {position}, {ts}")
+                        prefix = f"{camname}-{position}-{ts}"
             
-            for d in results:
-                for p in d['pictures']:
-                    filtered_results.append(p)
-                    
-        for p in filtered_results:
-            ts = parser.isoparse(d['ts']).strftime("%d-%m-%Y_%H-%M")
-            camname, position, _  = p['label'].split(" ", 2)
-            prefix = f"{camname}-{position}-{ts}"
-            
-            # Saving original_file
-            orig_fpath = os.path.join(current_app.config['FILE_PATH'], p['original'])
-            orig_newpath = os.path.join(temp_dir, prefix+".jpg")
-            original = Image.open(orig_fpath)
-            original.save(orig_newpath, 'JPEG', quality=100)
-                
-            for z in zones.keys():
-                cropped = original.crop((zones[z]['left'], zones[z]['top'], zones[z]['right'], zones[z]['bottom']))
-                cropped_path = os.path.join(temp_dir, f"{camname}-{position}-{z}-{ts}" + ".jpg")
-                cropped.save(cropped_path, 'JPEG', quality=100)
+                        # Saving original_file
+                        orig_fpath = os.path.join(current_app.config['FILE_PATH'], p['original'])
+                        orig_newpath = os.path.join(temp_dir, prefix+".jpg")
+                        original = Image.open(orig_fpath)
+                        original.save(orig_newpath, 'JPEG', quality=100)
+                        app.logger.debug(f"Saving file {orig_newpath}")
+                        for z in zones.keys():
+                            cropped = original.crop((zones[z]['left'], zones[z]['top'], zones[z]['right'], zones[z]['bottom']))
+                            cropped_path = os.path.join(temp_dir, f"{camname}-{position}-{z}-{ts}" + ".jpg")
+                            cropped.save(cropped_path, 'JPEG', quality=100)
+                            app.logger.debug(f"Saving file {cropped_path}")
                     
         zfname = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-") + '-cropped_zones.zip'
         zipname = os.path.join(temp_dir, zfname)
@@ -429,6 +420,7 @@ class PictAPI(Resource):
         response = make_response("")
         response.headers["X-Accel-Redirect"] = redirect_path
         response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Content-Type'] = 'image/jpeg'
         return response
     
     
@@ -477,7 +469,7 @@ class StatsAPI(Resource):
         fill_date = request.args.get('fill_date', False)
         export_zones = request.args.get('export_zones', False)
         export_data = request.args.get('export', False)
-        cam_name = request.args.get('cam_name', False)
+        cam_names = request.args.get('cam_names', False)
         cam_positions = request.args.get('cam_positions', False)
         
         data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
@@ -554,7 +546,7 @@ class StatsAPI(Resource):
                     
                     res_data = sensordata_query.filter(Data.pictures.any()).all()
                     
-                    crop_zones.delay(self.m_schema.dump(res_data).data, cam_name, cam_positions)
+                    crop_zones.delay(self.m_schema.dump(res_data).data, cam_names, cam_positions)
                     
                     res = {"numrecords": len(res_data),
                            'mindate': first_rec_day,
