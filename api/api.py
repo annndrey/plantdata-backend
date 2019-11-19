@@ -369,13 +369,13 @@ class UserSchema(ma.ModelSchema):
 class CameraSchema(ma.ModelSchema):
     class Meta:
         model = Camera
-    positions = ma.Nested("CameraPositionSchema", many=True)#, exclude=['camera',])
+    positions = ma.Nested("CameraPositionSchema", many=True, exclude=["camera", "url", "id"])#, exclude=['camera',])
     
         
 class CameraPositionSchema(ma.ModelSchema):
     class Meta:
         model = CameraPosition
-    pictures = ma.Nested("DataPictureSchema", many=True)#, many=False, exclude=['thumbnail', 'camera', 'camera_position', 'data'])
+    pictures = ma.Nested("DataPictureSchema", many=True, exclude=["camera_position", "data", "id", "thumbnail"])#, many=False, exclude=['thumbnail', 'camera', 'camera_position', 'data'])
     #image = ma.Function(lambda obj: obj.image)
     
 class SensorSchema(ma.ModelSchema):
@@ -389,11 +389,7 @@ class SensorSchema(ma.ModelSchema):
 class DataPictureSchema(ma.ModelSchema):
     class Meta:
         model = DataPicture
-    #_links = ma.Hyperlinks({
-    #'preview': ma.URLFor('picts', path='<thumbnail>'),
-    #})
-    #preview = ma.Function(lambda obj: str(ma.URLFor('picts', path='<thumbnail>')))
-    #thumbnail = ma.URLFor('picts', thumbnail='<path>')
+        
     preview = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.thumbnail, _external=True, _scheme='https')))
     fpath = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.fpath, _external=True, _scheme='https')))
     original = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.original, _external=True, _scheme='https')))
@@ -421,8 +417,9 @@ class LocationSchema(ma.ModelSchema):
 class DataSchema(ma.ModelSchema):
     class Meta:
         model = Data
-    pictures = ma.Nested("DPictureSchema", many=True, exclude=['thumbnail', 'data'])
-    cameras = ma.Nested("CameraSchema", many=True)#, exclude=['pictures', 'data', 'sensor'])
+        exclude = ['pictures', ]
+    # pictures = ma.Nested("DPictureSchema", many=True, exclude=['thumbnail', 'data'])
+    cameras = ma.Nested("CameraSchema", many=True, exclude=["data", "id"])#, exclude=['pictures', 'data', 'sensor'])
     # images = ma.Function(lambda obj: obj.images)
     
 class PictAPI(Resource):
