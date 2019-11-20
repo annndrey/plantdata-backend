@@ -1,3 +1,7 @@
+#include <ArduinoJson.h>
+
+#include <EEPROM.h>
+
 #include <Digital_Light_ISL29035.h>
 #include <Digital_Light_TSL2561.h>
 #include <DHT.h>
@@ -19,13 +23,13 @@
 #define PIN_MQ135  ADC2
 #define WEIGHT_SENSORS_AMOUNT 2
 
-IPAddress local_ip(192, 168, 1, 140); 
-IPAddress gateway(192, 168, 1, 1); 
+IPAddress local_ip(192, 168, 43, 140); 
+IPAddress gateway(192, 168, 43, 1); 
 IPAddress subnet(255, 255, 255, 0); 
 
 
-const char* ssid = "aladdin";  // Enter SSID here
-const char* password = "Glin@2913";  //Enter Password here
+const char* ssid = "dopel";  // Enter SSID here
+const char* password = "14tar349";  //Enter Password here
 
 const char* host = "espinit"; //mDNS host name
 
@@ -111,7 +115,8 @@ void setup()
     Serial.println("WGHT ready");
   }
 
-  server.on("/send_data", handle_SendData);
+  server.on("/sensor_data", handle_SendSensorData);
+  server.on("/info", handle_SendInfo);
   server.begin();
   MDNS.addService("http", "tcp", 80);
   Serial.printf("Ready! Open http://%s.local in your browser\n", host);
@@ -122,10 +127,26 @@ void loop()
 {
   server.handleClient();
   delay(1);
+
+  //Attempt to reconnect in case of lousing connection
+  while ( WiFi.status() != WL_CONNECTED) {
+    Serial.print("Attempting to connect to SSID: ");
+    Serial.println(ssid);    
+    WiFi.begin(ssid, password);
+    // wait 10 seconds for connection:
+    delay(10000);
+  }
 }
 
-void handle_SendData() {
+
+
+void handle_SendSensorData() {
   server.send(200, "text/html", ReadSensors());
+  //server.send(200, "text/html", Test());
+}
+
+void handle_SendInfo() {
+  server.send(200, "text/html", SendInfo());
 }
 
 
@@ -133,8 +154,8 @@ String ReadSensors()  {
   int sensorCO2Value = analogRead(PIN_MQ135);
   float h0 = dht0.readHumidity();   // считывание влажности
   float t0 = dht0.readTemperature();  // считывание температуры
-  float h1 = 1;   // считывание влажности
-  float t1 = 1;  // считывание температуры
+  float h1 = -1;   // считывание влажности
+  float t1 = -1;  // считывание температуры
   unsigned long lght = TSL2561.readVisibleLux();
   //Reading temperature sensor
   int tmpA = analogRead(ADC1);
@@ -147,6 +168,26 @@ String ReadSensors()  {
   {
     scalevalue[i] = scale[i].get_value(10);
   }
+
+  const int json_capacity = JSON_OBJECT_SIZE(8 + WEIGHT_SENSORS_AMOUNT);
+  StaticJsonDocument<json_capacity> doc;
+  doc["T0"] = t0;
+  doc["H0"] = h0;
+  doc["T1"] = t1;
+  doc["H1"] = h1;
+  doc["TA"] = tempA;
+  doc["L"] = lght;
+  doc["CO2"] = sensorCO2Value;
+  for(int i = 0; i < WEIGHT_SENSORS_AMOUNT; i++)
+  {
+    String key = String("WGHT" + String(i));
+    Serial.println(key);
+    doc[key] = scalevalue[i];
+  }
+  String sensorData;
+  serializeJson(doc, sensorData);
+  return sensorData;
+  /*
   String sensorData;
   sensorData.concat("{'T0' : ");
   sensorData.concat(t0);
@@ -171,5 +212,50 @@ String ReadSensors()  {
     sensorData.concat(scalevalue[i]);
   }
   sensorData.concat("}");
+  return sensorData;
+  */
+}
+
+String SendInfo(){
+  String info;
+  info.concat("{'IP': ");
+  info.concat(WiFi.localIP().toString());
+  info.concat(", 'gateway': ");
+  info.concat(WiFi.gatewayIP().toString());
+  info.concat(", 'subnet mask': ");
+  info.concat(WiFi.subnetMask().toString());
+  info.concat(", 'mDNS Host Name': ");
+  info.concat(host);
+  info.concat("}");
+  return info;
+}
+
+String Test(){
+  String sensorData;
+  Serial.println("Started test partition!");
+  sensorData.concat("{'T0' : ");
+  sensorData.concat(-1);
+  sensorData.concat(", 'H0': ");
+  sensorData.concat(-1);
+  sensorData.concat(", 'T1': ");
+  sensorData.concat(-1);
+  sensorData.concat(", 'H1': ");
+  sensorData.concat(-1);
+  sensorData.concat(", 'TA': ");
+  sensorData.concat(-1);
+  sensorData.concat(", 'L': ");
+  sensorData.concat(-1);
+  sensorData.concat(", 'CO2': ");
+  sensorData.concat(-1);
+  for (int i = 0; i < WEIGHT_SENSORS_AMOUNT; i++)
+  {
+    sensorData.concat(", ");
+    sensorData.concat("'WGHT");
+    sensorData.concat(i);
+    sensorData.concat("': ");
+    sensorData.concat(-1);
+  }
+  sensorData.concat("}");
+  Serial.println("Finished test partition!");
   return sensorData;
 }
