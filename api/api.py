@@ -323,8 +323,8 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
                 classification_results = "Results: {}".format(", ".join(responses))
                 imglabel = " ".join([imglabel, classification_results])
         # Thumbnails 
-        original.thumbnail((400, 400), Image.ANTIALIAS)
-        original.save(thumbpath, FORMAT, quality=100)
+        original.thumbnail((300, 300), Image.ANTIALIAS)
+        original.save(thumbpath, FORMAT, quality=90)
         app.logger.debug(["CAMERA TO PICT", camposition.camera.camlabel, camposition.poslabel, imglabel])
         newpicture = DataPicture(fpath=partpath,
                                  label=imglabel,
@@ -366,16 +366,23 @@ class UserSchema(ma.ModelSchema):
         model = User
 
         
+class CameraOnlySchema(ma.ModelSchema):
+    class Meta:
+        model = Camera
+        exclude = ['positions', ]
+    # positions = ma.Nested("CameraPositionSchema", many=True, exclude=["camera", "url"])#, exclude=['camera',])
+
 class CameraSchema(ma.ModelSchema):
     class Meta:
         model = Camera
-    positions = ma.Nested("CameraPositionSchema", many=True, exclude=["camera", "url", "id"])#, exclude=['camera',])
+    positions = ma.Nested("CameraPositionSchema", many=True, exclude=["camera", "url"])#, exclude=['camera',])
+
     
         
 class CameraPositionSchema(ma.ModelSchema):
     class Meta:
         model = CameraPosition
-    pictures = ma.Nested("DataPictureSchema", many=True, exclude=["camera_position", "data", "id", "thumbnail"])#, many=False, exclude=['thumbnail', 'camera', 'camera_position', 'data'])
+    pictures = ma.Nested("DataPictureSchema", many=True, exclude=["camera_position", "data", "thumbnail"])#, many=False, exclude=['thumbnail', 'camera', 'camera_position', 'data'])
     #image = ma.Function(lambda obj: obj.image)
     
 class SensorSchema(ma.ModelSchema):
@@ -419,8 +426,10 @@ class DataSchema(ma.ModelSchema):
         model = Data
         exclude = ['pictures', ]
     # pictures = ma.Nested("DPictureSchema", many=True, exclude=['thumbnail', 'data'])
-    cameras = ma.Nested("CameraSchema", many=True, exclude=["data", "id"])#, exclude=['pictures', 'data', 'sensor'])
+    cameras = ma.Nested("CameraOnlySchema", many=True, exclude=["data",])#, exclude=['pictures', 'data', 'sensor'])
     # images = ma.Function(lambda obj: obj.images)
+
+
     
 class PictAPI(Resource):
     def __init__(self):
@@ -434,8 +443,6 @@ class PictAPI(Resource):
     #@token_required
     @cross_origin()
     def get(self, path):
-        app.logger.debug(request.cookies)
-        app.logger.debug(request.headers)
         auth_cookie = request.cookies.get("auth", "")
         auth_headers = request.headers.get('Authorization', '').split()
         if len(auth_headers) > 0:
@@ -459,6 +466,23 @@ class PictAPI(Resource):
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Content-Type'] = 'image/jpeg'
         return response
+
+    
+class CameraAPI(Resource):
+    def __init__(self):
+        self.schema = CameraSchema()
+        self.method_decorators = []
+    
+    def options(self, *args, **kwargs):
+        return jsonify([])
+
+    @token_required
+    @cross_origin()
+    def get(self, id):
+        camera = db.session.query(Camera).filter(Camera.id==id).first()
+        if camera:
+            return jsonify(self.schema.dump(camera).data), 200
+        return abort(404)
     
     
 class StatsAPI(Resource):
@@ -593,11 +617,6 @@ class StatsAPI(Resource):
                     return jsonify(res), 200
                     
                 else:
-                    # TODO >>> 
-                    # Fix URL here
-                    # should be "https://plantdata.fermata.tech:5498/api/v1/p/"
-                    sensordata_query = db.session.query(Data, Camera, CameraPosition, DataPicture).join(Sensor).join(Camera).join(CameraPosition).join(DataPicture).filter(Sensor.uuid == suuid).order_by(Data.ts).filter(Data.ts >= day_st).filter(Data.ts <= day_end)                    
-                    app.logger.debug(["HOST URL", request.host])
                     
                     res = {"numrecords": len(sensordata),
                            'mindate': first_rec_day,
@@ -892,9 +911,11 @@ class UserAPI(Resource):
 
         
 api.add_resource(UserAPI, '/users', '/users/<int:id>', endpoint='users')
+api.add_resource(CameraAPI, '/cameras/<int:id>', endpoint='cameras')
 api.add_resource(StatsAPI, '/data', '/data/<int:id>', endpoint='savedata')
 api.add_resource(SensorAPI, '/sensors', '/sensors/<int:id>', endpoint='sensors')
 api.add_resource(PictAPI, "/p/<path:path>", endpoint="picts")
+
 
 @app.cli.command()
 @click.option('--login',  help='user@mail.com')
