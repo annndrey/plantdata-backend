@@ -124,7 +124,7 @@ def get_zones():
 
 
 @celery.task
-def crop_zones(results, cam_names, cam_positions):
+def crop_zones(results, cam_names, cam_positions, cam_zones, cam_numsamples, cam_skipsamples):
     zones = get_zones()
     results_data = []
     with tempfile.TemporaryDirectory(dir=TMPDIR) as temp_dir:
@@ -135,27 +135,54 @@ def crop_zones(results, cam_names, cam_positions):
 
         if all([cam_names, cam_positions]):
             cam_names = [x.strip() for x in cam_names.split(",")]
-            cam_positions = [x.strip() for x in cam_positions.split(",")]
-            for d in results:
-                for p in d['pictures']:
-                    ts = parser.isoparse(d['ts']).strftime("%d-%m-%Y_%H-%M")
-                    camname, position, _  = p['label'].split(" ", 2)
-                    if camname in cam_names and position in cam_positions:
-                        app.logger.debug(f"Filtering results {camname}, {position}, {ts}")
-                        prefix = f"{camname}-{position}-{ts}"
+            cam_positions = [int(x.strip()) for x in cam_positions.split(",")]
+            cam_zones = ["zone{}".format(x.strip()) for x in cam_zones.split(",")]
+            if cam_skipsamples:
+                cam_skipsamples = int(cam_skipsamples)
+            if cam_numsamples:
+                cam_numsamples = int(cam_numsamples)
             
-                        # Saving original_file
-                        orig_fpath = os.path.join(current_app.config['FILE_PATH'], p['original'])
-                        orig_newpath = os.path.join(temp_dir, prefix+".jpg")
-                        original = Image.open(orig_fpath)
-                        original.save(orig_newpath, 'JPEG', quality=100)
-                        app.logger.debug(f"Saving file {orig_newpath}")
-                        for z in zones.keys():
-                            cropped = original.crop((zones[z]['left'], zones[z]['top'], zones[z]['right'], zones[z]['bottom']))
-                            cropped_path = os.path.join(temp_dir, f"{camname}-{position}-{z}-{ts}" + ".jpg")
-                            cropped.save(cropped_path, 'JPEG', quality=100)
-                            app.logger.debug(f"Saving file {cropped_path}")
-                    
+            prev_date = None
+            sample = 0
+            for d in results:
+                if d['lux'] > 10:
+                    ts = parser.isoparse(d['ts']).strftime("%d-%m-%Y_%H-%M")
+                    sdate = parser.isoparse(d['ts']).strftime("%d-%m-%Y")
+
+                    if len(d['cameras']) > 0:
+                        if prev_date == sdate:
+                            sample = sample + 1
+                        else:
+                            sample = 0
+                        if cam_numsamples and sample <= cam_numsamples:
+                            app.logger.debug(f"DAY {ts} SAMPLE {sample}")
+
+                            for cam in d['cameras']:
+                                if cam['camlabel'] in cam_names:
+                                    camname = cam['camlabel']
+                                    pos = cam['positions'][0]
+                                    for pos in cam['positions']:
+                                        if pos['poslabel'] in cam_positions:
+                                            position = str(pos['poslabel'])
+                                            if len(pos['pictures']) > 0:
+                                                p = pos['pictures'][-1]
+                                                #app.logger.debug(f"Filtering results {camname}, {position}, {ts}")
+                                                prefix = f"{camname}-{position}-{ts}"
+                                                # Saving original_file
+                                                p['original'] = p['original'].replace('https://plantdata.fermata.tech:5498/api/v1/p/', '')
+                                                orig_fpath = os.path.join(current_app.config['FILE_PATH'], p['original'])
+                                                orig_newpath = os.path.join(temp_dir, prefix+".jpg")
+                                                original = Image.open(orig_fpath)
+                                                original.save(orig_newpath, 'JPEG', quality=100)
+                                                #app.logger.debug(f"Saving file {orig_newpath}")
+                                                for z in zones.keys():
+                                                    if z in cam_zones:
+                                                        cropped = original.crop((zones[z]['left'], zones[z]['top'], zones[z]['right'], zones[z]['bottom']))
+                                                        cropped_path = os.path.join(temp_dir, f"{camname}-{position}-{z}-{ts}" + ".jpg")
+                                                        cropped.save(cropped_path, 'JPEG', quality=100)
+                                                        app.logger.debug(f"Saving file {cropped_path}")
+                    prev_date = sdate
+                                    
         zfname = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-") + '-cropped_zones.zip'
         zipname = os.path.join(temp_dir, zfname)
         zipf = zipfile.ZipFile(zipname, 'w', zipfile.ZIP_DEFLATED)
@@ -429,6 +456,15 @@ class DataSchema(ma.ModelSchema):
     cameras = ma.Nested("CameraOnlySchema", many=True, exclude=["data",])#, exclude=['pictures', 'data', 'sensor'])
     # images = ma.Function(lambda obj: obj.images)
 
+    
+class FullDataSchema(ma.ModelSchema):
+    class Meta:
+        model = Data
+        exclude = ['pictures', ]
+    # pictures = ma.Nested("DPictureSchema", many=True, exclude=['thumbnail', 'data'])
+    cameras = ma.Nested("CameraSchema", many=True, exclude=["data",])#, exclude=['pictures', 'data', 'sensor'])
+    # images = ma.Function(lambda obj: obj.images)
+
 
     
 class PictAPI(Resource):
@@ -489,6 +525,7 @@ class StatsAPI(Resource):
     def __init__(self):
         self.schema = DataSchema()
         self.m_schema = DataSchema(many=True)
+        self.f_schema = FullDataSchema(many=True)
         self.method_decorators = []
         
     def options(self, *args, **kwargs):
@@ -530,9 +567,12 @@ class StatsAPI(Resource):
         fill_date = request.args.get('fill_date', False)
         export_zones = request.args.get('export_zones', False)
         export_data = request.args.get('export', False)
+        full_data = request.args.get('full_data', False)
         cam_names = request.args.get('cam_names', False)
         cam_positions = request.args.get('cam_positions', False)
-        
+        cam_zones = request.args.get('cam_zones', False)
+        cam_numsamples = request.args.get('cam_numsamples', False)
+        cam_skipsamples = request.args.get('cam_skipsamples', False)
         data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         daystart = dayend = None
         # By default show data for the last recorded day
@@ -607,7 +647,7 @@ class StatsAPI(Resource):
                     
                     res_data = sensordata_query.filter(Data.pictures.any()).all()
                     
-                    crop_zones.delay(self.m_schema.dump(res_data).data, cam_names, cam_positions)
+                    crop_zones.delay(self.f_schema.dump(res_data).data, cam_names, cam_positions, cam_zones, cam_numsamples, cam_skipsamples)
                     
                     res = {"numrecords": len(res_data),
                            'mindate': first_rec_day,
@@ -617,11 +657,15 @@ class StatsAPI(Resource):
                     return jsonify(res), 200
                     
                 else:
-                    
+                    if full_data:
+                        data = self.f_schema.dump(sensordata).data
+                    else:
+                        data = self.m_schema.dump(sensordata).data
+                        
                     res = {"numrecords": len(sensordata),
                            'mindate': first_rec_day,
                            'maxdate': last_rec_day,
-                           'data': self.m_schema.dump(sensordata).data
+                           'data': data
                     }
                     return jsonify(res), 200
 
