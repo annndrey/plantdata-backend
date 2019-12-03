@@ -148,13 +148,13 @@ def crop_zones(results, cam_names, cam_positions, cam_zones, cam_numsamples, cam
                 if d['lux'] > 10:
                     ts = parser.isoparse(d['ts']).strftime("%d-%m-%Y_%H-%M")
                     sdate = parser.isoparse(d['ts']).strftime("%d-%m-%Y")
-
+                    app.logger.debug([d['ts'], ts, sample, len(d['cameras']), ])
                     if len(d['cameras']) > 0:
                         if prev_date == sdate:
                             sample = sample + 1
                         else:
                             sample = 0
-                        if cam_numsamples and sample <= cam_numsamples:
+                        if cam_numsamples and sample < cam_numsamples:
                             app.logger.debug(f"DAY {ts} SAMPLE {sample}")
 
                             for cam in d['cameras']:
@@ -284,6 +284,10 @@ def access_picture(path):
     response.headers.add('Access-Control-Allow-Origin', '*')
     return response
 
+
+# TODO: async
+# process_single_picture
+# process_single_zone
 
 def parse_request_pictures(req_files, camname, camposition, user_login, sensor_uuid):
     picts = []
