@@ -15,7 +15,7 @@ from flask_cors import CORS, cross_origin
 from flask_restful.utils import cors
 from marshmallow import fields
 from marshmallow_enum import EnumField
-from models import db, User, Sensor, Location, Data, DataPicture, Camera, CameraPosition
+from models import db, User, Sensor, Location, Data, DataPicture, Camera, CameraPosition, Probe, ProbeData
 import logging
 import os
 import uuid
@@ -70,8 +70,8 @@ zonefont = ImageFont.truetype(FONT, size=FONTSIZE)
 
 CLASSIFY_ZONES = app.config['CLASSIFY_ZONES']
 
-app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379/0'
-app.config['CELERY_RESULT_BACKEND'] = 'redis://localhost:6379/0'
+app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379/2'
+app.config['CELERY_RESULT_BACKEND'] = 'redis://localhost:6379/2'
 
 TMPDIR = app.config['TEMPDIR']
 

@@ -26,7 +26,10 @@ data_cameras = db.Table('data_cameras', db.Model.metadata,
                           db.Column('data_id', db.Integer, db.ForeignKey('data.id')),
                           db.Column('camera_id', db.Integer, db.ForeignKey('camera.id'))
 )
-    
+
+
+
+
     
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -73,11 +76,26 @@ class User(db.Model):
         user = Staff.query.get(data['id'])
         return user
 
+class ProbeData(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    #pdata_id = db.Column(db.Integer, ForeignKey('data.id'))
+    #pdata = relationship("Data", backref=backref("probes", uselist=True))
+    probe_id = db.Column(db.Integer, ForeignKey('probe.id'))
+    probe = relationship("Probe", backref=backref("values", uselist=True))
+    value = db.Column(db.Numeric(precision=3))
+    # minvalue
+    # maxvalue
+
+
+class Probe(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    uuid = db.Column(db.Text(), nullable=False)
+    data_id = db.Column(db.Integer, ForeignKey('data.id'))
+    data = relationship("Data", backref=backref("probes", uselist=True))
+    ptype = db.Column(db.String(200))
+    label = db.Column(db.String(200))
     
 # Sensors
-# one sensor - one user
-# one sensor - one location
-# sensor uuid - unique
 class Sensor(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     uuid = db.Column(db.Text(), nullable=False)
@@ -128,6 +146,7 @@ class Data(db.Model):
     sensor_id = db.Column(db.Integer, ForeignKey('sensor.id'))
     sensor = relationship("Sensor", backref=backref("data", uselist=True))
     ts = db.Column(db.DateTime, default=datetime.datetime.now)
+
     temp0 = db.Column(db.Numeric(precision=3))
     wght0 = db.Column(db.Numeric(precision=3))
     wght1 = db.Column(db.Numeric(precision=3))
