@@ -76,6 +76,7 @@ class User(db.Model):
         user = Staff.query.get(data['id'])
         return user
 
+
 class ProbeData(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     #pdata_id = db.Column(db.Integer, ForeignKey('data.id'))
@@ -83,8 +84,6 @@ class ProbeData(db.Model):
     probe_id = db.Column(db.Integer, ForeignKey('probe.id'))
     probe = relationship("Probe", backref=backref("values", uselist=True))
     value = db.Column(db.Numeric(precision=3))
-    # minvalue
-    # maxvalue
 
 
 class Probe(db.Model):
@@ -94,6 +93,9 @@ class Probe(db.Model):
     data = relationship("Data", backref=backref("probes", uselist=True))
     ptype = db.Column(db.String(200))
     label = db.Column(db.String(200))
+    minvalue = db.Column(db.Numeric(precision=3))
+    maxvalue = db.Column(db.Numeric(precision=3))
+
     
 # Sensors
 class Sensor(db.Model):
