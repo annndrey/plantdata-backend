@@ -41,6 +41,8 @@ from PIL import Image, ImageDraw, ImageFont
 import glob
 from collections import OrderedDict
 
+from multiprocessing.pool import ThreadPool
+
 logging.basicConfig(format='%(levelname)s: %(asctime)s - %(message)s',
                     level=logging.DEBUG, datefmt='%d.%m.%Y %I:%M:%S %p')
 
@@ -285,6 +287,9 @@ def access_picture(path):
     return response
 
 
+def process_single_file(uplname, pict):
+    app.logger.debug("SAVE FILE")
+    
 # TODO: async
 # process_single_picture
 # process_single_zone
@@ -293,7 +298,6 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
     picts = []
     
     for uplname in sorted(request.files):
-        app.logger.debug("SAVE FILE")
 
         pict = request.files.get(uplname)
         fpath = os.path.join(current_app.config['FILE_PATH'], user_login, sensor_uuid)

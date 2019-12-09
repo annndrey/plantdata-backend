@@ -77,6 +77,10 @@ class User(db.Model):
         return user
 
 
+# Data -> Probes -> ProbeData
+# Probe should be registered once
+# Client should send Probe UUID
+    
 class ProbeData(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     #pdata_id = db.Column(db.Integer, ForeignKey('data.id'))
