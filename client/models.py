@@ -6,14 +6,26 @@ import datetime
 
 Base = declarative_base()
 
-#class Weight(Base):
-#    __tablename__ = 'weight'
-#    id = Column(Integer, primary_key=True)
-#    label = Column(String(255))
-#    value = Column(Integer)
-#    ts = Column(DateTime, default=datetime.datetime.now)
+# TODO Add Probe & ProbeData
 
+class Probe(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    uuid = db.Column(db.Text(), nullable=False)
+    data_id = db.Column(db.Integer, ForeignKey('sensor_data.id'))
+    data = relationship("SensorData", backref=backref("probes", uselist=True))
+    ptype = db.Column(db.String(200))
+    label = db.Column(db.String(200))
+    minvalue = db.Column(db.Numeric(precision=3))
+    maxvalue = db.Column(db.Numeric(precision=3))
+
+
+class ProbeData(db.Model):
+    d = db.Column(db.Integer, primary_key=True)
+    probe_id = db.Column(db.Integer, ForeignKey('probe.id'))
+    probe = relationship("Probe", backref=backref("values", uselist=True))
+    value = db.Column(db.Numeric(precision=3))
     
+
 class SensorData(Base):
     __tablename__ = 'sensordata'
     id = Column(Integer, primary_key=True)

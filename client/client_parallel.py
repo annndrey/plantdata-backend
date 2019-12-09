@@ -289,7 +289,11 @@ def post_data(token, suuid, ser, take_photos):
                     logging.debug("Captured {}".format(CAMERA['LABEL']))
     
                     # Check for black images
-                    fimg = Image.open(camdata['fname'])
+                    try:
+                        fimg = Image.open(camdata['fname'])
+                    except:
+                        logging.debug("Failed to open image {}, Skipping to the next image".format(camdata['fname']))
+                        continue
                     # mean
                     if sum(fimg.convert("L").getextrema())/2 >= LOWLIGHT:
                         cameradata.append(camdata)
@@ -302,7 +306,7 @@ def post_data(token, suuid, ser, take_photos):
                     CAMERA_IP = CAMERA['CAMERA_IP']
                     NUMFRAMES = CAMERA['NUMFRAMES']
                     LABEL = CAMERA['LABEL']
-                    NUMRETRIES = 10
+                    NUMRETRIES = 3
                     # Turn lights on
                     # /form/IRset
                     ir_data = {"IRmode": 1,
@@ -319,9 +323,12 @@ def post_data(token, suuid, ser, take_photos):
                                 ir_respr = requests.post("http://{}:{}@{}/form/IRset".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), data=ir_data)
                                 ir_set = True
                             except:
-                                logging.debug("Failed to connect to camera")
+                                logging.debug("Failed to connect to camera IR SET")
                                 sleep(5)
-
+                    if not ir_set:
+                        # skip camera
+                        logging.debug("NO CONNECTION, SKIPPING TO THE NEXT CAMERA")
+                        continue
                     
                     for i in range(0, NUMFRAMES):
                         fname = os.path.join(DATADIR, str(uuid.uuid4())+".jpg")
@@ -337,8 +344,9 @@ def post_data(token, suuid, ser, take_photos):
                                     r = requests.post("http://{}:{}@{}/form/presetSet".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), data=postdata)
                                     comm_sent = True
                                 except:
-                                    logging.debug("Failed to connect to camera")
+                                    logging.debug("Failed to connect to camera PRESET SET")
                                     sleep(5)
+                            
                         # Delay for camera to get into the proper position
                         sleep(5)
                         rtsp = cv2.VideoCapture("rtsp://{}:{}@{}:554/1/h264major".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))
@@ -361,7 +369,7 @@ def post_data(token, suuid, ser, take_photos):
                                 ir_respr = requests.post("http://{}:{}@{}/form/IRset".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), data=ir_data)
                                 ir_set = True
                             except:
-                                logging.debug("Failed to connect to camera")
+                                logging.debug("Failed to connect to camera IR SET")
                                 sleep(5)
 
                     # ir_respr = requests.post("http://{}:{}@{}/form/IRset".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), data=ir_data)
@@ -386,7 +394,15 @@ def post_data(token, suuid, ser, take_photos):
     wght4 = serialdata.get('WGHT4', -1)
     if wght4 > 0:
         wght4 = (wght4 - OFFSET4) / SCALE4
-        
+
+    # TODO: New data structure
+    # Create New SensorData
+    # Check for existing probes
+    # Get/create probe
+    # Create Probe Data
+    # Link to Probe
+    # Link to Sensor Data
+    
     newdata = SensorData(ts = serialdata['TS'],
                          sensor_uuid = serialdata['uuid'],
                          temp0 = serialdata.get('T0', -1),
@@ -426,9 +442,19 @@ def post_data(token, suuid, ser, take_photos):
         data_uploaded = session.query(SensorData).filter(SensorData.uploaded.is_(True)).delete()
         session.commit()
         # try to send all cached data
+        # Join SensorData, Probe, ProbeData
         cacheddata = session.query(SensorData).filter(SensorData.uploaded.is_(False)).all()
         logging.debug("CACHED DATA {}".format([(c.sensor_uuid, c.ts) for c in cacheddata]))
         for cd in cacheddata:
+            # Create a nested dict here:
+            # { uuid: ...,
+            #   ts: ...,
+            # data: [
+            # {'ptype': 'temp', 'label': 'T1', 'value': '11'},
+            # ...
+            # ]
+            # }
+            
             serialdata = {'uuid': cd.sensor_uuid,
                           'ts': cd.ts,
                           'TA': cd.tempA,
@@ -510,9 +536,9 @@ if __name__ == '__main__':
     ser = connect_serial()
     scheduler = SafeScheduler()
     scheduler.every(5).minutes.do(post_data, token, sensor_uuid, ser, False)
-    scheduler.every(5).minutes.do(post_data, token, sensor_uuid, ser, True)
-    # post_data(token, sensor_uuid, ser, True)
-    # sys.exit(1)
+    scheduler.every(60).minutes.do(post_data, token, sensor_uuid, ser, True)
+    #post_data(token, sensor_uuid, ser, True)
+    #sys.exit(1)
     while 1:
         scheduler.run_pending()
         sleep(1)
