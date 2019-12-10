@@ -355,8 +355,8 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
                         responses.append("{}".format(z))
                                          
                 original.save(fullpath)
-                classification_results = "Results: {}".format(", ".join(responses))
-                imglabel = " ".join([imglabel, classification_results])
+                    
+                imglabel = imglabel + " Results: {}".format(", ".join(responses))
         # Thumbnails 
         original.thumbnail((300, 300), Image.ANTIALIAS)
         original.save(thumbpath, FORMAT, quality=90)
