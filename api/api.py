@@ -72,8 +72,8 @@ zonefont = ImageFont.truetype(FONT, size=FONTSIZE)
 
 CLASSIFY_ZONES = app.config['CLASSIFY_ZONES']
 
-app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379/2'
-app.config['CELERY_RESULT_BACKEND'] = 'redis://localhost:6379/2'
+app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379/3'
+app.config['CELERY_RESULT_BACKEND'] = 'redis://localhost:6379/3'
 
 TMPDIR = app.config['TEMPDIR']
 
