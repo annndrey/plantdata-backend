@@ -6,11 +6,32 @@ import datetime
 
 Base = declarative_base()
 
+# TODO Add Probe & ProbeData
+
+class Probe(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    uuid = db.Column(db.Text(), nullable=False)
+    data_id = db.Column(db.Integer, ForeignKey('sensor_data.id'))
+    data = relationship("SensorData", backref=backref("probes", uselist=True))
+    ptype = db.Column(db.String(200))
+    label = db.Column(db.String(200))
+    minvalue = db.Column(db.Numeric(precision=3))
+    maxvalue = db.Column(db.Numeric(precision=3))
+
+
+class ProbeData(db.Model):
+    d = db.Column(db.Integer, primary_key=True)
+    probe_id = db.Column(db.Integer, ForeignKey('probe.id'))
+    probe = relationship("Probe", backref=backref("values", uselist=True))
+    value = db.Column(db.Numeric(precision=3))
+    
+
 class SensorData(Base):
     __tablename__ = 'sensordata'
     id = Column(Integer, primary_key=True)
     ts = Column(DateTime, default=datetime.datetime.now)
     sensor_uuid = Column(Text(), nullable=False)
+    remote_data_id = Column(Integer)
     # some data here
     temp0 = Column(Numeric(precision=3))
     temp1 = Column(Numeric(precision=3))
@@ -22,13 +43,20 @@ class SensorData(Base):
     soilmoist = Column(Integer)
     co2 = Column(Integer)
     wght0 = Column(Numeric(precision=3))
-    photos = relationship("Photo", backref="sensordata")
+    wght1 = Column(Numeric(precision=3))
+    wght2 = Column(Numeric(precision=3))
+    wght3 = Column(Numeric(precision=3))
+    wght4 = Column(Numeric(precision=3))
+    photos = relationship("Photo", backref="sensordata", cascade="all,delete")
     uploaded = Column(Boolean, default=False)
-
+    
+    
 class Photo(Base):
     __tablename__ = 'photo'
     photo_id = Column(Integer, primary_key=True)
     sensordata_id = Column(Integer, ForeignKey('sensordata.id'))
     photo_filename  = Column(Text())
     label = Column(String(255))
-    
+    uploaded = Column(Boolean, default=False)
+    camname = Column(String(255))
+    camposition = Column(Integer)

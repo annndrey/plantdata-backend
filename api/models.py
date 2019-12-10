@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import CheckConstraint, ForeignKey
+from sqlalchemy import CheckConstraint, ForeignKey, Table
 from sqlalchemy.orm import backref, validates, relationship
 from sqlalchemy.ext.hybrid import hybrid_property
 from passlib.apps import custom_app_context as pwd_context
@@ -20,6 +20,15 @@ class Gender(enum.Enum):
     m = u'm'
     f = u'f'
     n = 'na'
+
+
+data_cameras = db.Table('data_cameras', db.Model.metadata,
+                          db.Column('data_id', db.Integer, db.ForeignKey('data.id')),
+                          db.Column('camera_id', db.Integer, db.ForeignKey('camera.id'))
+)
+
+
+
 
     
 class User(db.Model):
@@ -67,11 +76,32 @@ class User(db.Model):
         user = Staff.query.get(data['id'])
         return user
 
+
+# Data -> Probes -> ProbeData
+# Probe should be registered once
+# Client should send Probe UUID
+    
+class ProbeData(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    #pdata_id = db.Column(db.Integer, ForeignKey('data.id'))
+    #pdata = relationship("Data", backref=backref("probes", uselist=True))
+    probe_id = db.Column(db.Integer, ForeignKey('probe.id'))
+    probe = relationship("Probe", backref=backref("values", uselist=True))
+    value = db.Column(db.Numeric(precision=3))
+
+
+class Probe(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    uuid = db.Column(db.Text(), nullable=False)
+    data_id = db.Column(db.Integer, ForeignKey('data.id'))
+    data = relationship("Data", backref=backref("probes", uselist=True))
+    ptype = db.Column(db.String(200))
+    label = db.Column(db.String(200))
+    minvalue = db.Column(db.Numeric(precision=3))
+    maxvalue = db.Column(db.Numeric(precision=3))
+
     
 # Sensors
-# one sensor - one user
-# one sensor - one location
-# sensor uuid - unique
 class Sensor(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     uuid = db.Column(db.Text(), nullable=False)
@@ -122,6 +152,7 @@ class Data(db.Model):
     sensor_id = db.Column(db.Integer, ForeignKey('sensor.id'))
     sensor = relationship("Sensor", backref=backref("data", uselist=True))
     ts = db.Column(db.DateTime, default=datetime.datetime.now)
+
     temp0 = db.Column(db.Numeric(precision=3))
     wght0 = db.Column(db.Numeric(precision=3))
     wght1 = db.Column(db.Numeric(precision=3))
@@ -137,14 +168,35 @@ class Data(db.Model):
     soilmoist = db.Column(db.Integer)
     co2 = db.Column(db.Integer)
     fpath = db.Column(db.Text())
-    
 
+    
 class DataPicture(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     data_id = db.Column(db.Integer, ForeignKey('data.id'))
     data = relationship("Data", backref=backref("pictures", uselist=True))
+    camera_position_id = db.Column(db.Integer, ForeignKey('camera_position.id'))
+    camera_position = relationship("CameraPosition", backref=backref("pictures", uselist=True))
     fpath = db.Column(db.Text())
     thumbnail = db.Column(db.Text())
     label = db.Column(db.Text())
     original = db.Column(db.Text())
+    results = db.Column(db.Text())
+    ts = db.Column(db.DateTime, default=datetime.datetime.now)
 
+    
+class Camera(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    data_id = db.Column(db.Integer, ForeignKey('data.id'))
+    data = relationship("Data", backref=backref("cameras", uselist=True))
+    camlabel = db.Column(db.Text())
+    url = db.Column(db.Text())
+
+
+class CameraPosition(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    camera_id = db.Column(db.Integer, ForeignKey('camera.id'))
+    camera = relationship("Camera", backref=backref("positions", uselist=True))
+    poslabel = db.Column(db.Integer)
+    url = db.Column(db.Text())
+
+        
