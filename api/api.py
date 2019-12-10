@@ -138,6 +138,7 @@ def crop_zones(results, cam_names, cam_positions, cam_zones, cam_numsamples, cam
         if all([cam_names, cam_positions]):
             cam_names = [x.strip() for x in cam_names.split(",")]
             cam_positions = [int(x.strip()) for x in cam_positions.split(",")]
+            app.logger.debug(cam_zones)
             cam_zones = ["zone{}".format(x.strip()) for x in cam_zones.split(",")]
             if cam_skipsamples:
                 cam_skipsamples = int(cam_skipsamples)
@@ -147,7 +148,8 @@ def crop_zones(results, cam_names, cam_positions, cam_zones, cam_numsamples, cam
             prev_date = None
             sample = 0
             for d in results:
-                if d['lux'] > 10:
+                #if d['lux'] > 10:
+                if True:
                     ts = parser.isoparse(d['ts']).strftime("%d-%m-%Y_%H-%M")
                     sdate = parser.isoparse(d['ts']).strftime("%d-%m-%Y")
                     app.logger.debug([d['ts'], ts, sample, len(d['cameras']), ])
@@ -654,7 +656,7 @@ class StatsAPI(Resource):
                     app.logger.debug(f"EXPORT ZONES, {export_zones}")
                     
                     res_data = sensordata_query.filter(Data.pictures.any()).all()
-                    
+                    app.logger.debug(len(res_data))
                     crop_zones.delay(self.f_schema.dump(res_data).data, cam_names, cam_positions, cam_zones, cam_numsamples, cam_skipsamples)
                     
                     res = {"numrecords": len(res_data),
