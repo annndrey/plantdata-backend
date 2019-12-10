@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from functools import wraps
-from flask import Flask, g, make_response, request, current_app, send_file
+from flask import Flask, g, make_response, request, current_app, send_file, url_for
 from flask_restful import Resource, Api, reqparse, abort, marshal_with
 from flask.json import jsonify
 from flask_migrate import Migrate
@@ -15,14 +15,14 @@ from flask_cors import CORS, cross_origin
 from flask_restful.utils import cors
 from marshmallow import fields
 from marshmallow_enum import EnumField
-from models import db, User, Sensor, Location, Data, DataPicture
+from models import db, User, Sensor, Location, Data, DataPicture, Camera, CameraPosition, Probe, ProbeData
 import logging
 import os
 import uuid
 import tempfile
 import shutil
 import zipfile
-
+import urllib.parse
 from celery import Celery
 
 import click
@@ -40,6 +40,8 @@ import requests
 from PIL import Image, ImageDraw, ImageFont
 import glob
 from collections import OrderedDict
+
+from multiprocessing.pool import ThreadPool
 
 logging.basicConfig(format='%(levelname)s: %(asctime)s - %(message)s',
                     level=logging.DEBUG, datefmt='%d.%m.%Y %I:%M:%S %p')
@@ -70,10 +72,11 @@ zonefont = ImageFont.truetype(FONT, size=FONTSIZE)
 
 CLASSIFY_ZONES = app.config['CLASSIFY_ZONES']
 
-app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379/0'
-app.config['CELERY_RESULT_BACKEND'] = 'redis://localhost:6379/0'
+app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379/2'
+app.config['CELERY_RESULT_BACKEND'] = 'redis://localhost:6379/2'
 
 TMPDIR = app.config['TEMPDIR']
+
 
 if CLASSIFY_ZONES:
     with open("cropsettings.yaml", 'r') as stream:
@@ -123,7 +126,7 @@ def get_zones():
 
 
 @celery.task
-def crop_zones(results, cam_names, cam_positions):
+def crop_zones(results, cam_names, cam_positions, cam_zones, cam_numsamples, cam_skipsamples):
     zones = get_zones()
     results_data = []
     with tempfile.TemporaryDirectory(dir=TMPDIR) as temp_dir:
@@ -134,27 +137,54 @@ def crop_zones(results, cam_names, cam_positions):
 
         if all([cam_names, cam_positions]):
             cam_names = [x.strip() for x in cam_names.split(",")]
-            cam_positions = [x.strip() for x in cam_positions.split(",")]
-            for d in results:
-                for p in d['pictures']:
-                    ts = parser.isoparse(d['ts']).strftime("%d-%m-%Y_%H-%M")
-                    camname, position, _  = p['label'].split(" ", 2)
-                    if camname in cam_names and position in cam_positions:
-                        app.logger.debug(f"Filtering results {camname}, {position}, {ts}")
-                        prefix = f"{camname}-{position}-{ts}"
+            cam_positions = [int(x.strip()) for x in cam_positions.split(",")]
+            cam_zones = ["zone{}".format(x.strip()) for x in cam_zones.split(",")]
+            if cam_skipsamples:
+                cam_skipsamples = int(cam_skipsamples)
+            if cam_numsamples:
+                cam_numsamples = int(cam_numsamples)
             
-                        # Saving original_file
-                        orig_fpath = os.path.join(current_app.config['FILE_PATH'], p['original'])
-                        orig_newpath = os.path.join(temp_dir, prefix+".jpg")
-                        original = Image.open(orig_fpath)
-                        original.save(orig_newpath, 'JPEG', quality=100)
-                        app.logger.debug(f"Saving file {orig_newpath}")
-                        for z in zones.keys():
-                            cropped = original.crop((zones[z]['left'], zones[z]['top'], zones[z]['right'], zones[z]['bottom']))
-                            cropped_path = os.path.join(temp_dir, f"{camname}-{position}-{z}-{ts}" + ".jpg")
-                            cropped.save(cropped_path, 'JPEG', quality=100)
-                            app.logger.debug(f"Saving file {cropped_path}")
-                    
+            prev_date = None
+            sample = 0
+            for d in results:
+                if d['lux'] > 10:
+                    ts = parser.isoparse(d['ts']).strftime("%d-%m-%Y_%H-%M")
+                    sdate = parser.isoparse(d['ts']).strftime("%d-%m-%Y")
+                    app.logger.debug([d['ts'], ts, sample, len(d['cameras']), ])
+                    if len(d['cameras']) > 0:
+                        if prev_date == sdate:
+                            sample = sample + 1
+                        else:
+                            sample = 0
+                        if cam_numsamples and sample < cam_numsamples:
+                            app.logger.debug(f"DAY {ts} SAMPLE {sample}")
+
+                            for cam in d['cameras']:
+                                if cam['camlabel'] in cam_names:
+                                    camname = cam['camlabel']
+                                    pos = cam['positions'][0]
+                                    for pos in cam['positions']:
+                                        if pos['poslabel'] in cam_positions:
+                                            position = str(pos['poslabel'])
+                                            if len(pos['pictures']) > 0:
+                                                p = pos['pictures'][-1]
+                                                #app.logger.debug(f"Filtering results {camname}, {position}, {ts}")
+                                                prefix = f"{camname}-{position}-{ts}"
+                                                # Saving original_file
+                                                p['original'] = p['original'].replace('https://plantdata.fermata.tech:5498/api/v1/p/', '')
+                                                orig_fpath = os.path.join(current_app.config['FILE_PATH'], p['original'])
+                                                orig_newpath = os.path.join(temp_dir, prefix+".jpg")
+                                                original = Image.open(orig_fpath)
+                                                original.save(orig_newpath, 'JPEG', quality=100)
+                                                #app.logger.debug(f"Saving file {orig_newpath}")
+                                                for z in zones.keys():
+                                                    if z in cam_zones:
+                                                        cropped = original.crop((zones[z]['left'], zones[z]['top'], zones[z]['right'], zones[z]['bottom']))
+                                                        cropped_path = os.path.join(temp_dir, f"{camname}-{position}-{z}-{ts}" + ".jpg")
+                                                        cropped.save(cropped_path, 'JPEG', quality=100)
+                                                        app.logger.debug(f"Saving file {cropped_path}")
+                    prev_date = sdate
+                                    
         zfname = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-") + '-cropped_zones.zip'
         zipname = os.path.join(temp_dir, zfname)
         zipf = zipfile.ZipFile(zipname, 'w', zipfile.ZIP_DEFLATED)
@@ -245,9 +275,6 @@ def verify_password(username_or_token, password):
     g.user = user
     return True
 
-
-#@cross_origin(origin=='localhost',headers=['Content- Type','Authorization'])
-#@cross_origin(supports_credentials=True)
 @token_required
 def access_picture(path):
     print("PATH")
@@ -260,11 +287,17 @@ def access_picture(path):
     return response
 
 
-def parse_request_pictures(req_files, user_login, sensor_uuid):
+def process_single_file(uplname, pict):
+    app.logger.debug("SAVE FILE")
+    
+# TODO: async
+# process_single_picture
+# process_single_zone
+
+def parse_request_pictures(req_files, camname, camposition, user_login, sensor_uuid):
     picts = []
     
     for uplname in sorted(request.files):
-        app.logger.debug("SAVE FILE")
 
         pict = request.files.get(uplname)
         fpath = os.path.join(current_app.config['FILE_PATH'], user_login, sensor_uuid)
@@ -291,6 +324,8 @@ def parse_request_pictures(req_files, user_login, sensor_uuid):
         original.save(origpath)
         
         imglabel = uplname
+        app.logger.debug(["UPLNAME", uplname])
+        classification_results = ""
         app.logger.debug("FILE SAVED")
         if CLASSIFY_ZONES and CF_TOKEN:
             # zones = CROP_SETTINGS.get(uplname, None)
@@ -323,11 +358,17 @@ def parse_request_pictures(req_files, user_login, sensor_uuid):
                     
                 imglabel = imglabel + " Results: {}".format(", ".join(responses))
         # Thumbnails 
-        original.thumbnail((400, 400), Image.ANTIALIAS)
-        original.save(thumbpath, FORMAT, quality=100)
-                        
-        newpicture = DataPicture(fpath=partpath, label=imglabel, thumbnail=partthumbpath, original=partorigpath)
+        original.thumbnail((300, 300), Image.ANTIALIAS)
+        original.save(thumbpath, FORMAT, quality=90)
+        app.logger.debug(["CAMERA TO PICT", camposition.camera.camlabel, camposition.poslabel, imglabel])
+        newpicture = DataPicture(fpath=partpath,
+                                 label=imglabel,
+                                 thumbnail=partthumbpath,
+                                 original=partorigpath,
+                                 results=classification_results,
+        )
         db.session.add(newpicture)
+        camposition.pictures.append(newpicture)
         db.session.commit()
         picts.append(newpicture)
         app.logger.debug("NEW PICTURE ADDED")
@@ -360,6 +401,25 @@ class UserSchema(ma.ModelSchema):
         model = User
 
         
+class CameraOnlySchema(ma.ModelSchema):
+    class Meta:
+        model = Camera
+        exclude = ['positions', ]
+    # positions = ma.Nested("CameraPositionSchema", many=True, exclude=["camera", "url"])#, exclude=['camera',])
+
+class CameraSchema(ma.ModelSchema):
+    class Meta:
+        model = Camera
+    positions = ma.Nested("CameraPositionSchema", many=True, exclude=["camera", "url"])#, exclude=['camera',])
+
+    
+        
+class CameraPositionSchema(ma.ModelSchema):
+    class Meta:
+        model = CameraPosition
+    pictures = ma.Nested("DataPictureSchema", many=True, exclude=["camera_position", "data", "thumbnail"])#, many=False, exclude=['thumbnail', 'camera', 'camera_position', 'data'])
+    #image = ma.Function(lambda obj: obj.image)
+    
 class SensorSchema(ma.ModelSchema):
     class Meta:
         model = Sensor
@@ -371,9 +431,26 @@ class SensorSchema(ma.ModelSchema):
 class DataPictureSchema(ma.ModelSchema):
     class Meta:
         model = DataPicture
+        
+    preview = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.thumbnail, _external=True, _scheme='https')))
+    fpath = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.fpath, _external=True, _scheme='https')))
+    original = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.original, _external=True, _scheme='https')))
+    
+    # "fpath"
+    # "label"
+    # "original"
+    # "preview"
+    
+    
+class DPictureSchema(ma.ModelSchema):
+    class Meta:
+        model = DataPicture
+        
     preview = ma.Function(lambda obj: obj.thumbnail if obj.thumbnail and os.path.exists(os.path.join(current_app.config['FILE_PATH'], obj.thumbnail)) else obj.fpath)
 
-        
+    #
+    #camera_position = ma.Nested("CameraPositionSchema", many=True, exclude=['pictures', 'data', 'sensor', ''])
+    
 class LocationSchema(ma.ModelSchema):
     class Meta:
         model = Location
@@ -382,7 +459,20 @@ class LocationSchema(ma.ModelSchema):
 class DataSchema(ma.ModelSchema):
     class Meta:
         model = Data
-    pictures = ma.Nested("DataPictureSchema", many=True, exclude=['thumbnail',])
+        exclude = ['pictures', ]
+    # pictures = ma.Nested("DPictureSchema", many=True, exclude=['thumbnail', 'data'])
+    cameras = ma.Nested("CameraOnlySchema", many=True, exclude=["data",])#, exclude=['pictures', 'data', 'sensor'])
+    # images = ma.Function(lambda obj: obj.images)
+
+    
+class FullDataSchema(ma.ModelSchema):
+    class Meta:
+        model = Data
+        exclude = ['pictures', ]
+    # pictures = ma.Nested("DPictureSchema", many=True, exclude=['thumbnail', 'data'])
+    cameras = ma.Nested("CameraSchema", many=True, exclude=["data",])#, exclude=['pictures', 'data', 'sensor'])
+    # images = ma.Function(lambda obj: obj.images)
+
 
     
 class PictAPI(Resource):
@@ -397,8 +487,6 @@ class PictAPI(Resource):
     #@token_required
     @cross_origin()
     def get(self, path):
-        app.logger.debug(request.cookies)
-        app.logger.debug(request.headers)
         auth_cookie = request.cookies.get("auth", "")
         auth_headers = request.headers.get('Authorization', '').split()
         if len(auth_headers) > 0:
@@ -422,12 +510,30 @@ class PictAPI(Resource):
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Content-Type'] = 'image/jpeg'
         return response
+
+    
+class CameraAPI(Resource):
+    def __init__(self):
+        self.schema = CameraSchema()
+        self.method_decorators = []
+    
+    def options(self, *args, **kwargs):
+        return jsonify([])
+
+    @token_required
+    @cross_origin()
+    def get(self, id):
+        camera = db.session.query(Camera).filter(Camera.id==id).first()
+        if camera:
+            return jsonify(self.schema.dump(camera).data), 200
+        return abort(404)
     
     
 class StatsAPI(Resource):
     def __init__(self):
         self.schema = DataSchema()
         self.m_schema = DataSchema(many=True)
+        self.f_schema = FullDataSchema(many=True)
         self.method_decorators = []
         
     def options(self, *args, **kwargs):
@@ -469,9 +575,12 @@ class StatsAPI(Resource):
         fill_date = request.args.get('fill_date', False)
         export_zones = request.args.get('export_zones', False)
         export_data = request.args.get('export', False)
+        full_data = request.args.get('full_data', False)
         cam_names = request.args.get('cam_names', False)
         cam_positions = request.args.get('cam_positions', False)
-        
+        cam_zones = request.args.get('cam_zones', False)
+        cam_numsamples = request.args.get('cam_numsamples', False)
+        cam_skipsamples = request.args.get('cam_skipsamples', False)
         data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         daystart = dayend = None
         # By default show data for the last recorded day
@@ -546,7 +655,7 @@ class StatsAPI(Resource):
                     
                     res_data = sensordata_query.filter(Data.pictures.any()).all()
                     
-                    crop_zones.delay(self.m_schema.dump(res_data).data, cam_names, cam_positions)
+                    crop_zones.delay(self.f_schema.dump(res_data).data, cam_names, cam_positions, cam_zones, cam_numsamples, cam_skipsamples)
                     
                     res = {"numrecords": len(res_data),
                            'mindate': first_rec_day,
@@ -556,10 +665,15 @@ class StatsAPI(Resource):
                     return jsonify(res), 200
                     
                 else:
+                    if full_data:
+                        data = self.f_schema.dump(sensordata).data
+                    else:
+                        data = self.m_schema.dump(sensordata).data
+                        
                     res = {"numrecords": len(sensordata),
                            'mindate': first_rec_day,
                            'maxdate': last_rec_day,
-                           'data': self.m_schema.dump(sensordata).data
+                           'data': data
                     }
                     return jsonify(res), 200
 
@@ -599,7 +713,7 @@ class StatsAPI(Resource):
             co2 = int(request.form.get("CO2"))
             ts = request.form.get("ts")
             
-            picts = parse_request_pictures(request.files, user.login, sensor.uuid)
+            # picts = parse_request_pictures(request.files, user.login, sensor.uuid)
             
             newdata = Data(sensor_id=sensor.id,
                            wght0 = wght0,
@@ -618,13 +732,14 @@ class StatsAPI(Resource):
                            soilmoist = soilmoist,
                            co2 = co2
             )
-            app.logger.debug("New data saved")
             db.session.add(newdata)
             db.session.commit()
-            for p in picts:
-                p.data_id = newdata.id
-                db.session.add(p)
-                db.session.commit()
+            app.logger.debug(["New data saved", newdata.id])
+                        
+            # for p in picts:
+            #    p.data_id = newdata.id
+            #    db.session.add(p)
+            #    db.session.commit()
         app.logger.debug(["REQUEST", request.json, user.login, sensor.uuid])
             
         return jsonify(self.schema.dump(newdata).data), 201
@@ -639,6 +754,13 @@ class StatsAPI(Resource):
         token = auth_headers[1]
         udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         user = User.query.filter_by(login=udata['sub']).first()
+        # If there's no registered CAMNAME & CAMPOSITION for a given data.uuid
+        # add new camera & position
+        # >>>
+        camname = request.form.get("camname")
+        camposition = request.form.get("camposition")
+        camera_position = None
+        app.logger.debug(["CAMERA DB:", camname, camposition])
         if not user:
             abort(403)
             
@@ -647,8 +769,21 @@ class StatsAPI(Resource):
             sensor = data.sensor
             if sensor.user != user:
                 abort(403)
-            picts = parse_request_pictures(request.files, user.login, sensor.uuid)
-            app.logger.debug(picts)
+            camera = db.session.query(Camera).join(Data).filter(Data.id == data.id).filter(Camera.camlabel == camname).first()
+            if not camera:
+                camera = Camera(data=data, camlabel=camname)
+                db.session.add(camera)
+                db.session.commit()
+                
+            camera_position = db.session.query(CameraPosition).join(Camera).filter(Camera.id == camera.id).filter(CameraPosition.poslabel == camposition).first()
+            if not camera_position:
+                camera_position = CameraPosition(camera=camera, poslabel=camposition)
+                db.session.add(camera_position)
+                db.session.commit()
+
+            app.logger.debug(["DB CAMERA", camera.camlabel, camera_position.poslabel])
+            # data.cameras.append(camera)
+            picts = parse_request_pictures(request.files, camera, camera_position, user.login, sensor.uuid)
             if picts:
                 for p in picts:
                     data.pictures.append(p)
@@ -828,9 +963,11 @@ class UserAPI(Resource):
 
         
 api.add_resource(UserAPI, '/users', '/users/<int:id>', endpoint='users')
+api.add_resource(CameraAPI, '/cameras/<int:id>', endpoint='cameras')
 api.add_resource(StatsAPI, '/data', '/data/<int:id>', endpoint='savedata')
 api.add_resource(SensorAPI, '/sensors', '/sensors/<int:id>', endpoint='sensors')
 api.add_resource(PictAPI, "/p/<path:path>", endpoint="picts")
+
 
 @app.cli.command()
 @click.option('--login',  help='user@mail.com')
