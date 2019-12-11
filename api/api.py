@@ -362,7 +362,9 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
                                          
                 original.save(fullpath)
                     
-                imglabel = imglabel + " Results: {}".format(", ".join(responses))
+                classification_results = "Results: {}".format(", ".join(responses))
+                imglabel = imglabel + " " + classification_results
+                
         # Thumbnails 
         original.thumbnail((300, 300), Image.ANTIALIAS)
         original.save(thumbpath, FORMAT, quality=90)
@@ -795,7 +797,6 @@ class StatsAPI(Resource):
                     data.pictures.append(p)
             db.session.add(data)
             db.session.commit()
-            
             return jsonify(self.schema.dump(data).data)
         abort(404)
     
