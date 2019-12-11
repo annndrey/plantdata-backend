@@ -5,6 +5,7 @@ from functools import wraps
 from flask import Flask, g, make_response, request, current_app, send_file, url_for
 from flask_restful import Resource, Api, reqparse, abort, marshal_with
 from flask.json import jsonify
+from flasgger import Swagger
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import or_, desc
@@ -41,6 +42,8 @@ from PIL import Image, ImageDraw, ImageFont
 import glob
 from collections import OrderedDict
 
+
+
 from multiprocessing.pool import ThreadPool
 
 logging.basicConfig(format='%(levelname)s: %(asctime)s - %(message)s',
@@ -48,7 +51,7 @@ logging.basicConfig(format='%(levelname)s: %(asctime)s - %(message)s',
 
 app = Flask(__name__)
 cors = CORS(app, resources={r"/*": {"origins": "*"}}, methods=['GET', 'POST', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'])
-api = Api(app, prefix="/api/v1")
+api = Api(app, prefix="/api/v2")
 auth = HTTPBasicAuth()
 app.config.from_envvar('APPSETTINGS')
 app.config['PROPAGATE_EXCEPTIONS'] = True
@@ -59,6 +62,41 @@ ma = Marshmallow(app)
 gunicorn_logger = logging.getLogger('gunicorn.error')
 app.logger.handlers = gunicorn_logger.handlers
 app.logger.setLevel(gunicorn_logger.level)
+
+
+app.config['SWAGGER'] = {
+    'uiversion': 3
+}
+swtemplate = {
+    "info": {
+        "title": "Plantdata API",
+        "description": "Plantdata API is a service to collect "
+        "and monitor plant conditions across multiple remote sensors",
+        "version": "2",
+    },
+    "schemes": [
+        "https"
+    ]
+}
+
+swagger_config = {
+    "headers": [
+    ],
+    "specs": [
+        {
+            "endpoint": 'apidescr',
+            "route": '/apidescr.json',
+            "rule_filter": lambda rule: True, 
+            "model_filter": lambda tag: True,
+        }
+    ],
+    "static_url_path": "/flasgger_static",
+    "swagger_ui": True,
+    "specs_route": "/docs/",
+    'uiversion': 3
+}
+
+swagger = Swagger(app, config=swagger_config, template=swtemplate)
 
 
 CF_LOGIN = app.config['CF_LOGIN']
@@ -177,7 +215,7 @@ def crop_zones(results, cam_names, cam_positions, cam_zones, cam_numsamples, cam
                                                 #app.logger.debug(f"Filtering results {camname}, {position}, {ts}")
                                                 prefix = f"{camname}-{position}-{ts}"
                                                 # Saving original_file
-                                                p['original'] = p['original'].replace('https://plantdata.fermata.tech:5498/api/v1/p/', '')
+                                                p['original'] = p['original'].replace('https://plantdata.fermata.tech:5498/api/v2/p/', '')
                                                 orig_fpath = os.path.join(current_app.config['FILE_PATH'], p['original'])
                                                 orig_newpath = os.path.join(temp_dir, prefix+".jpg")
                                                 original = Image.open(orig_fpath)
@@ -381,9 +419,41 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
     return picts
 
 
-@app.route('/api/v1/token', methods=['POST'])
+#@app.route('/api/v1/token', methods=['POST'])
+@app.route('/api/v2/token', methods=['POST'])
 @cross_origin(supports_credentials=True)
 def get_auth_token_post():
+    """Access Token API
+    ---
+    tags: [Authentication,]
+    parameters:
+      - name: username
+        in: body
+        required: true
+      - name: password
+        in: body
+        required: true
+    responses:
+      200:
+        description: User is authorised
+        schema:
+          id: Token
+          properties:
+            username:
+              type: string
+              description: User's login, in email format.
+              default: "newuser@site.com"
+            user_id:
+              type: integer
+              description: User ID.
+              default: 1
+            token:
+              type: string
+              description: JWT Auth token
+      401:
+        description: UNAUTHORIZED
+    """
+    
     username = request.json.get('username')
     password = request.json.get('password')
     user = User.query.filter_by(login = username).first()
@@ -395,7 +465,8 @@ def get_auth_token_post():
     abort(404)
 
 
-@app.route('/api/v1/token', methods=['GET'])
+#@app.route('/api/v1/token', methods=['GET'])
+@app.route('/api/v2/token', methods=['GET'])
 def get_auth_token():
     token = g.user.generate_auth_token()
     return jsonify({ 'token': "%s" % token })
@@ -417,7 +488,6 @@ class CameraSchema(ma.ModelSchema):
     class Meta:
         model = Camera
     positions = ma.Nested("CameraPositionSchema", many=True, exclude=["camera", "url"])#, exclude=['camera',])
-
     
         
 class CameraPositionSchema(ma.ModelSchema):
@@ -493,6 +563,32 @@ class PictAPI(Resource):
     #@token_required
     @cross_origin()
     def get(self, path):
+        """
+        Get picture
+        ---
+        tags: [Pictures,]
+        parameters:
+         - in: path
+           name: path
+           type: string
+           required: true
+           description: image path
+        definitions:
+          Picture:
+            type: string
+            description: Picture URL
+            
+        responses:
+          200:
+            description: Picture URL
+            schema:
+               $ref: '#/definitions/Picture'
+          401:
+            description: Not authorized
+          404:
+            description: URL not found
+        """
+        
         auth_cookie = request.cookies.get("auth", "")
         auth_headers = request.headers.get('Authorization', '').split()
         if len(auth_headers) > 0:
@@ -500,7 +596,7 @@ class PictAPI(Resource):
         elif len(auth_cookie) > 0:
             token = auth_cookie
         else:
-            abort(403)
+            abort(401)
             
         data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         user = User.query.filter_by(login=data['sub']).first()
@@ -529,6 +625,79 @@ class CameraAPI(Resource):
     @token_required
     @cross_origin()
     def get(self, id):
+        """
+        Get camera data
+        ---
+        tags: [Cameras,]
+        parameters:
+         - in: path
+           name: id
+           type: integer
+           required: true
+           description: Camera ID
+        definitions:
+          Camera:
+            type: object
+            description: Camera data
+            properties:
+              id:
+                type: integer
+                description: Camera ID
+              camlabel:
+                type: string
+                description: Camera label
+              positions:
+                type: array
+                description: A list of camera positions
+                items:
+                  type: object
+                  description: Camera position
+                  properties:
+                    id: 
+                      type: integer
+                      description: Camera Position ID
+                    poslabel: 
+                      type: string
+                      description: Camera Position Label
+                    pictures: 
+                      type: array
+                      items: 
+                        type: object
+                        description: Picture
+                        properties:
+                          id:
+                            type: integer
+                            description: Picture ID
+                          fpath:
+                            type: string
+                            description: Picture URL
+                          thumbnail:
+                            type: string
+                            description: Picture thumbnail
+                          label:
+                            type: string
+                            description: Picture label
+                          original:
+                            type: string
+                            description: Picture Original URL
+                          results:
+                            type: string
+                            description: Picture recognition results
+                          ts:
+                            type: string
+                            format: date-time
+                            description: Picture timestamp
+        responses:
+          200:
+            description: Camera data
+            schema:
+               $ref: '#/definitions/Camera'
+          401:
+            description: Not authorized
+          404:
+            description: URL not found
+        """
+        
         camera = db.session.query(Camera).filter(Camera.id==id).first()
         if camera:
             return jsonify(self.schema.dump(camera).data), 200
@@ -699,7 +868,7 @@ class StatsAPI(Resource):
         user = User.query.filter_by(login=udata['sub']).first()
         suuid = request.form.get('uuid')
         sensor = db.session.query(Sensor).filter(Sensor.uuid == suuid).first()
-      
+        # TODO -> Change to the new format
         if sensor:
             if sensor.user != user:
                 abort(403)
@@ -720,7 +889,15 @@ class StatsAPI(Resource):
             ts = request.form.get("ts")
             
             # picts = parse_request_pictures(request.files, user.login, sensor.uuid)
-            
+            # New format:
+            #{'uuid': 'sensor_id',
+            # 'ts': 'timestamp',
+            # 'data': { {'uuid':'probe_unique_id', 'ptype': 'temp', 'label': 'TEMP1', 'value': 23.5},
+            #           {}
+            #           ...
+            #           }
+            # 
+            #}
             newdata = Data(sensor_id=sensor.id,
                            wght0 = wght0,
                            wght1 = wght1,
@@ -775,6 +952,7 @@ class StatsAPI(Resource):
             sensor = data.sensor
             if sensor.user != user:
                 abort(403)
+            # Surely there's no camera for data.id. We should replace data.id with a sensor id.  
             camera = db.session.query(Camera).join(Data).filter(Data.id == data.id).filter(Camera.camlabel == camname).first()
             if not camera:
                 camera = Camera(data=data, camlabel=camname)

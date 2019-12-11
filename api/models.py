@@ -27,10 +27,6 @@ data_cameras = db.Table('data_cameras', db.Model.metadata,
                           db.Column('camera_id', db.Integer, db.ForeignKey('camera.id'))
 )
 
-
-
-
-    
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     login = db.Column(db.String(400))
