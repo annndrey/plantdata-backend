@@ -26,6 +26,10 @@ import zipfile
 import urllib.parse
 from celery import Celery
 
+# caching
+from flask_caching import Cache
+import urllib.parse
+
 import click
 import datetime
 import calendar
@@ -63,6 +67,20 @@ gunicorn_logger = logging.getLogger('gunicorn.error')
 app.logger.handlers = gunicorn_logger.handlers
 app.logger.setLevel(gunicorn_logger.level)
 
+
+REDIS_HOST = app.config.get('REDIS_HOST', 'localhost')
+REDIS_PORT = app.config.get('REDIS_PORT', 6379)
+REDIS_DB = app.config.get('REDIS_DB', 0)
+CACHE_DB = app.config.get('CACHE_DB', 1)
+
+cache = Cache(app, config={
+    'CACHE_TYPE': 'redis',
+    'CACHE_KEY_PREFIX': 'fcache',
+    'CACHE_REDIS_HOST': REDIS_HOST,
+    'CACHE_REDIS_PORT': REDIS_PORT,
+    'CACHE_REDIS_DB'  : REDIS_DB,
+    'CACHE_REDIS_URL': 'redis://{}:{}/{}'.format(REDIS_HOST, REDIS_PORT, REDIS_DB)
+})
 
 app.config['SWAGGER'] = {
     'uiversion': 3
@@ -110,10 +128,6 @@ zonefont = ImageFont.truetype(FONT, size=FONTSIZE)
 
 CLASSIFY_ZONES = app.config['CLASSIFY_ZONES']
 
-REDIS_HOST= app.config['REDIS_HOST']
-REDIS_PORT= app.config['REDIS_PORT']
-REDIS_DB= app.config['REDIS_DB']
-
 app.config['CELERY_BROKER_URL'] = 'redis://{}:{}/{}'.format(REDIS_HOST, REDIS_PORT, REDIS_DB)
 app.config['CELERY_RESULT_BACKEND'] = 'redis://{}:{}/{}'.format(REDIS_HOST, REDIS_PORT, REDIS_DB)
 
@@ -127,6 +141,15 @@ if CLASSIFY_ZONES:
         except yaml.YAMLError as exc:
             app.logger.debug(exc)
 
+
+def cache_key():
+   args = request.args
+   key = request.path + '?' + urllib.parse.urlencode([
+     (k, v) for k in sorted(args) for v in sorted(args.getlist(k))
+   ])
+   return key
+
+            
 
 def make_celery(app):
     celery = Celery(app.import_name, broker=app.config['CELERY_BROKER_URL'])
@@ -739,7 +762,81 @@ class StatsAPI(Resource):
     
     @token_required
     @cross_origin()
+    @cache.cached(timeout=60, key_prefix=cache_key)
     def get(self):
+        """
+        Get sensors data
+        ---
+        tags: [Sensors,]
+        parameters:
+         - in: path
+           name: uuid
+           type: integer
+           required: false
+           description: Sensor UUID
+        definitions:
+          Camera:
+            type: object
+            description: Camera data
+            properties:
+              id:
+                type: integer
+                description: Camera ID
+              camlabel:
+                type: string
+                description: Camera label
+              positions:
+                type: array
+                description: A list of camera positions
+                items:
+                  type: object
+                  description: Camera position
+                  properties:
+                    id: 
+                      type: integer
+                      description: Camera Position ID
+                    poslabel: 
+                      type: string
+                      description: Camera Position Label
+                    pictures: 
+                      type: array
+                      items: 
+                        type: object
+                        description: Picture
+                        properties:
+                          id:
+                            type: integer
+                            description: Picture ID
+                          fpath:
+                            type: string
+                            description: Picture URL
+                          thumbnail:
+                            type: string
+                            description: Picture thumbnail
+                          label:
+                            type: string
+                            description: Picture label
+                          original:
+                            type: string
+                            description: Picture Original URL
+                          results:
+                            type: string
+                            description: Picture recognition results
+                          ts:
+                            type: string
+                            format: date-time
+                            description: Picture timestamp
+        responses:
+          200:
+            description: Camera data
+            schema:
+               $ref: '#/definitions/Camera'
+          401:
+            description: Not authorized
+          404:
+            description: URL not found
+        """
+        
         # here the data should be scaled or not
         suuid = request.args.get('uuid', None)
         dataid = request.args.get('dataid', None)

@@ -14,3 +14,4 @@ TEMPDIR = "/path/to/temp/dir"
 REDIS_HOST = "localhost"
 REDIS_PORT = 6379
 REDIS_DB = 3
+CACHE_DB = 4
