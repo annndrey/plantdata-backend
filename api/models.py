@@ -163,7 +163,6 @@ class Data(db.Model):
     lux = db.Column(db.Integer)
     soilmoist = db.Column(db.Integer)
     co2 = db.Column(db.Integer)
-    fpath = db.Column(db.Text())
 
     
 class DataPicture(db.Model):
