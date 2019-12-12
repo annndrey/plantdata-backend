@@ -762,7 +762,7 @@ class StatsAPI(Resource):
     
     @token_required
     @cross_origin()
-    @cache.cached(timeout=60, key_prefix=cache_key)
+    #@cache.cached(timeout=60, key_prefix=cache_key)
     def get(self):
         """
         Get sensors data
@@ -770,67 +770,137 @@ class StatsAPI(Resource):
         tags: [Sensors,]
         parameters:
          - in: path
+           name: id
+           type: integer
+           required: false
+           description: Data ID
+         - in: query
            name: uuid
            type: integer
            required: false
            description: Sensor UUID
+         - in: query
+           name: export_zones
+           type: boolean
+           required: false
+           description: Export zones flag. If true, the crop_zones task would be triggered
+         - in: query
+           name: full_data
+           type: boolean
+           required: false
+           description: Full data flag. If true, data would be shown with all captured pictures
+         - in: query
+           name: cam_names
+           type: string
+           required: false
+           default: CAM1,CAM2
+           description: A comma-separated list of camera names to include when export zones
+         - in: query
+           name: cam_positions
+           type: string
+           required: false
+           default: 1,2,3
+           description: A comma-separated list of camera positions to include when export zones
+         - in: query
+           name: cam_numsamples
+           type: integer
+           required: false
+           default: 1
+           description: Number of samples to export, for export zones task
+         - in: query
+           name: cam_zones
+           type: string
+           required: false
+           default: 1,2,3
+           description: A comma-separated list of camera zones to include when export zones
         definitions:
-          Camera:
+          SensorData:
             type: object
-            description: Camera data
+            description: SensorData
             properties:
-              id:
+              numrecords:
                 type: integer
-                description: Camera ID
-              camlabel:
+                description: Number of records for a particular sensor
+              mindate:
                 type: string
-                description: Camera label
-              positions:
+                format: date-time
+                description: The earliest record date 
+              maxdate:
+                type: string
+                format: date-time
+                description: The latest record date 
+              data:
                 type: array
-                description: A list of camera positions
+                description: Data records for the specified sensor
                 items:
                   type: object
-                  description: Camera position
+                  description: A single data record
                   properties:
                     id: 
                       type: integer
-                      description: Camera Position ID
-                    poslabel: 
+                      description: Data ID
+                    ts: 
                       type: string
-                      description: Camera Position Label
-                    pictures: 
+                      format: date-time
+                      description: Data record timestamp
+                    cameras: 
                       type: array
                       items: 
                         type: object
-                        description: Picture
+                        description: Camera data
                         properties:
-                          id:
-                            type: integer
-                            description: Picture ID
-                          fpath:
-                            type: string
-                            description: Picture URL
-                          thumbnail:
-                            type: string
-                            description: Picture thumbnail
-                          label:
-                            type: string
-                            description: Picture label
-                          original:
-                            type: string
-                            description: Picture Original URL
-                          results:
-                            type: string
-                            description: Picture recognition results
-                          ts:
-                            type: string
-                            format: date-time
-                            description: Picture timestamp
+                         id:
+                           type: integer
+                           description: Camera ID
+                         camlabel:
+                           type: string
+                           description: Camera label
+                         positions:
+                           type: array
+                           description: A list of camera positions
+                           items:
+                             type: object
+                             description: Camera position
+                             properties:
+                               id: 
+                                 type: integer
+                                 description: Camera Position ID
+                               poslabel: 
+                                 type: string
+                                 description: Camera Position Label
+                               pictures: 
+                                 type: array
+                                 items: 
+                                   type: object
+                                   description: Picture
+                                   properties:
+                                     id:
+                                       type: integer
+                                       description: Picture ID
+                                     fpath:
+                                       type: string
+                                       description: Picture URL
+                                     thumbnail:
+                                       type: string
+                                       description: Picture thumbnail
+                                     label:
+                                       type: string
+                                       description: Picture label
+                                     original:
+                                       type: string
+                                       description: Picture Original URL
+                                     results:
+                                       type: string
+                                       description: Picture recognition results
+                                     ts:
+                                       type: string
+                                       format: date-time
+                                       description: Picture timestamp
         responses:
           200:
-            description: Camera data
+            description: Sensor data
             schema:
-               $ref: '#/definitions/Camera'
+               $ref: '#/definitions/SensorData'
           401:
             description: Not authorized
           404:
