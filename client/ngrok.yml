@@ -1,8 +1,14 @@
-authtoken: [token here]
+authtoken: 1PaWgDZE0akGa2i9dGS7AFIYkI3_4RsuwcxxJrw2spzsAkVSu
+region: eu
 tunnels:
   ssh:
-    addr: 22
     proto: tcp
-  camera:
-    addr: [camera_ipaddr]:[camera_port]
+    addr: 22
+  cam1:
     proto: http
+    addr: 192.168.0.207
+    bind-tls: false
+  cam2:
+    proto: http
+    addr: 192.168.0.208
+    bind-tls: false

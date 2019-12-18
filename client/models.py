@@ -8,22 +8,22 @@ Base = declarative_base()
 
 # TODO Add Probe & ProbeData
 
-class Probe(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    uuid = db.Column(db.Text(), nullable=False)
-    data_id = db.Column(db.Integer, ForeignKey('sensor_data.id'))
-    data = relationship("SensorData", backref=backref("probes", uselist=True))
-    ptype = db.Column(db.String(200))
-    label = db.Column(db.String(200))
-    minvalue = db.Column(db.Numeric(precision=3))
-    maxvalue = db.Column(db.Numeric(precision=3))
+#class Probe(Base):
+#    id = Column(Integer, primary_key=True)
+#    uuid = Column(Text(), nullable=False)
+#    data_id = Column(Integer, ForeignKey('sensor_data.id'))
+#    data = relationship("SensorData", backref=backref("probes", uselist=True))
+#    ptype = Column(String(200))
+#    label = Column(String(200))
+#    minvalue = Column(Numeric(precision=3))
+#    maxvalue = Column(Numeric(precision=3))
 
 
-class ProbeData(db.Model):
-    d = db.Column(db.Integer, primary_key=True)
-    probe_id = db.Column(db.Integer, ForeignKey('probe.id'))
-    probe = relationship("Probe", backref=backref("values", uselist=True))
-    value = db.Column(db.Numeric(precision=3))
+#class ProbeData(Base):
+#    d = Column(Integer, primary_key=True)
+#    probe_id = Column(Integer, ForeignKey('probe.id'))
+#    probe = relationship("Probe", backref=backref("values", uselist=True))
+#    value = Column(Numeric(precision=3))
     
 
 class SensorData(Base):

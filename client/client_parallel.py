@@ -130,8 +130,9 @@ def send_patch_request(fname, flabel, fcamname, fcamposition, data_id, photo_id,
     logging.debug("SENDING PATCH REQUEST FOR {} {}".format(data_id, flabel))
     # send camera_name, camera position
     resp = requests.patch(SERVER_HOST.format(url_str), data={"camname": fcamname, "camposition": fcamposition}, headers=header, files=files)
+    logging.debug("PATCH RESPONSE STATUS CODE {}".format(resp.status_code))
     if resp.status_code == 200:
-        os.unlink(fname)
+        os.unlink(os.path.join("/home/pi", fname))
         session = Session()
         dbphoto = session.query(Photo).filter(Photo.photo_id == photo_id).first()
         if dbphoto:
