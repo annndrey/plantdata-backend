@@ -1418,9 +1418,9 @@ class StatsAPI(Resource):
         # >>>
         camname = request.form.get("camname")
         camposition = request.form.get("camposition")
-        recognize = request.form.get("recognize", True)
+        recognize = request.form.get("recognize", False)
         camera_position = None
-        app.logger.debug(["CAMERA DB:", camname, camposition])
+        app.logger.debug(["CAMERA DB:", camname, camposition, recognize])
         if not user:
             abort(403)
             
