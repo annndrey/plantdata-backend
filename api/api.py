@@ -792,7 +792,11 @@ class StatsAPI(Resource):
            name: export_zones
            type: boolean
            required: false
-           description: Export zones flag. If true, the crop_zones task would be triggered
+         - in: query
+           name: ignore_night_photos
+           type: boolean
+           required: false
+           description: Selech which photos would be exported, all or only those which are taken on light period
          - in: query
            name: full_data
            type: boolean
@@ -968,6 +972,7 @@ class StatsAPI(Resource):
         cam_positions = request.args.get('cam_positions', False)
         cam_zones = request.args.get('cam_zones', False)
         cam_numsamples = request.args.get('cam_numsamples', False)
+        ignore_night_photos = request.args.get('ignore_night_photos', False)
         cam_skipsamples = request.args.get('cam_skipsamples', False)
         data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         daystart = dayend = None
@@ -1040,7 +1045,9 @@ class StatsAPI(Resource):
                     return send_file(mem, mimetype='text/csv', attachment_filename="file.csv", as_attachment=True)
                 if export_zones:
                     app.logger.debug(f"EXPORT ZONES, {export_zones}")
-                    
+                    if ignore_night_photos:
+                        sensordata_query = sensordata_query.filter(Data.lux > 30)
+                        
                     res_data = sensordata_query.filter(Data.pictures.any()).all()
                     app.logger.debug(len(res_data))
                     crop_zones.delay(self.f_schema.dump(res_data).data, cam_names, cam_positions, cam_zones, cam_numsamples, cam_skipsamples)
