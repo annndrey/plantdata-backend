@@ -191,7 +191,7 @@ def get_zones():
 
 
 @celery.task
-def crop_zones(results, cam_names, cam_positions, cam_zones, cam_numsamples, cam_skipsamples):
+def crop_zones(results, cam_names, cam_positions, cam_zones, cam_numsamples, cam_skipsamples, label_text):
     zones = get_zones()
     results_data = []
     with tempfile.TemporaryDirectory(dir=TMPDIR) as temp_dir:
@@ -241,6 +241,9 @@ def crop_zones(results, cam_names, cam_positions, cam_zones, cam_numsamples, cam
                                                 p['original'] = p['original'].replace('https://plantdata.fermata.tech:5498/api/v2/p/', '')
                                                 orig_fpath = os.path.join(current_app.config['FILE_PATH'], p['original'])
                                                 orig_newpath = os.path.join(temp_dir, prefix+".jpg")
+                                                if label_text:
+                                                    if label_text not in p['label']:
+                                                        continue
                                                 original = Image.open(orig_fpath)
                                                 original.save(orig_newpath, 'JPEG', quality=100)
                                                 #app.logger.debug(f"Saving file {orig_newpath}")
@@ -796,7 +799,12 @@ class StatsAPI(Resource):
            name: ignore_night_photos
            type: boolean
            required: false
-           description: Selech which photos would be exported, all or only those which are taken on light period
+           description: Select which photos would be exported, all or only those which are taken on light period
+         - in: query
+           name: label_text
+           type: string
+           required: false
+           description: Selech only photos with label matching the search string
          - in: query
            name: full_data
            type: boolean
@@ -973,6 +981,8 @@ class StatsAPI(Resource):
         cam_zones = request.args.get('cam_zones', False)
         cam_numsamples = request.args.get('cam_numsamples', False)
         ignore_night_photos = request.args.get('ignore_night_photos', False)
+        label_text = request.args.get('label_text', False)
+
         cam_skipsamples = request.args.get('cam_skipsamples', False)
         data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         daystart = dayend = None
@@ -1050,7 +1060,7 @@ class StatsAPI(Resource):
                         
                     res_data = sensordata_query.filter(Data.pictures.any()).all()
                     app.logger.debug(len(res_data))
-                    crop_zones.delay(self.f_schema.dump(res_data).data, cam_names, cam_positions, cam_zones, cam_numsamples, cam_skipsamples)
+                    crop_zones.delay(self.f_schema.dump(res_data).data, cam_names, cam_positions, cam_zones, cam_numsamples, cam_skipsamples, label_text)
                     
                     res = {"numrecords": len(res_data),
                            'mindate': first_rec_day,
