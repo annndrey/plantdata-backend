@@ -802,6 +802,20 @@ class StatsAPI(Resource):
            required: false
            description: Select which photos would be exported, all or only those which are taken on light period
          - in: query
+           name: ts_from
+           type: string
+           format: date-time
+           example: "2017-01-01 10:21"
+           required: false
+           description: Return data starting from the given timestamp
+         - in: query
+           name: ts_to
+           type: string
+           format: date-time
+           example: "2017-01-01 10:21"
+           required: false
+           description: Return data before the given timestamp
+         - in: query
            name: label_text
            type: string
            required: false
@@ -971,8 +985,8 @@ class StatsAPI(Resource):
         dataid = request.args.get('dataid', None)
         auth_headers = request.headers.get('Authorization', '').split()
         token = auth_headers[1]
-        datefrom = request.args.get('datefrom', None)
-        dateto = request.args.get('dateto', None)
+        ts_from = request.args.get('ts_from', None)
+        ts_to = request.args.get('ts_to', None)
         fill_date = request.args.get('fill_date', False)
         export_zones = request.args.get('export_zones', False)
         export_data = request.args.get('export', False)
@@ -997,17 +1011,17 @@ class StatsAPI(Resource):
         if not dataid:
             first_rec_day = db.session.query(sql_func.min(Data.ts)).filter(Data.sensor.has(Sensor.uuid == suuid)).first()[0]
             last_rec_day = db.session.query(sql_func.max(Data.ts)).filter(Data.sensor.has(Sensor.uuid == suuid)).first()[0]
-            if not all([datefrom, dateto]):
+            if not all([ts_from, ts_to]):
                 if all([first_rec_day, last_rec_day]):
                     day_st = last_rec_day.replace(hour=0, minute=0)
                     day_end = last_rec_day.replace(hour=23, minute=59, second=59)
                 else:
                     abort(404)
             else:
-                day_st = datetime.datetime.strptime(datefrom, '%d-%m-%Y')
-                day_st = day_st.replace(hour=0, minute=0)
-                day_end = datetime.datetime.strptime(dateto, '%d-%m-%Y')
-                day_end = day_end.replace(hour=23, minute=59, second=59)
+                day_st = datetime.datetime.strptime(ts_from, '%d-%m-%Y %H:%M')
+                #day_st = day_st.replace(hour=0, minute=0)
+                day_end = datetime.datetime.strptime(ts_to, '%d-%m-%Y %H:%M')
+                #day_end = day_end.replace(hour=23, minute=59, second=59)
             
             sensordata_query = db.session.query(Data).join(Sensor).filter(Sensor.uuid == suuid).order_by(Data.ts).filter(Data.ts >= day_st).filter(Data.ts <= day_end)
             sensordata = sensordata_query.all()
