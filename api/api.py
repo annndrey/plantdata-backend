@@ -60,7 +60,6 @@ API_VERSION = app.config.get('API_VERSION', 1)
 cors = CORS(app, resources={r"/*": {"origins": "*"}}, methods=['GET', 'POST', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'])
 api = Api(app, prefix=f"/api/v{API_VERSION}")
 auth = HTTPBasicAuth()
-app.config.from_envvar('APPSETTINGS')
 app.config['PROPAGATE_EXCEPTIONS'] = True
 db.init_app(app)
 migrate = Migrate(app, db)
@@ -93,7 +92,7 @@ swtemplate = {
         "title": "Plantdata API",
         "description": "Plantdata API is a service to collect "
         "and monitor plant conditions across multiple remote sensors",
-        "version": "2",
+        "version": f"{API_VERSION}",
     },
     "schemes": [
         "https"
@@ -449,7 +448,6 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
     return picts
 
 
-#@app.route('/api/v1/token', methods=['POST'])
 @app.route(f'/api/v{API_VERSION}/token', methods=['POST'])
 @cross_origin(supports_credentials=True)
 def get_auth_token_post():
@@ -492,7 +490,7 @@ def get_auth_token_post():
             token = user.generate_auth_token()
             response = jsonify({ 'token': "%s" % token.decode('utf-8'), "user_id":user.id, "login": user.login, "name": user.name })
             return response
-    abort(404)
+    return make_response(jsonify({'error': 'Unauthorized access'}), 401)
 
 
 #@app.route('/api/v1/token', methods=['GET'])
