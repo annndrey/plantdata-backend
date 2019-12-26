@@ -364,7 +364,7 @@ def process_single_file(uplname, pict):
 # process_single_picture
 # process_single_zone
 
-def parse_request_pictures(req_files, camname, camposition, user_login, sensor_uuid):
+def parse_request_pictures(req_files, camname, camposition, user_login, sensor_uuid, recognize):
     picts = []
     
     for uplname in sorted(request.files):
@@ -397,32 +397,33 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
         app.logger.debug(["UPLNAME", uplname])
         classification_results = ""
         app.logger.debug("FILE SAVED")
-        if CLASSIFY_ZONES and CF_TOKEN:
-            # zones = CROP_SETTINGS.get(uplname, None)
-            zones = get_zones()
-            cf_headers = {'Authorization': 'Bearer ' + CF_TOKEN}
-            # 2592x1944
-            if zones:
-                responses = []
-                #original = Image.open(fullpath)
-                for z in zones.keys():
-                    cropped = original.crop((zones[z]['left'], zones[z]['top'], zones[z]['right'], zones[z]['bottom']))
-                    img_io = io.BytesIO()
-                    cropped.save(img_io, FORMAT, quality=100)
-                    img_io.seek(0)
-                    dr = ImageDraw.Draw(original)
-                    dr.rectangle((zones[z]['left'], zones[z]['top'], zones[z]['right'], zones[z]['bottom']), outline = '#fbb040', width=3)
-                    dr.text((zones[z]['left'], zones[z]['top']), z, font=zonefont)
-                    # Now take an original image, crop the zones, send it to the
-                    # CF server and get back the response for each
-                    # Draw rectangle zones on the original image & save it
-                    # Modify the image lzbel with zones results
-                    # send CF request
-                    response = requests.post(CF_HOST.format("loadimage"), headers=cf_headers, files = {'croppedfile': img_io}, data={'index':0, 'filename': ''})
-                    if response.status_code == 200:
-                        responses.append("{}: {}".format(z, response.json().get('objtype')))
-                    else:
-                        responses.append("{}".format(z))
+        if recognize:
+            if CLASSIFY_ZONES and CF_TOKEN:
+                # zones = CROP_SETTINGS.get(uplname, None)
+                zones = get_zones()
+                cf_headers = {'Authorization': 'Bearer ' + CF_TOKEN}
+                # 2592x1944
+                if zones:
+                    responses = []
+                    #original = Image.open(fullpath)
+                    for z in zones.keys():
+                        cropped = original.crop((zones[z]['left'], zones[z]['top'], zones[z]['right'], zones[z]['bottom']))
+                        img_io = io.BytesIO()
+                        cropped.save(img_io, FORMAT, quality=100)
+                        img_io.seek(0)
+                        dr = ImageDraw.Draw(original)
+                        dr.rectangle((zones[z]['left'], zones[z]['top'], zones[z]['right'], zones[z]['bottom']), outline = '#fbb040', width=3)
+                        dr.text((zones[z]['left'], zones[z]['top']), z, font=zonefont)
+                        # Now take an original image, crop the zones, send it to the
+                        # CF server and get back the response for each
+                        # Draw rectangle zones on the original image & save it
+                        # Modify the image lzbel with zones results
+                        # send CF request
+                        response = requests.post(CF_HOST.format("loadimage"), headers=cf_headers, files = {'croppedfile': img_io}, data={'index':0, 'filename': ''})
+                        if response.status_code == 200:
+                            responses.append("{}: {}".format(z, response.json().get('objtype')))
+                        else:
+                            responses.append("{}".format(z))
                                          
                 original.save(fullpath)
                 classification_results = "Results: {}".format(", ".join(responses))
@@ -1423,8 +1424,9 @@ class StatsAPI(Resource):
         # >>>
         camname = request.form.get("camname")
         camposition = request.form.get("camposition")
+        recognize = request.form.get("recognize", False)
         camera_position = None
-        app.logger.debug(["CAMERA DB:", camname, camposition])
+        app.logger.debug(["CAMERA DB:", camname, camposition, recognize])
         if not user:
             abort(403)
             
@@ -1448,13 +1450,12 @@ class StatsAPI(Resource):
 
             app.logger.debug(["DB CAMERA", camera.camlabel, camera_position.poslabel])
             # data.cameras.append(camera)
-            picts = parse_request_pictures(request.files, camera, camera_position, user.login, sensor.uuid)
+            picts = parse_request_pictures(request.files, camera, camera_position, user.login, sensor.uuid, recognize)
             if picts:
                 for p in picts:
                     data.pictures.append(p)
             db.session.add(data)
             db.session.commit()
-            
             return jsonify(self.schema.dump(data).data)
         abort(404)
     
