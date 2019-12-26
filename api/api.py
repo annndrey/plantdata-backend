@@ -5,6 +5,7 @@ from functools import wraps
 from flask import Flask, g, make_response, request, current_app, send_file, url_for
 from flask_restful import Resource, Api, reqparse, abort, marshal_with
 from flask.json import jsonify
+from flasgger import Swagger
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import or_, desc
@@ -25,6 +26,10 @@ import zipfile
 import urllib.parse
 from celery import Celery
 
+# caching
+from flask_caching import Cache
+import urllib.parse
+
 import click
 import datetime
 import calendar
@@ -41,6 +46,8 @@ from PIL import Image, ImageDraw, ImageFont
 import glob
 from collections import OrderedDict
 
+
+
 from multiprocessing.pool import ThreadPool
 
 logging.basicConfig(format='%(levelname)s: %(asctime)s - %(message)s',
@@ -48,7 +55,7 @@ logging.basicConfig(format='%(levelname)s: %(asctime)s - %(message)s',
 
 app = Flask(__name__)
 cors = CORS(app, resources={r"/*": {"origins": "*"}}, methods=['GET', 'POST', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'])
-api = Api(app, prefix="/api/v1")
+api = Api(app, prefix="/api/v2")
 auth = HTTPBasicAuth()
 app.config.from_envvar('APPSETTINGS')
 app.config['PROPAGATE_EXCEPTIONS'] = True
@@ -59,6 +66,55 @@ ma = Marshmallow(app)
 gunicorn_logger = logging.getLogger('gunicorn.error')
 app.logger.handlers = gunicorn_logger.handlers
 app.logger.setLevel(gunicorn_logger.level)
+
+
+REDIS_HOST = app.config.get('REDIS_HOST', 'localhost')
+REDIS_PORT = app.config.get('REDIS_PORT', 6379)
+REDIS_DB = app.config.get('REDIS_DB', 0)
+CACHE_DB = app.config.get('CACHE_DB', 1)
+
+cache = Cache(app, config={
+    'CACHE_TYPE': 'redis',
+    'CACHE_KEY_PREFIX': 'fcache',
+    'CACHE_REDIS_HOST': REDIS_HOST,
+    'CACHE_REDIS_PORT': REDIS_PORT,
+    'CACHE_REDIS_DB'  : REDIS_DB,
+    'CACHE_REDIS_URL': 'redis://{}:{}/{}'.format(REDIS_HOST, REDIS_PORT, REDIS_DB)
+})
+
+app.config['SWAGGER'] = {
+    'uiversion': 3
+}
+swtemplate = {
+    "info": {
+        "title": "Plantdata API",
+        "description": "Plantdata API is a service to collect "
+        "and monitor plant conditions across multiple remote sensors",
+        "version": "2",
+    },
+    "schemes": [
+        "https"
+    ]
+}
+
+swagger_config = {
+    "headers": [
+    ],
+    "specs": [
+        {
+            "endpoint": 'apidescr',
+            "route": '/apidescr.json',
+            "rule_filter": lambda rule: True, 
+            "model_filter": lambda tag: True,
+        }
+    ],
+    "static_url_path": "/flasgger_static",
+    "swagger_ui": True,
+    "specs_route": "/docs/",
+    'uiversion': 3
+}
+
+swagger = Swagger(app, config=swagger_config, template=swtemplate)
 
 
 CF_LOGIN = app.config['CF_LOGIN']
@@ -72,8 +128,8 @@ zonefont = ImageFont.truetype(FONT, size=FONTSIZE)
 
 CLASSIFY_ZONES = app.config['CLASSIFY_ZONES']
 
-app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379/2'
-app.config['CELERY_RESULT_BACKEND'] = 'redis://localhost:6379/2'
+app.config['CELERY_BROKER_URL'] = 'redis://{}:{}/{}'.format(REDIS_HOST, REDIS_PORT, REDIS_DB)
+app.config['CELERY_RESULT_BACKEND'] = 'redis://{}:{}/{}'.format(REDIS_HOST, REDIS_PORT, REDIS_DB)
 
 TMPDIR = app.config['TEMPDIR']
 
@@ -85,6 +141,15 @@ if CLASSIFY_ZONES:
         except yaml.YAMLError as exc:
             app.logger.debug(exc)
 
+
+def cache_key():
+   args = request.args
+   key = request.path + '?' + urllib.parse.urlencode([
+     (k, v) for k in sorted(args) for v in sorted(args.getlist(k))
+   ])
+   return key
+
+            
 
 def make_celery(app):
     celery = Celery(app.import_name, broker=app.config['CELERY_BROKER_URL'])
@@ -126,7 +191,7 @@ def get_zones():
 
 
 @celery.task
-def crop_zones(results, cam_names, cam_positions, cam_zones, cam_numsamples, cam_skipsamples):
+def crop_zones(results, cam_names, cam_positions, cam_zones, cam_numsamples, cam_skipsamples, label_text):
     zones = get_zones()
     results_data = []
     with tempfile.TemporaryDirectory(dir=TMPDIR) as temp_dir:
@@ -173,9 +238,12 @@ def crop_zones(results, cam_names, cam_positions, cam_zones, cam_numsamples, cam
                                                 #app.logger.debug(f"Filtering results {camname}, {position}, {ts}")
                                                 prefix = f"{camname}-{position}-{ts}"
                                                 # Saving original_file
-                                                p['original'] = p['original'].replace('https://plantdata.fermata.tech:5498/api/v1/p/', '')
+                                                p['original'] = p['original'].replace('https://plantdata.fermata.tech:5498/api/v2/p/', '')
                                                 orig_fpath = os.path.join(current_app.config['FILE_PATH'], p['original'])
                                                 orig_newpath = os.path.join(temp_dir, prefix+".jpg")
+                                                if label_text:
+                                                    if label_text not in p['label']:
+                                                        continue
                                                 original = Image.open(orig_fpath)
                                                 original.save(orig_newpath, 'JPEG', quality=100)
                                                 #app.logger.debug(f"Saving file {orig_newpath}")
@@ -357,11 +425,9 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
                         else:
                             responses.append("{}".format(z))
                                          
-                    original.save(fullpath)
-                    
-                    classification_results = "Results: {}".format(", ".join(responses))
-                    imglabel = imglabel + " " + classification_results
-                
+                original.save(fullpath)
+                classification_results = "Results: {}".format(", ".join(responses))
+                imglabel = imglabel + " " + classification_results
         # Thumbnails 
         original.thumbnail((300, 300), Image.ANTIALIAS)
         original.save(thumbpath, FORMAT, quality=90)
@@ -380,9 +446,41 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
     return picts
 
 
-@app.route('/api/v1/token', methods=['POST'])
+#@app.route('/api/v1/token', methods=['POST'])
+@app.route('/api/v2/token', methods=['POST'])
 @cross_origin(supports_credentials=True)
 def get_auth_token_post():
+    """Access Token API
+    ---
+    tags: [Authentication,]
+    parameters:
+      - name: username
+        in: body
+        required: true
+      - name: password
+        in: body
+        required: true
+    responses:
+      200:
+        description: User is authorised
+        schema:
+          id: Token
+          properties:
+            username:
+              type: string
+              description: User's login, in email format.
+              default: "newuser@site.com"
+            user_id:
+              type: integer
+              description: User ID.
+              default: 1
+            token:
+              type: string
+              description: JWT Auth token
+      401:
+        description: UNAUTHORIZED
+    """
+    
     username = request.json.get('username')
     password = request.json.get('password')
     user = User.query.filter_by(login = username).first()
@@ -394,7 +492,8 @@ def get_auth_token_post():
     abort(404)
 
 
-@app.route('/api/v1/token', methods=['GET'])
+#@app.route('/api/v1/token', methods=['GET'])
+@app.route('/api/v2/token', methods=['GET'])
 def get_auth_token():
     token = g.user.generate_auth_token()
     return jsonify({ 'token': "%s" % token })
@@ -416,7 +515,6 @@ class CameraSchema(ma.ModelSchema):
     class Meta:
         model = Camera
     positions = ma.Nested("CameraPositionSchema", many=True, exclude=["camera", "url"])#, exclude=['camera',])
-
     
         
 class CameraPositionSchema(ma.ModelSchema):
@@ -492,6 +590,32 @@ class PictAPI(Resource):
     #@token_required
     @cross_origin()
     def get(self, path):
+        """
+        Get picture
+        ---
+        tags: [Pictures,]
+        parameters:
+         - in: path
+           name: path
+           type: string
+           required: true
+           description: image path
+        definitions:
+          Picture:
+            type: string
+            description: Picture URL
+            
+        responses:
+          200:
+            description: Picture URL
+            schema:
+               $ref: '#/definitions/Picture'
+          401:
+            description: Not authorized
+          404:
+            description: URL not found
+        """
+        
         auth_cookie = request.cookies.get("auth", "")
         auth_headers = request.headers.get('Authorization', '').split()
         if len(auth_headers) > 0:
@@ -499,7 +623,7 @@ class PictAPI(Resource):
         elif len(auth_cookie) > 0:
             token = auth_cookie
         else:
-            abort(403)
+            abort(401)
             
         data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         user = User.query.filter_by(login=data['sub']).first()
@@ -528,6 +652,79 @@ class CameraAPI(Resource):
     @token_required
     @cross_origin()
     def get(self, id):
+        """
+        Get camera data
+        ---
+        tags: [Cameras,]
+        parameters:
+         - in: path
+           name: id
+           type: integer
+           required: true
+           description: Camera ID
+        definitions:
+          Camera:
+            type: object
+            description: Camera data
+            properties:
+              id:
+                type: integer
+                description: Camera ID
+              camlabel:
+                type: string
+                description: Camera label
+              positions:
+                type: array
+                description: A list of camera positions
+                items:
+                  type: object
+                  description: Camera position
+                  properties:
+                    id: 
+                      type: integer
+                      description: Camera Position ID
+                    poslabel: 
+                      type: string
+                      description: Camera Position Label
+                    pictures: 
+                      type: array
+                      items: 
+                        type: object
+                        description: Picture
+                        properties:
+                          id:
+                            type: integer
+                            description: Picture ID
+                          fpath:
+                            type: string
+                            description: Picture URL
+                          thumbnail:
+                            type: string
+                            description: Picture thumbnail
+                          label:
+                            type: string
+                            description: Picture label
+                          original:
+                            type: string
+                            description: Picture Original URL
+                          results:
+                            type: string
+                            description: Picture recognition results
+                          ts:
+                            type: string
+                            format: date-time
+                            description: Picture timestamp
+        responses:
+          200:
+            description: Camera data
+            schema:
+               $ref: '#/definitions/Camera'
+          401:
+            description: Not authorized
+          404:
+            description: URL not found
+        """
+        
         camera = db.session.query(Camera).filter(Camera.id==id).first()
         if camera:
             return jsonify(self.schema.dump(camera).data), 200
@@ -569,7 +766,197 @@ class StatsAPI(Resource):
     
     @token_required
     @cross_origin()
+    #@cache.cached(timeout=60, key_prefix=cache_key)
     def get(self):
+        """
+        Get sensors data
+        ---
+        tags: [Sensors,]
+        parameters:
+         - in: path
+           name: id
+           type: integer
+           required: false
+           description: Data ID
+         - in: query
+           name: uuid
+           type: integer
+           required: false
+           description: Sensor UUID
+         - in: query
+           name: export_zones
+           type: boolean
+           required: false
+         - in: query
+           name: ignore_night_photos
+           type: boolean
+           required: false
+           description: Select which photos would be exported, all or only those which are taken on light period
+         - in: query
+           name: label_text
+           type: string
+           required: false
+           description: Selech only photos with label matching the search string
+         - in: query
+           name: full_data
+           type: boolean
+           required: false
+           description: Full data flag. If true, data would be shown with all captured pictures
+         - in: query
+           name: cam_names
+           type: string
+           required: false
+           default: CAM1,CAM2
+           description: A comma-separated list of camera names to include when export zones
+         - in: query
+           name: cam_positions
+           type: string
+           required: false
+           default: 1,2,3
+           description: A comma-separated list of camera positions to include when export zones
+         - in: query
+           name: cam_numsamples
+           type: integer
+           required: false
+           default: 1
+           description: Number of samples to export, for export zones task
+         - in: query
+           name: cam_zones
+           type: string
+           required: false
+           default: 1,2,3
+           description: A comma-separated list of camera zones to include when export zones
+        definitions:
+          SensorData:
+            type: object
+            description: SensorData
+            properties:
+              numrecords:
+                type: integer
+                description: Number of records for a particular sensor
+              mindate:
+                type: string
+                format: date-time
+                description: The earliest record date 
+              maxdate:
+                type: string
+                format: date-time
+                description: The latest record date 
+              data:
+                type: array
+                description: Data records for the specified sensor
+                items:
+                  type: object
+                  description: A single data record
+                  properties:
+                    id: 
+                      type: integer
+                      description: Data ID
+                    ts: 
+                      type: string
+                      format: date-time
+                      description: Data record timestamp
+                    probes:
+                      type: array   
+                      items: 
+                        type: object
+                        description: Probe data
+                        properties:
+                         id:
+                           type: integer
+                           description: Probe ID
+                         label:
+                           type: string
+                           description: Probe label
+                         ptype:
+                           type: string
+                           description: Probe type
+                         minvalue:
+                           type: number
+                           format: double
+                           description: Probe min value
+                         maxvalue:
+                           type: number
+                           format: double
+                           description: Probe max value
+                         values:
+                           type: array
+                           description: A list of probe values
+                           items:
+                             type: object
+                             description: Probe data value
+                             properties:
+                               id: 
+                                 type: integer
+                                 description: Probe Data ID
+                               value: 
+                                 type: number
+                                 format: double
+                                 description: Probe Data value
+                    cameras: 
+                      type: array
+                      items: 
+                        type: object
+                        description: Camera data
+                        properties:
+                         id:
+                           type: integer
+                           description: Camera ID
+                         camlabel:
+                           type: string
+                           description: Camera label
+                         positions:
+                           type: array
+                           description: A list of camera positions
+                           items:
+                             type: object
+                             description: Camera position
+                             properties:
+                               id: 
+                                 type: integer
+                                 description: Camera Position ID
+                               poslabel: 
+                                 type: string
+                                 description: Camera Position Label
+                               pictures: 
+                                 type: array
+                                 items: 
+                                   type: object
+                                   description: Picture
+                                   properties:
+                                     id:
+                                       type: integer
+                                       description: Picture ID
+                                     fpath:
+                                       type: string
+                                       description: Picture URL
+                                     thumbnail:
+                                       type: string
+                                       description: Picture thumbnail
+                                     label:
+                                       type: string
+                                       description: Picture label
+                                     original:
+                                       type: string
+                                       description: Picture Original URL
+                                     results:
+                                       type: string
+                                       description: Picture recognition results
+                                     ts:
+                                       type: string
+                                       format: date-time
+                                       description: Picture timestamp
+        responses:
+          200:
+            description: Sensor data
+            schema:
+               $ref: '#/definitions/SensorData'
+          401:
+            description: Not authorized
+          404:
+            description: URL not found
+        """
+        
         # here the data should be scaled or not
         suuid = request.args.get('uuid', None)
         dataid = request.args.get('dataid', None)
@@ -585,6 +972,9 @@ class StatsAPI(Resource):
         cam_positions = request.args.get('cam_positions', False)
         cam_zones = request.args.get('cam_zones', False)
         cam_numsamples = request.args.get('cam_numsamples', False)
+        ignore_night_photos = request.args.get('ignore_night_photos', False)
+        label_text = request.args.get('label_text', False)
+
         cam_skipsamples = request.args.get('cam_skipsamples', False)
         data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         daystart = dayend = None
@@ -657,10 +1047,12 @@ class StatsAPI(Resource):
                     return send_file(mem, mimetype='text/csv', attachment_filename="file.csv", as_attachment=True)
                 if export_zones:
                     app.logger.debug(f"EXPORT ZONES, {export_zones}")
-                    
+                    if ignore_night_photos:
+                        sensordata_query = sensordata_query.filter(Data.lux > 30)
+                        
                     res_data = sensordata_query.filter(Data.pictures.any()).all()
                     app.logger.debug(len(res_data))
-                    crop_zones.delay(self.f_schema.dump(res_data).data, cam_names, cam_positions, cam_zones, cam_numsamples, cam_skipsamples)
+                    crop_zones.delay(self.f_schema.dump(res_data).data, cam_names, cam_positions, cam_zones, cam_numsamples, cam_skipsamples, label_text)
                     
                     res = {"numrecords": len(res_data),
                            'mindate': first_rec_day,
@@ -692,13 +1084,143 @@ class StatsAPI(Resource):
     @token_required
     @cross_origin()
     def post(self):
+        """
+        POST sensors data [TODO: Fix description]
+        ---
+        tags: [Sensors,]
+        parameters:
+         - in: body
+           name: data
+           description: Sensor data
+           schema:
+               $ref: '#/definitions/SensorPostData'
+        definitions:
+          SensorPostData:
+            type: object
+            description: SensorPostData
+            properties:
+              data:
+                type: array
+                description: Data records for the specified sensor
+                items:
+                  type: object
+                  description: A single data record
+                  properties:
+                    id: 
+                      type: integer
+                      description: Data ID
+                    ts: 
+                      type: string
+                      format: date-time
+                      description: Data record timestamp
+                    probes:
+                      type: array   
+                      items: 
+                        type: object
+                        description: Probe data
+                        properties:
+                         id:
+                           type: integer
+                           description: Probe ID
+                         label:
+                           type: string
+                           description: Probe label
+                         ptype:
+                           type: string
+                           description: Probe type
+                         minvalue:
+                           type: number
+                           format: double
+                           description: Probe min value
+                         maxvalue:
+                           type: number
+                           format: double
+                           description: Probe max value
+                         values:
+                           type: array
+                           description: A list of probe values
+                           items:
+                             type: object
+                             description: Probe data value
+                             properties:
+                               id: 
+                                 type: integer
+                                 description: Probe Data ID
+                               value: 
+                                 type: number
+                                 format: double
+                                 description: Probe Data value
+                    cameras: 
+                      type: array
+                      items: 
+                        type: object
+                        description: Camera data
+                        properties:
+                         id:
+                           type: integer
+                           description: Camera ID
+                         camlabel:
+                           type: string
+                           description: Camera label
+                         positions:
+                           type: array
+                           description: A list of camera positions
+                           items:
+                             type: object
+                             description: Camera position
+                             properties:
+                               id: 
+                                 type: integer
+                                 description: Camera Position ID
+                               poslabel: 
+                                 type: string
+                                 description: Camera Position Label
+                               pictures: 
+                                 type: array
+                                 items: 
+                                   type: object
+                                   description: Picture
+                                   properties:
+                                     id:
+                                       type: integer
+                                       description: Picture ID
+                                     fpath:
+                                       type: string
+                                       description: Picture URL
+                                     thumbnail:
+                                       type: string
+                                       description: Picture thumbnail
+                                     label:
+                                       type: string
+                                       description: Picture label
+                                     original:
+                                       type: string
+                                       description: Picture Original URL
+                                     results:
+                                       type: string
+                                       description: Picture recognition results
+                                     ts:
+                                       type: string
+                                       format: date-time
+                                       description: Picture timestamp
+        responses:
+          201:
+            description: Sensor data created
+            schema:
+               $ref: '#/definitions/SensorData'
+          401:
+            description: Not authorized
+          404:
+            description: URL not found
+        """
+        
         auth_headers = request.headers.get('Authorization', '').split()
         token = auth_headers[1]
         udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         user = User.query.filter_by(login=udata['sub']).first()
         suuid = request.form.get('uuid')
         sensor = db.session.query(Sensor).filter(Sensor.uuid == suuid).first()
-      
+        # TODO -> Change to the new format
         if sensor:
             if sensor.user != user:
                 abort(403)
@@ -718,6 +1240,16 @@ class StatsAPI(Resource):
             co2 = int(request.form.get("CO2"))
             ts = request.form.get("ts")
             
+            # picts = parse_request_pictures(request.files, user.login, sensor.uuid)
+            # New format:
+            #{'uuid': 'sensor_id',
+            # 'ts': 'timestamp',
+            # 'data': { {'uuid':'probe_unique_id', 'ptype': 'temp', 'label': 'TEMP1', 'value': 23.5},
+            #           {}
+            #           ...
+            #           }
+            # 
+            #}
             newdata = Data(sensor_id=sensor.id,
                            wght0 = wght0,
                            wght1 = wght1,
@@ -750,6 +1282,136 @@ class StatsAPI(Resource):
     @token_required
     @cross_origin()
     def patch(self, id=None):
+        """
+        PATCH sensors data [TODO: Fix description]
+        ---
+        tags: [Sensors,]
+        parameters:
+         - in: body
+           name: data
+           description: Sensor data
+           schema:
+               $ref: '#/definitions/SensorPatchData'
+        definitions:
+          SensorPatchData:
+            type: object
+            description: SensorPatchData
+            properties:
+              data:
+                type: array
+                description: Data records for the specified sensor
+                items:
+                  type: object
+                  description: A single data record
+                  properties:
+                    id: 
+                      type: integer
+                      description: Data ID
+                    ts: 
+                      type: string
+                      format: date-time
+                      description: Data record timestamp
+                    probes:
+                      type: array   
+                      items: 
+                        type: object
+                        description: Probe data
+                        properties:
+                         id:
+                           type: integer
+                           description: Probe ID
+                         label:
+                           type: string
+                           description: Probe label
+                         ptype:
+                           type: string
+                           description: Probe type
+                         minvalue:
+                           type: number
+                           format: double
+                           description: Probe min value
+                         maxvalue:
+                           type: number
+                           format: double
+                           description: Probe max value
+                         values:
+                           type: array
+                           description: A list of probe values
+                           items:
+                             type: object
+                             description: Probe data value
+                             properties:
+                               id: 
+                                 type: integer
+                                 description: Probe Data ID
+                               value: 
+                                 type: number
+                                 format: double
+                                 description: Probe Data value
+                    cameras: 
+                      type: array
+                      items: 
+                        type: object
+                        description: Camera data
+                        properties:
+                         id:
+                           type: integer
+                           description: Camera ID
+                         camlabel:
+                           type: string
+                           description: Camera label
+                         positions:
+                           type: array
+                           description: A list of camera positions
+                           items:
+                             type: object
+                             description: Camera position
+                             properties:
+                               id: 
+                                 type: integer
+                                 description: Camera Position ID
+                               poslabel: 
+                                 type: string
+                                 description: Camera Position Label
+                               pictures: 
+                                 type: array
+                                 items: 
+                                   type: object
+                                   description: Picture
+                                   properties:
+                                     id:
+                                       type: integer
+                                       description: Picture ID
+                                     fpath:
+                                       type: string
+                                       description: Picture URL
+                                     thumbnail:
+                                       type: string
+                                       description: Picture thumbnail
+                                     label:
+                                       type: string
+                                       description: Picture label
+                                     original:
+                                       type: string
+                                       description: Picture Original URL
+                                     results:
+                                       type: string
+                                       description: Picture recognition results
+                                     ts:
+                                       type: string
+                                       format: date-time
+                                       description: Picture timestamp
+        responses:
+          201:
+            description: Sensor data created
+            schema:
+               $ref: '#/definitions/SensorData'
+          401:
+            description: Not authorized
+          404:
+            description: URL not found
+        """
+        
         if not id:
             abort(400)
         app.logger.debug("Patch Data")
@@ -773,6 +1435,7 @@ class StatsAPI(Resource):
             sensor = data.sensor
             if sensor.user != user:
                 abort(403)
+            # Surely there's no camera for data.id. We should replace data.id with a sensor id.  
             camera = db.session.query(Camera).join(Data).filter(Data.id == data.id).filter(Camera.camlabel == camname).first()
             if not camera:
                 camera = Camera(data=data, camlabel=camname)
@@ -809,6 +1472,64 @@ class SensorAPI(Resource):
     @token_required
     @cross_origin()
     def get(self, id=None):
+        """
+        Get sensors
+        ---
+        tags: [Sensors,]
+        parameters:
+         - in: path
+           name: id
+           type: integer
+           required: false
+           description: Sensor ID
+        definitions:
+          SensorObject:
+            type: object
+            description: Sensor object data
+            properties:
+              id:
+                type: integer
+                description: Sensor ID
+              location:
+                type: integer
+                description: Sensor Location ID
+              maxdate:
+                type: string
+                format: date-time
+                description: The latest record date 
+              mindate:
+                type: string
+                format: date-time
+                description: The earliest record date 
+              numrecords:
+                type: integer
+                description: Number of records for a particular sensor
+              registered:
+                type: string
+                format: date-time
+                description: Sensor registration timestamp
+              user:
+                type: integer
+                description: Sensor related User ID
+              uuid:
+                type: string
+                description: Sensor uuid
+              data:
+                type: array
+                items:
+                  type: integer
+                  description: Sensor related SensorData ID
+        responses:
+          200:
+            description: Sensor object data
+            schema:
+               $ref: '#/definitions/SensorObject'
+          401:
+            description: Not authorized
+          404:
+            description: URL not found
+
+        """
         auth_headers = request.headers.get('Authorization', '').split()
         token = auth_headers[1]
         data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
@@ -823,6 +1544,46 @@ class SensorAPI(Resource):
     @token_required
     @cross_origin()
     def post(self):
+        """
+        Create Sensor Object
+        ---
+        tags: [Sensors,]
+        parameters:
+         - in: body
+           name: data
+           type: object
+           required: true
+           description: Sensor Post Data
+           schema:
+              $ref: '#/definitions/SensorPostObject'
+        definitions:
+          SensorPostObject:
+            type: object
+            description: Sensor object data
+            properties:
+              lat:
+                type: number
+                format: float
+                description: Sensor Location Latitude
+              lon:
+                type: number
+                format: float
+                description: Sensor Location Longitude
+              address:
+                type: integer
+                description: Sensor Location ID
+        responses:
+          201:
+            description: New Sensor created
+            schema:
+               $ref: '#/definitions/SensorPostObject'
+          401:
+            description: Not authorized
+          404:
+            description: URL not found
+
+        """
+        
         print("REQUEST", request.json)
         auth_headers = request.headers.get('Authorization', '').split()
         token = auth_headers[1]
@@ -864,6 +1625,25 @@ class SensorAPI(Resource):
     @token_required
     @cross_origin()
     def delete(self, id):
+        """
+        Delete Sensor Object
+        ---
+        tags: [Sensors,]
+        parameters:
+         - in: path
+           name: id
+           type: integer
+           required: true
+           description: Sensor ID
+        responses:
+          204:
+            description: Sensor deleted
+          401:
+            description: Not authorized
+          404:
+            description: URL not found
+
+        """
         print("REQUEST", request.remote_addr)
         auth_headers = request.headers.get('Authorization', '').split()
         token = auth_headers[1]
@@ -887,6 +1667,66 @@ class UserAPI(Resource):
     @token_required
     @cross_origin()
     def get(self, id=None):
+        """
+        Get users
+        ---
+        tags: [Authentication,]
+        parameters:
+         - in: path
+           name: id
+           type: integer
+           required: false
+           description: User ID
+        definitions:
+          UserObject:
+            type: object
+            description: User object
+            properties:
+              id:
+                type: integer
+                description: User ID
+              is_confirmed:
+                type: boolean
+                description: Confirmed user
+              is_admin:
+                type: boolean
+                description: Admin user
+              confirmed_on:
+                type: string
+                format: date-time
+                description: User confirmation date
+              registered_on:
+                type: string
+                format: date-time
+                description: User registration date
+              login:
+                type: string
+                description: User login
+              name:
+                type: string
+                description: User name
+              note:
+                type: string
+                description: User notes
+              phone:
+                type: string
+                description: User's phone
+              sensors:
+                type: array
+                items:
+                  type: integer
+                  description: User related Sensor IDs
+        responses:
+          200:
+            description: User object data
+            schema:
+               $ref: '#/definitions/UserObject'
+          401:
+            description: Not authorized
+          404:
+            description: URL not found
+        """
+        
         if not id:
             users = db.session.query(User).all()
             return jsonify(self.m_schema.dump(users).data)
@@ -900,6 +1740,71 @@ class UserAPI(Resource):
     @token_required
     @cross_origin()
     def patch(self, id):
+        """
+        Patch users
+        ---
+        tags: [Authentication,]
+        parameters:
+         - in: path
+           name: id
+           type: integer
+           required: true
+           description: User ID
+         - in: body
+           name: data
+           type: object
+           schema:
+              $ref: '#/definitions/UserObject'
+        definitions:
+          UserObject:
+            type: object
+            description: User object
+            properties:
+              id:
+                type: integer
+                description: User ID
+              is_confirmed:
+                type: boolean
+                description: Confirmed user
+              is_admin:
+                type: boolean
+                description: Admin user
+              confirmed_on:
+                type: string
+                format: date-time
+                description: User confirmation date
+              registered_on:
+                type: string
+                format: date-time
+                description: User registration date
+              login:
+                type: string
+                description: User login
+              name:
+                type: string
+                description: User name
+              note:
+                type: string
+                description: User notes
+              phone:
+                type: string
+                description: User's phone
+              sensors:
+                type: array
+                items:
+                  type: integer
+                  description: User related Sensor IDs
+        responses:
+          200:
+            description: User updated
+            schema:
+               $ref: '#/definitions/UserObject'
+          401:
+            description: Not authorized
+          404:
+            description: URL not found
+        """
+        
         if not request.json:
             abort(400, message="No data provided")
             
@@ -926,6 +1831,49 @@ class UserAPI(Resource):
     @token_required
     @cross_origin()
     def post(self):
+        """
+        Post users
+        ---
+        tags: [Authentication,]
+        parameters:
+         - in: path
+           name: id
+           type: integer
+           required: true
+           description: User ID
+         - in: body
+           name: data
+           type: object
+           schema:
+              $ref: '#/definitions/UserPostObject'
+        definitions:
+          UserPostObject:
+            type: object
+            description: User object
+            properties:
+              login:
+                type: string
+                description: User login
+              name:
+                type: string
+                description: User name
+              password:
+                type: string
+                description: User's password
+              phone:
+                type: string
+                description: User's phone
+        responses:
+          201:
+            description: User created
+            schema:
+               $ref: '#/definitions/UserObject'
+          401:
+            description: Not authorized
+          404:
+            description: URL not found
+        """
+        
         if not request.json:
             abort(400, message="No data provided")
         login = request.json.get('login')
@@ -955,6 +1903,26 @@ class UserAPI(Resource):
         return jsonify(self.schema.dump(newuser).data), 201
     
     def delete(self, id):
+        """
+        Delete User
+        ---
+        tags: [Authentication,]
+        parameters:
+         - in: path
+           name: id
+           type: integer
+           required: true
+           description: User ID
+        responses:
+          204:
+            description: User deleted
+          401:
+            description: Not authorized
+          404:
+            description: URL not found
+
+        """
+
         if not id:
             abort(404, message="Not found")
         user = db.session.query(User).filter(User.id==id).first()

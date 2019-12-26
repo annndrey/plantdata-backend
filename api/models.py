@@ -27,10 +27,6 @@ data_cameras = db.Table('data_cameras', db.Model.metadata,
                           db.Column('camera_id', db.Integer, db.ForeignKey('camera.id'))
 )
 
-
-
-
-    
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     login = db.Column(db.String(400))
@@ -152,7 +148,6 @@ class Data(db.Model):
     sensor_id = db.Column(db.Integer, ForeignKey('sensor.id'))
     sensor = relationship("Sensor", backref=backref("data", uselist=True))
     ts = db.Column(db.DateTime, default=datetime.datetime.now)
-
     temp0 = db.Column(db.Numeric(precision=3))
     wght0 = db.Column(db.Numeric(precision=3))
     wght1 = db.Column(db.Numeric(precision=3))
@@ -167,7 +162,6 @@ class Data(db.Model):
     lux = db.Column(db.Integer)
     soilmoist = db.Column(db.Integer)
     co2 = db.Column(db.Integer)
-    fpath = db.Column(db.Text())
 
     
 class DataPicture(db.Model):
