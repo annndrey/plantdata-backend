@@ -103,4 +103,4 @@ venv.bak/
 # mypy
 .mypy_cache/
 
-.config_dev.py
+config_dev.py
