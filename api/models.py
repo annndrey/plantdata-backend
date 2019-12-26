@@ -148,7 +148,6 @@ class Data(db.Model):
     sensor_id = db.Column(db.Integer, ForeignKey('sensor.id'))
     sensor = relationship("Sensor", backref=backref("data", uselist=True))
     ts = db.Column(db.DateTime, default=datetime.datetime.now)
-
     temp0 = db.Column(db.Numeric(precision=3))
     wght0 = db.Column(db.Numeric(precision=3))
     wght1 = db.Column(db.Numeric(precision=3))
