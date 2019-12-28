@@ -590,6 +590,7 @@ class PictAPI(Resource):
 
     #@token_required
     @cross_origin()
+    @cache.cached(timeout=300, key_prefix=cache_key)
     def get(self, path):
         """
         Get picture
@@ -652,6 +653,7 @@ class CameraAPI(Resource):
 
     @token_required
     @cross_origin()
+    @cache.cached(timeout=300, key_prefix=cache_key)
     def get(self, id):
         """
         Get camera data
@@ -767,7 +769,7 @@ class StatsAPI(Resource):
     
     @token_required
     @cross_origin()
-    #@cache.cached(timeout=60, key_prefix=cache_key)
+    @cache.cached(timeout=300, key_prefix=cache_key)
     def get(self):
         """
         Get sensors data
@@ -944,7 +946,7 @@ class StatsAPI(Resource):
                                        description: Picture ID
                                      fpath:
                                        type: string
-                                       description: Picture URL
+                                       description: Picture URL with zones displayed
                                      thumbnail:
                                        type: string
                                        description: Picture thumbnail
@@ -953,7 +955,7 @@ class StatsAPI(Resource):
                                        description: Picture label
                                      original:
                                        type: string
-                                       description: Picture Original URL
+                                       description: Picture Original URL without zones
                                      results:
                                        type: string
                                        description: Picture recognition results
@@ -1486,6 +1488,7 @@ class SensorAPI(Resource):
 
     @token_required
     @cross_origin()
+    @cache.cached(timeout=300, key_prefix=cache_key)
     def get(self, id=None):
         """
         Get sensors
@@ -1681,6 +1684,7 @@ class UserAPI(Resource):
         
     @token_required
     @cross_origin()
+    @cache.cached(timeout=300, key_prefix=cache_key)
     def get(self, id=None):
         """
         Get users
