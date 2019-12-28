@@ -424,7 +424,7 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
                         z_full_path = os.path.join(fpath, zname)
                         partzpath = os.path.join(user_login, sensor_uuid, zname)
                         cropped.save(zname, FORMAT, quality=100)
-                        newzone = PictureZone(fpath=partzpath)
+                        newzone = PictureZone(fpath=partzpath, zone=f"zone{z}")
                         # Now take an original image, crop the zones, send it to the
                         # CF server and get back the response for each
                         # Draw rectangle zones on the original image & save it
