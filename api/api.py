@@ -16,7 +16,7 @@ from flask_cors import CORS, cross_origin
 from flask_restful.utils import cors
 from marshmallow import fields
 from marshmallow_enum import EnumField
-from models import db, User, Sensor, Location, Data, DataPicture, Camera, CameraPosition, Probe, ProbeData
+from models import db, User, Sensor, Location, Data, DataPicture, Camera, CameraPosition, Probe, ProbeData, PictureZone
 import logging
 import os
 import uuid
@@ -399,6 +399,8 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
         app.logger.debug(["UPLNAME", uplname])
         classification_results = ""
         app.logger.debug("FILE SAVED")
+        newzones = []
+
         if recognize:
             if CLASSIFY_ZONES and CF_TOKEN:
                 # zones = CROP_SETTINGS.get(uplname, None)
@@ -416,6 +418,13 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
                         dr = ImageDraw.Draw(original)
                         dr.rectangle((zones[z]['left'], zones[z]['top'], zones[z]['right'], zones[z]['bottom']), outline = '#fbb040', width=3)
                         dr.text((zones[z]['left'], zones[z]['top']), z, font=zonefont)
+                        
+                        zuuid = f"{fuuid}_{z}"
+                        zname = zuuid + "." + FORMAT.lower()
+                        z_full_path = os.path.join(fpath, zname)
+                        partpath = os.path.join(user_login, sensor_uuid, zname)
+                        cropped.save(zname, FORMAT, quality=100)
+                        newzone = PictureZone(fpath=partzpath)
                         # Now take an original image, crop the zones, send it to the
                         # CF server and get back the response for each
                         # Draw rectangle zones on the original image & save it
@@ -423,9 +432,16 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
                         # send CF request
                         response = requests.post(CF_HOST.format("loadimage"), headers=cf_headers, files = {'croppedfile': img_io}, data={'index':0, 'filename': ''})
                         if response.status_code == 200:
-                            responses.append("{}: {}".format(z, response.json().get('objtype')))
+                            cf_result = response.json().get('objtype')
+                            responses.append("{}: {}".format(z, cf_result))
+                            newzone.results = cf_result
+                            
                         else:
                             responses.append("{}".format(z))
+                            
+                        db.session.add(newzone)
+                        db.session.commit()
+                        newzones.append(newzone)
                                          
                 original.save(fullpath)
                 classification_results = "Results: {}".format(", ".join(responses))
@@ -440,6 +456,8 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
                                  original=partorigpath,
                                  results=classification_results,
         )
+        if newzones:
+            newpicture.zones = newzones
         db.session.add(newpicture)
         camposition.pictures.append(newpicture)
         db.session.commit()
@@ -532,6 +550,13 @@ class SensorSchema(ma.ModelSchema):
     maxdate = ma.Function(lambda obj: obj.maxdate)
     
 
+class PictureZoneSchema(ma.ModelSchema):
+    class Meta:
+        model = PictureZone
+        
+    fpath = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.fpath, _external=True, _scheme='https')))
+
+    
 class DataPictureSchema(ma.ModelSchema):
     class Meta:
         model = DataPicture
@@ -539,21 +564,8 @@ class DataPictureSchema(ma.ModelSchema):
     preview = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.thumbnail, _external=True, _scheme='https')))
     fpath = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.fpath, _external=True, _scheme='https')))
     original = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.original, _external=True, _scheme='https')))
+    zones = ma.Nested("PictureZoneSchema", many=True, exclude=["camera_position", "data", "thumbnail"])
     
-    # "fpath"
-    # "label"
-    # "original"
-    # "preview"
-    
-    
-class DPictureSchema(ma.ModelSchema):
-    class Meta:
-        model = DataPicture
-        
-    preview = ma.Function(lambda obj: obj.thumbnail if obj.thumbnail and os.path.exists(os.path.join(current_app.config['FILE_PATH'], obj.thumbnail)) else obj.fpath)
-
-    #
-    #camera_position = ma.Nested("CameraPositionSchema", many=True, exclude=['pictures', 'data', 'sensor', ''])
     
 class LocationSchema(ma.ModelSchema):
     class Meta:
@@ -564,19 +576,14 @@ class DataSchema(ma.ModelSchema):
     class Meta:
         model = Data
         exclude = ['pictures', ]
-    # pictures = ma.Nested("DPictureSchema", many=True, exclude=['thumbnail', 'data'])
-    cameras = ma.Nested("CameraOnlySchema", many=True, exclude=["data",])#, exclude=['pictures', 'data', 'sensor'])
-    # images = ma.Function(lambda obj: obj.images)
+    cameras = ma.Nested("CameraOnlySchema", many=True, exclude=["data",])
 
     
 class FullDataSchema(ma.ModelSchema):
     class Meta:
         model = Data
         exclude = ['pictures', ]
-    # pictures = ma.Nested("DPictureSchema", many=True, exclude=['thumbnail', 'data'])
-    cameras = ma.Nested("CameraSchema", many=True, exclude=["data",])#, exclude=['pictures', 'data', 'sensor'])
-    # images = ma.Function(lambda obj: obj.images)
-
+    cameras = ma.Nested("CameraSchema", many=True, exclude=["data",])
 
     
 class PictAPI(Resource):
