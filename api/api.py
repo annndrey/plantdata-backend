@@ -422,7 +422,7 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
                         zuuid = f"{fuuid}_{z}"
                         zname = zuuid + "." + FORMAT.lower()
                         z_full_path = os.path.join(fpath, zname)
-                        partpath = os.path.join(user_login, sensor_uuid, zname)
+                        partzpath = os.path.join(user_login, sensor_uuid, zname)
                         cropped.save(zname, FORMAT, quality=100)
                         newzone = PictureZone(fpath=partzpath)
                         # Now take an original image, crop the zones, send it to the
