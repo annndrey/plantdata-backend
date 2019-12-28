@@ -184,6 +184,7 @@ class PictureZone(db.Model):
     picture = relationship("DataPicture", backref=backref("zones", uselist=True))
     fpath = db.Column(db.Text())
     results = db.Column(db.Text())
+    zone = db.Column(db.Text())
     ts = db.Column(db.DateTime, default=datetime.datetime.now)
     
     
