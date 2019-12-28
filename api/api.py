@@ -572,7 +572,7 @@ class DataPictureSchema(ma.ModelSchema):
     preview = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.thumbnail, _external=True, _scheme='https')))
     fpath = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.fpath, _external=True, _scheme='https')))
     original = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.original, _external=True, _scheme='https')))
-    zones = ma.Nested("PictureZoneSchema", many=True, exclude=["camera_position", "data", "thumbnail"])
+    zones = ma.Nested("PictureZoneSchema", many=True, exclude=["camera_position", "data", "thumbnail", "picture"])
     
     
 class LocationSchema(ma.ModelSchema):
@@ -978,6 +978,30 @@ class StatsAPI(Resource):
                                        type: string
                                        format: date-time
                                        description: Picture timestamp
+                                     zones:
+                                       type: array
+                                       description: A list of picture zones
+                                       items:
+                                         type: object
+                                         description: Picture zone
+                                         properties:
+                                          id:
+                                            type: integer
+                                            description: Picture Zone ID
+                                          fpath:
+                                            type: string
+                                            description: Picture Zone URL
+                                          label:
+                                            type: string
+                                            description: Picture Zone label
+                                          results:
+                                            type: string
+                                            description: Picture zone recognition results
+                                          ts:
+                                            type: string
+                                            format: date-time
+                                            description: Picture zone timestamp
+
         responses:
           200:
             description: Sensor data
