@@ -177,6 +177,15 @@ class DataPicture(db.Model):
     results = db.Column(db.Text())
     ts = db.Column(db.DateTime, default=datetime.datetime.now)
 
+
+class PictureZone(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    picture_id = db.Column(db.Integer, ForeignKey('data_picture.id'))
+    picture = relationship("DataPicture", backref=backref("zones", uselist=True))
+    fpath = db.Column(db.Text())
+    results = db.Column(db.Text())
+    ts = db.Column(db.DateTime, default=datetime.datetime.now)
+    
     
 class Camera(db.Model):
     id = db.Column(db.Integer, primary_key=True)
