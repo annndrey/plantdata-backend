@@ -566,6 +566,18 @@ class DataPictureSchema(ma.ModelSchema):
     fpath = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.fpath, _external=True, _scheme='https')))
     original = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.original, _external=True, _scheme='https')))
     zones = ma.Nested("PictureZoneSchema", many=True, exclude=["camera_position", "data", "thumbnail", "picture"])
+
+
+class ImageSchema(ma.ModelSchema):
+    class Meta:
+        model = DataPicture
+        exclude = ['zones', 'camera_position', 'data', 'thumbnail', 'preview']
+    #preview = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.thumbnail, _external=True, _scheme='https')))
+    fpath = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.fpath, _external=True, _scheme='https')))
+    original = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.original, _external=True, _scheme='https')))
+        
+    #zones = ma.Nested("PictureZoneSchema", many=True, exclude=["data",])
+
     
     
 class LocationSchema(ma.ModelSchema):
@@ -601,7 +613,7 @@ class PictAPI(Resource):
     @cache.cached(timeout=300, key_prefix=cache_key)
     def get(self, path):
         """
-        Get picture
+        Get picture by URL
         ---
         tags: [Pictures,]
         parameters:
@@ -638,7 +650,7 @@ class PictAPI(Resource):
         data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         user = User.query.filter_by(login=data['sub']).first()
         if not user:
-            abort(404)
+            abort(401)
         if not path:
             abort(404)
         
@@ -740,7 +752,195 @@ class CameraAPI(Resource):
         if camera:
             return jsonify(self.schema.dump(camera).data), 200
         return abort(404)
-    
+
+
+class ImagesAPI(Resource):
+    def __init__(self):
+        self.schema = ImageSchema()
+        self.images_schema = ImageSchema(many=True)
+        self.image_zones_schema = PictureZoneSchema(many=True)
+        self.method_decorators = []
+        
+    def options(self, *args, **kwargs):
+        return jsonify([])
+
+    @token_required
+    @cross_origin()
+    #@cache.cached(timeout=300, key_prefix=cache_key)
+    def get(self):
+        """
+        Get saved images filtered by given parameters
+        ---
+        tags: [Pictures,]
+        parameters:
+         - in: query
+           name: uuid
+           type: string
+           required: false
+           description: Sensor UUID
+         - in: query
+           name: ignore_night_photos
+           type: boolean
+           required: false
+           description: Select only images taken on the light period
+         - in: query
+           name: ts_from
+           type: string
+           format: date-time
+           example: "2017-01-01 10:21"
+           required: false
+           description: Return data starting from the given timestamp
+         - in: query
+           name: ts_to
+           type: string
+           format: date-time
+           example: "2017-01-01 10:21"
+           required: false
+           description: Return data before the given timestamp
+         - in: query
+           name: label_text
+           type: string
+           required: false
+           description: Selech only photos with label matching the search string
+         - in: query
+           name: cam_names
+           type: string
+           required: false
+           default: CAM1, CAM2
+           description: A comma-separated list of camera names. If no camera name provided, all cameras would be returned
+         - in: query
+           name: cam_positions
+           type: string
+           required: false
+           default: 1, 2, 3
+           description: A comma-separated list of camera positions. If no position provided, all positions would be returned
+         - in: query
+           name: cam_zones
+           type: string
+           required: false
+           default: zone1, zone2, zone3
+           description: A comma-separated list of camera zones. If no zone is provided, all zones would be returned.
+        definitions:
+          PictureObject:
+            type: object
+            description: URLList
+            properties:
+              numrecords:
+                type: integer
+                description: Number of records found
+              data:
+                type: array
+                description: A list of Picture/PictureZone Objects found
+                items:
+                  type: object
+                  description: A single Picture/PictureZone record
+                  properties:
+                    id: 
+                      type: integer
+                      description: Picture/PictureZone ID
+                    ts: 
+                      type: string
+                      format: date-time
+                      description: Timestamp
+                    fpath:
+                      type: string
+                      description: Picture URL with zones displayed
+                    label:
+                      type: string
+                      description: Picture label
+                    zone:
+                      type: string
+                      description: PictureZone label
+                    original:
+                      type: string
+                      description: Picture Original URL without zones
+                    results:
+                      type: string
+                      description: Picture/PictureZone recognition results
+        responses:
+          200:
+            description: Pictures found
+            schema:
+               $ref: '#/definitions/PictureObject'
+          401:
+            description: Not authorized
+          404:
+            description: Nothing found
+        """
+        suuid = request.args.get('uuid', None)
+        dataid = request.args.get('dataid', None)
+        auth_headers = request.headers.get('Authorization', '').split()
+        token = auth_headers[1]
+        ts_from = request.args.get('ts_from', None)
+        ts_to = request.args.get('ts_to', None)
+        cam_names = request.args.get('cam_names', False)
+        cam_positions = request.args.get('cam_positions', False)
+        cam_zones = request.args.get('cam_zones', False)
+        ignore_night_photos = request.args.get('ignore_night_photos', False)
+        label_text = request.args.get('label_text', False)
+
+        data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
+        daystart = dayend = None
+        
+        user = User.query.filter_by(login=data['sub']).first()
+        if not user:
+            abort(401)
+        if not suuid:
+            abort(404)
+
+
+        first_rec_day = db.session.query(sql_func.min(Data.ts)).filter(Data.sensor.has(Sensor.uuid == suuid)).first()[0]
+        last_rec_day = db.session.query(sql_func.max(Data.ts)).filter(Data.sensor.has(Sensor.uuid == suuid)).first()[0]
+            
+        if not all([ts_from, ts_to]):
+            
+            if all([first_rec_day, last_rec_day]):
+                day_st = last_rec_day.replace(hour=0, minute=0)
+                day_end = last_rec_day.replace(hour=23, minute=59, second=59)
+            else:
+                abort(404)
+        else:
+            day_st = datetime.datetime.strptime(ts_from, '%d-%m-%Y %H:%M')
+            #day_st = day_st.replace(hour=0, minute=0)
+            day_end = datetime.datetime.strptime(ts_to, '%d-%m-%Y %H:%M')
+            #day_end = day_end.replace(hour=23, minute=59, second=59)
+
+        app.logger.debug(["SEARCH PICTURES", day_st, day_end])
+        if cam_zones:
+            image_query = db.session.query(PictureZone).join(DataPicture).join(CameraPosition).join(Camera).join(Data).order_by(DataPicture.ts).filter(DataPicture.ts >= day_st).filter(DataPicture.ts <= day_end)
+        else:
+            image_query = db.session.query(DataPicture).join(Data).join(CameraPosition).join(Camera).join(PictureZone).order_by(DataPicture.ts).filter(DataPicture.ts >= day_st).filter(DataPicture.ts <= day_end)
+        
+        if ignore_night_photos:
+            image_query = image_query.filter(Data.lux > 30)
+        if suuid:
+            image_query = image_query.filter(Data.sensor.has(Sensor.uuid == suuid))
+        if cam_names:
+            cam_labels = set([x.strip() for x in cam_names.split(",")])
+            image_query = image_query.filter(Camera.camlabel.in_(cam_labels))
+        if cam_positions:
+            pos_labels = set([int(x.strip()) for x in cam_positions.split(",")])
+            image_query = image_query.filter(CameraPosition.poslabel.in_(pos_labels))
+        if cam_zones:
+            zone_labels = set([x.strip() for x in cam_zones.split(",")])
+            image_query = image_query.filter(PictureZone.zone.in_(zone_labels))
+        if label_text:
+            image_query = image_query.filter(PictureZone.results.ilike(r"%{}%".format(label_text)))
+        res_data = image_query.all()
+        if cam_zones:
+            res_json = self.image_zones_schema.dump(res_data).data
+        else:
+            res_json = self.images_schema.dump(res_data).data
+            
+        if res_data:
+            res = {"numrecords": len(res_data),
+                   'data': res_json
+            }
+            
+            return jsonify(res), 200
+        
+        abort(404)
+        
     
 class StatsAPI(Resource):
     def __init__(self):
@@ -795,15 +995,6 @@ class StatsAPI(Resource):
            required: false
            description: Sensor UUID
          - in: query
-           name: export_zones
-           type: boolean
-           required: false
-         - in: query
-           name: ignore_night_photos
-           type: boolean
-           required: false
-           description: Select which photos would be exported, all or only those which are taken on light period
-         - in: query
            name: ts_from
            type: string
            format: date-time
@@ -817,40 +1008,6 @@ class StatsAPI(Resource):
            example: "2017-01-01 10:21"
            required: false
            description: Return data before the given timestamp
-         - in: query
-           name: label_text
-           type: string
-           required: false
-           description: Selech only photos with label matching the search string
-         - in: query
-           name: full_data
-           type: boolean
-           required: false
-           description: Full data flag. If true, data would be shown with all captured pictures
-         - in: query
-           name: cam_names
-           type: string
-           required: false
-           default: CAM1,CAM2
-           description: A comma-separated list of camera names to include when export zones
-         - in: query
-           name: cam_positions
-           type: string
-           required: false
-           default: 1,2,3
-           description: A comma-separated list of camera positions to include when export zones
-         - in: query
-           name: cam_numsamples
-           type: integer
-           required: false
-           default: 1
-           description: Number of samples to export, for export zones task
-         - in: query
-           name: cam_zones
-           type: string
-           required: false
-           default: 1,2,3
-           description: A comma-separated list of camera zones to include when export zones
         definitions:
           SensorData:
             type: object
@@ -1031,7 +1188,7 @@ class StatsAPI(Resource):
         # 
         user = User.query.filter_by(login=data['sub']).first()
         if not user:
-            abort(404)
+            abort(401)
         if not suuid:
             abort(404)
         if not dataid:
@@ -1985,6 +2142,7 @@ class UserAPI(Resource):
 
         
 api.add_resource(UserAPI, '/users', '/users/<int:id>', endpoint='users')
+api.add_resource(ImagesAPI, '/images', endpoint='images')
 api.add_resource(CameraAPI, '/cameras/<int:id>', endpoint='cameras')
 api.add_resource(StatsAPI, '/data', '/data/<int:id>', endpoint='savedata')
 api.add_resource(SensorAPI, '/sensors', '/sensors/<int:id>', endpoint='sensors')
