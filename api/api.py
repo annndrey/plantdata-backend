@@ -10,6 +10,7 @@ from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import or_, desc
 from sqlalchemy import func as sql_func
+from sqlalchemy.pool import NullPool
 from flask_marshmallow import Marshmallow
 from flask_httpauth import HTTPBasicAuth
 from flask_cors import CORS, cross_origin
@@ -48,7 +49,7 @@ from collections import OrderedDict
 
 
 
-from multiprocessing.pool import ThreadPool
+from multiprocessing import Pool
 
 logging.basicConfig(format='%(levelname)s: %(asctime)s - %(message)s',
                     level=logging.DEBUG, datefmt='%d.%m.%Y %I:%M:%S %p')
@@ -142,6 +143,54 @@ if CLASSIFY_ZONES:
             CROP_SETTINGS = yaml.safe_load(stream)
         except yaml.YAMLError as exc:
             app.logger.debug(exc)
+
+
+class SQLAlchemyNoPool(SQLAlchemy):
+    def apply_driver_hacks(self, app, info, options):
+        options.update({
+            'poolclass': NullPool
+        })
+        super(SQLAlchemy, self).apply_driver_hacks(app, info, options)
+        
+            
+def send_zones(zone, zonelabel, fuuid, file_format, fpath, user_login, sensor_uuid, cf_headers, original):
+    db = SQLAlchemyNoPool()
+    cropped = original.crop((zone['left'], zone['top'], zone['right'], zone['bottom']))
+    img_io = io.BytesIO()
+    cropped.save(img_io, file_format, quality=100)
+    img_io.seek(0)
+    #dr = ImageDraw.Draw(original)
+    #dr.rectangle((zone['left'], zone['top'], zone['right'], zone['bottom']), outline = '#fbb040', width=3)
+    #dr.text((zone['left']+2, zone['top']+2), zonelabel, font=zonefont)
+                        
+    zuuid = f"{fuuid}_{zonelabel}"
+    zname = zuuid + "." + file_format.lower()
+    z_full_path = os.path.join(fpath, zname)
+    partzpath = os.path.join(user_login, sensor_uuid, zname)
+    app.logger.debug(["ZONE", zonelabel, z_full_path, partzpath])
+    cropped.save(z_full_path, file_format, quality=100)
+    newzone = PictureZone(fpath=partzpath, zone=zonelabel)
+    
+    # Now take an original image, crop the zones, send it to the
+    # CF server and get back the response for each
+    # Draw rectangle zones on the original image & save it
+    # Modify the image lzbel with zones results
+    # send CF request
+    #original.save(fullpath)
+    
+    response = requests.post(CF_HOST.format("loadimage"), headers=cf_headers, files = {'croppedfile': img_io}, data={'index':0, 'filename': ''})
+    if response.status_code == 200:
+        cf_result = response.json().get('objtype')
+        #responses.append("{}: {}".format(z, cf_result))
+        newzone.results = cf_result
+        app.logger.debug(f"CF RESULTS {cf_result}")
+    #else:
+        #responses.append("{}".format(z))
+                            
+    db.session.add(newzone)
+    db.session.commit()
+    return newzone.id
+    #newzones.append(newzone)
 
 
 def cache_key():
@@ -306,7 +355,7 @@ def token_required(f):
         user = User.query.filter_by(login=data['sub']).first()
 
         if not user:
-            abort(404)
+            abort(403)
 
         return f(*args, **kwargs)
 
@@ -405,57 +454,38 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
             if CLASSIFY_ZONES and CF_TOKEN:
                 # zones = CROP_SETTINGS.get(uplname, None)
                 zones = get_zones()
-                cf_headers = {'Authorization': 'Bearer ' + CF_TOKEN}
+                cf_headers = None #= {'Authorization': 'Bearer ' + CF_TOKEN}
                 # 2592x1944
                 if zones:
                     responses = []
-                    #original = Image.open(fullpath)
+                    newzones = []
+                    argslist = []
+                    dr = ImageDraw.Draw(original)
                     for z in zones.keys():
-                        cropped = original.crop((zones[z]['left'], zones[z]['top'], zones[z]['right'], zones[z]['bottom']))
-                        img_io = io.BytesIO()
-                        cropped.save(img_io, FORMAT, quality=100)
-                        img_io.seek(0)
-                        dr = ImageDraw.Draw(original)
+                        argslist.append([zones[z], z, fuuid, FORMAT, fpath, user_login, sensor_uuid, cf_headers, original])
                         dr.rectangle((zones[z]['left'], zones[z]['top'], zones[z]['right'], zones[z]['bottom']), outline = '#fbb040', width=3)
-                        dr.text((zones[z]['left'], zones[z]['top']), z, font=zonefont)
-                        
-                        zuuid = f"{fuuid}_{z}"
-                        zname = zuuid + "." + FORMAT.lower()
-                        z_full_path = os.path.join(fpath, zname)
-                        partzpath = os.path.join(user_login, sensor_uuid, zname)
-                        app.logger.debug(["ZONE", z_full_path, partzpath])
-                        cropped.save(z_full_path, FORMAT, quality=100)
-                        newzone = PictureZone(fpath=partzpath, zone=z)
-                        # Now take an original image, crop the zones, send it to the
-                        # CF server and get back the response for each
-                        # Draw rectangle zones on the original image & save it
-                        # Modify the image lzbel with zones results
-                        # send CF request
-                        response = requests.post(CF_HOST.format("loadimage"), headers=cf_headers, files = {'croppedfile': img_io}, data={'index':0, 'filename': ''})
-                        if response.status_code == 200:
-                            cf_result = response.json().get('objtype')
-                            responses.append("{}: {}".format(z, cf_result))
-                            newzone.results = cf_result
-                            
-                        else:
-                            responses.append("{}".format(z))
-                            
-                        db.session.add(newzone)
-                        db.session.commit()
-                        newzones.append(newzone)
-                                         
-<<<<<<< HEAD
+                        dr.text((zones[z]['left']+2, zones[z]['top']+2), z, font=zonefont)
+
+                    # Paralleled requests
+                    p = Pool(processes=2)
+                    zones_ids = p.starmap(send_zones, argslist)
+                    p.close()
+                    app.logger.debug(["SAVED ZONES", [zones_ids]])
+
+                    db.session.commit()
+
+                    if zones_ids:
+                        newzones = db.session.query(PictureZone).filter(PictureZone.id.in_(zones_ids)).all()
+                        app.logger.debug(["NEWZONES", [(n.id, n.results) for n in newzones]])
+                        classification_results = "ZONES Results: {}".format(", ".join(["{}: {}".format(z.zone, process_result(z.results)) for z in sorted(newzones, key=lambda x: int(x.zone[4:]))]))
+                    else:
+                        app.logger.debug(["NO ZONES", newzones])
+                        newzones = None
+                        classification_results = ""
                 original.save(fullpath)
-                classification_results = "Results: {}".format(", ".join(responses))
+
                 imglabel = imglabel + " " + classification_results
-=======
-                    original.save(fullpath)
-                    
-                    classification_results = "Results: {}".format(", ".join(responses))
-                    imglabel = imglabel + " " + classification_results
-                
->>>>>>> Issue #51 Added 'recognize' parameter to the PATCH request to choose if it sends image to the disease recognition API or not
-        # Thumbnails 
+        # Thumbnails
         original.thumbnail((300, 300), Image.ANTIALIAS)
         original.save(thumbpath, FORMAT, quality=90)
         app.logger.debug(["CAMERA TO PICT", camposition.camera.camlabel, camposition.poslabel, imglabel])
@@ -467,11 +497,43 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
         )
         if newzones:
             newpicture.zones = newzones
+
         db.session.add(newpicture)
         camposition.pictures.append(newpicture)
         db.session.commit()
         picts.append(newpicture)
+        # Here we have linked the picture with zones,
+        # and can check now for the unhealthy results
+        # and send emails
+        pict_zones_info = check_unhealthy_zones(newpicture, sensor_uuid)
+        if pict_zones_info:
+            picts_unhealthy_status.append(pict_zones_info)
+
         app.logger.debug("NEW PICTURE ADDED")
+
+    if picts_unhealthy_status:
+        # send email to user's additional email
+        sensor = db.session.query(Sensor).filter(Sensor.uuid == sensor_uuid).first()
+        if sensor:
+            if sensor.user.login == user_login:
+                user_email = sensor.user.additional_email
+                if user_email:
+                    # update results list:
+                    for pict_res in picts_unhealthy_status:
+                        pict_res['location'] = sensor.location.address
+                        pict_res['sensor_uuid'] = sensor.uuid
+                    #app.logger.debug("SENDING EMAIL")
+                    for p in picts_unhealthy_status:
+                        # email_text = create_email_text(p)
+                        # Now we only add a pending notification to be send
+                        app.logger.debug(["CREATING NOTIFICATION", p])
+                        p['ts'] = p['ts'].strftime("%d-%m-%Y %H:%M:%S")
+                        newnotification = Notification(user=sensor.user, text=json.dumps(p))
+                        db.session.add(newnotification)
+                        db.session.commit()
+
+                    #send_email_notification.delay(user_email, picts_unhealthy_status)
+
     return picts
 
 
