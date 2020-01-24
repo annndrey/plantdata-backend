@@ -223,7 +223,7 @@ String SendInfo(){
   info.concat(", 'gateway': ");
   info.concat(WiFi.gatewayIP().toString());
   info.concat(", 'MAC': ");
-  info.concat(WiFi.macAddress());
+  info.concat(WiFi.macAddress().toString());
   info.concat(", 'subnet mask': ");
   info.concat(WiFi.subnetMask().toString());
   info.concat(", 'mDNS Host Name': ");
