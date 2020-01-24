@@ -141,12 +141,12 @@ void loop()
 
 
 void handle_SendSensorData() {
-  server.send(200, "text/html", ReadSensors());
+  server.send(200, "application/json", ReadSensors());
   //server.send(200, "text/html", Test());
 }
 
 void handle_SendInfo() {
-  server.send(200, "text/html", SendInfo());
+  server.send(200, "application/json", SendInfo());
 }
 
 
@@ -222,6 +222,8 @@ String SendInfo(){
   info.concat(WiFi.localIP().toString());
   info.concat(", 'gateway': ");
   info.concat(WiFi.gatewayIP().toString());
+  info.concat(", 'MAC': ");
+  info.concat(WiFi.macAddress());
   info.concat(", 'subnet mask': ");
   info.concat(WiFi.subnetMask().toString());
   info.concat(", 'mDNS Host Name': ");
