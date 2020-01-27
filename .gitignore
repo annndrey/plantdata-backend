@@ -106,3 +106,4 @@ venv.bak/
 # Peronal exceptions
 *.bin
 *.log
+node_test
