@@ -23,13 +23,13 @@
 #define PIN_MQ135  ADC2
 #define WEIGHT_SENSORS_AMOUNT 2
 
-IPAddress local_ip(192, 168, 43, 140); 
-IPAddress gateway(192, 168, 43, 1); 
-IPAddress subnet(255, 255, 255, 0); 
+IPAddress local_ip(192, 168, 0, 140);
+IPAddress gateway(192, 168, 0, 254);
+IPAddress subnet(255, 255, 255, 0);
 
 
-const char* ssid = "dopel";  // Enter SSID here
-const char* password = "14tar349";  //Enter Password here
+const char* ssid = "Fermata";  // Enter SSID here
+const char* password = "92985346";  //Enter Password here
 
 const char* host = "espinit"; //mDNS host name
 
@@ -131,7 +131,7 @@ void loop()
   //Attempt to reconnect in case of lousing connection
   while ( WiFi.status() != WL_CONNECTED) {
     Serial.print("Attempting to connect to SSID: ");
-    Serial.println(ssid);    
+    Serial.println(ssid);
     WiFi.begin(ssid, password);
     // wait 10 seconds for connection:
     delay(10000);
@@ -151,12 +151,16 @@ void handle_SendInfo() {
 
 
 String ReadSensors()  {
+  Serial.println("Reading Sensors!");
   int sensorCO2Value = analogRead(PIN_MQ135);
+  sensorCO2Value = map(sensorCO2Value, 0, 4095, 0, 1023); //because ESP32 has 12-bit ADC
   float h0 = dht0.readHumidity();   // считывание влажности
   float t0 = dht0.readTemperature();  // считывание температуры
   float h1 = -1;   // считывание влажности
   float t1 = -1;  // считывание температуры
+  Serial.println("prelight");
   unsigned long lght = TSL2561.readVisibleLux();
+  Serial.println("postlight");
   //Reading temperature sensor
   int tmpA = analogRead(ADC1);
   float Rt0 = 4095.0 / tmpA - 1.0; //using 4095, because ESP32 has 12-bit ADC
@@ -178,7 +182,7 @@ String ReadSensors()  {
   doc["TA"] = tempA;
   doc["L"] = lght;
   doc["CO2"] = sensorCO2Value;
-  for(int i = 0; i < WEIGHT_SENSORS_AMOUNT; i++)
+  for (int i = 0; i < WEIGHT_SENSORS_AMOUNT; i++)
   {
     String key = String("WGHT" + String(i));
     Serial.println(key);
@@ -188,35 +192,35 @@ String ReadSensors()  {
   serializeJson(doc, sensorData);
   return sensorData;
   /*
-  String sensorData;
-  sensorData.concat("{'T0' : ");
-  sensorData.concat(t0);
-  sensorData.concat(", 'H0': ");
-  sensorData.concat(h0);
-  sensorData.concat(", 'T1': ");
-  sensorData.concat(t1);
-  sensorData.concat(", 'H1': ");
-  sensorData.concat(h1);
-  sensorData.concat(", 'TA': ");
-  sensorData.concat(tempA);
-  sensorData.concat(", 'L': ");
-  sensorData.concat(lght);
-  sensorData.concat(", 'CO2': ");
-  sensorData.concat(sensorCO2Value);
-  for (int i = 0; i < WEIGHT_SENSORS_AMOUNT; i++)
-  {
+    String sensorData;
+    sensorData.concat("{'T0' : ");
+    sensorData.concat(t0);
+    sensorData.concat(", 'H0': ");
+    sensorData.concat(h0);
+    sensorData.concat(", 'T1': ");
+    sensorData.concat(t1);
+    sensorData.concat(", 'H1': ");
+    sensorData.concat(h1);
+    sensorData.concat(", 'TA': ");
+    sensorData.concat(tempA);
+    sensorData.concat(", 'L': ");
+    sensorData.concat(lght);
+    sensorData.concat(", 'CO2': ");
+    sensorData.concat(sensorCO2Value);
+    for (int i = 0; i < WEIGHT_SENSORS_AMOUNT; i++)
+    {
     sensorData.concat(", ");
     sensorData.concat("'WGHT");
     sensorData.concat(i);
     sensorData.concat("': ");
     sensorData.concat(scalevalue[i]);
-  }
-  sensorData.concat("}");
-  return sensorData;
+    }
+    sensorData.concat("}");
+    return sensorData;
   */
 }
 
-String SendInfo(){
+String SendInfo() {
   String info;
   info.concat("{'IP': ");
   info.concat(WiFi.localIP().toString());
@@ -230,7 +234,7 @@ String SendInfo(){
   return info;
 }
 
-String Test(){
+String Test() {
   String sensorData;
   Serial.println("Started test partition!");
   sensorData.concat("{'T0' : ");
