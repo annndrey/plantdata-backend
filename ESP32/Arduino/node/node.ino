@@ -1,3 +1,5 @@
+#define TEST 1
+
 #include <ArduinoJson.h>
 
 #include <EEPROM.h>
@@ -23,13 +25,13 @@
 #define PIN_MQ135  ADC2
 #define WEIGHT_SENSORS_AMOUNT 2
 
-IPAddress local_ip(192, 168, 0, 140);
+IPAddress local_ip(192, 168, 1, 140);
 IPAddress gateway(192, 168, 0, 254);
 IPAddress subnet(255, 255, 255, 0);
 
 
-const char* ssid = "Fermata";  // Enter SSID here
-const char* password = "92985346";  //Enter Password here
+const char* ssid = "aladdin";  // Enter SSID here
+const char* password = "Glin@2913";  //Enter Password here
 
 const char* host = "espinit"; //mDNS host name
 
@@ -141,8 +143,11 @@ void loop()
 
 
 void handle_SendSensorData() {
+  #if TEST
+  server.send(200, "application/json", Test());
+  #else
   server.send(200, "application/json", ReadSensors());
-  //server.send(200, "text/html", Test());
+  #endif
 }
 
 void handle_SendInfo() {
@@ -158,9 +163,7 @@ String ReadSensors()  {
   float t0 = dht0.readTemperature();  // считывание температуры
   float h1 = -1;   // считывание влажности
   float t1 = -1;  // считывание температуры
-  Serial.println("prelight");
   unsigned long lght = TSL2561.readVisibleLux();
-  Serial.println("postlight");
   //Reading temperature sensor
   int tmpA = analogRead(ADC1);
   float Rt0 = 4095.0 / tmpA - 1.0; //using 4095, because ESP32 has 12-bit ADC
@@ -185,7 +188,6 @@ String ReadSensors()  {
   for (int i = 0; i < WEIGHT_SENSORS_AMOUNT; i++)
   {
     String key = String("WGHT" + String(i));
-    Serial.println(key);
     doc[key] = scalevalue[i];
   }
   String sensorData;
@@ -221,47 +223,34 @@ String ReadSensors()  {
 }
 
 String SendInfo() {
-  String info;
-  info.concat("{'IP': ");
-  info.concat(WiFi.localIP().toString());
-  info.concat(", 'gateway': ");
-  info.concat(WiFi.gatewayIP().toString());
-  info.concat(", 'MAC': ");
-  info.concat(WiFi.macAddress().toString());
-  info.concat(", 'subnet mask': ");
-  info.concat(WiFi.subnetMask().toString());
-  info.concat(", 'mDNS Host Name': ");
-  info.concat(host);
-  info.concat("}");
-  return info;
+  const int json_capacity = JSON_OBJECT_SIZE(9);
+  StaticJsonDocument<json_capacity> info;
+  info["IP"] = WiFi.localIP().toString();
+  info["gateway"] = WiFi.gatewayIP().toString();
+  info["MAC"] = String(WiFi.macAddress());
+  info["subnet mask"] = WiFi.subnetMask().toString();
+  info["mDNS host mask"] = host;
+  String infoData;
+  serializeJson(info, infoData);
+  return infoData;
 }
 
 String Test() {
-  String sensorData;
-  Serial.println("Started test partition!");
-  sensorData.concat("{'T0' : ");
-  sensorData.concat(-1);
-  sensorData.concat(", 'H0': ");
-  sensorData.concat(-1);
-  sensorData.concat(", 'T1': ");
-  sensorData.concat(-1);
-  sensorData.concat(", 'H1': ");
-  sensorData.concat(-1);
-  sensorData.concat(", 'TA': ");
-  sensorData.concat(-1);
-  sensorData.concat(", 'L': ");
-  sensorData.concat(-1);
-  sensorData.concat(", 'CO2': ");
-  sensorData.concat(-1);
+  const int json_capacity = JSON_OBJECT_SIZE(8 + WEIGHT_SENSORS_AMOUNT);
+  StaticJsonDocument<json_capacity> doc;
+  doc["T0"] = -1;
+  doc["H0"] = -1;
+  doc["T1"] = -1;
+  doc["H1"] = -1;
+  doc["TA"] = -1;
+  doc["L"] = -1;
+  doc["CO2"] = -1;
   for (int i = 0; i < WEIGHT_SENSORS_AMOUNT; i++)
   {
-    sensorData.concat(", ");
-    sensorData.concat("'WGHT");
-    sensorData.concat(i);
-    sensorData.concat("': ");
-    sensorData.concat(-1);
+    String key = String("WGHT" + String(i));
+    doc[key] = -1;
   }
-  sensorData.concat("}");
-  Serial.println("Finished test partition!");
+  String sensorData;
+  serializeJson(doc, sensorData);
   return sensorData;
 }
