@@ -29,7 +29,7 @@ from PIL import Image
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine, or_, func
 
-from models import Base, SensorData, Photo
+from models import Base, BaseStationData, Photo, Probe, ProbeData
 
 import logging
 from traceback import format_exc
@@ -113,23 +113,45 @@ session = Session()
 Base.metadata.create_all(engine, checkfirst=True)
 
 
-async def async_read_sensor_data(session, url):
+def create_session(db_file):
+    engine = create_engine('sqlite:///{}'.format(db_file))
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    return session
+
+async def async_read_sensor_data(session, url, dbsession, bsid):
     resp_json = []
     async with session.get(url, timeout=0) as response:
         if response.status == 200:
             logging.debug(["SENSOR {} RESPONSE".format(url)])
             resp = await response.text()
             resp_json = json.loads(resp)
-            logging.debug(resp_json)
+            uuid = resp_json.get("UUID")
+            data = resp_json.get("data")
+            logging.debug(["UUID", uuid])
+            logging.debug(["DATA", data])
+            basestation = dbsession.query(BaseStationData).filter(BaseStationData.id==bsid).first()
+            dbprobe = dbsession.query(Probe).filter(Probe.uuid==uuid).first()
+            if not dbprobe:
+                # Create Probe record
+                dbprobe = Probe(uuid=uuid, basestation=basestation)
+                dbsession.add(dbprobe)
+                dbsession.commit()
+            for pdata in data:
+                {'ptype': 'temp', 'label': 'T0', 'value': 18.43}
+                newpdata = ProbeData(probe=dbprobe, value=pdata['value'], ptype=pdata['ptype'], label=pdata['label'])
+                dbsession.add(newpdata)
+                dbsession.commit()
+                
+            # Create ProbeData records
         else:
             logging.debug(["NO RESPONSE FROM {}".format(url), response.status])
         return resp_json
 
-async def fetch_all_sensors_data(urls, loop):
+async def fetch_all_sensors_data(urls, loop, dbsession, bsid):
     async with aiohttp.ClientSession(loop=loop) as session:
-        results = await asyncio.gather(*[async_read_sensor_data(session, url) for url in urls], return_exceptions=True)
+        results = await asyncio.gather(*[async_read_sensor_data(session, url, dbsession, bsid) for url in urls], return_exceptions=True)
         return results
-
 
 def send_patch_request(fname, flabel, fcamname, fcamposition, data_id, photo_id, header):
     files = {}
@@ -171,13 +193,12 @@ def get_token():
         token = res.json().get('token')
     return token
 
-
 def register_base_station(token, suuid=None):
     base_station_uuid = suuid
     with open('bs.dat', 'wb') as f:
         try:
             if not base_station_uuid:
-                base_station_uuid = new_bs(token)
+                base_station_uuid = new_base_station(token)
             data = {'uuid': base_station_uuid, 'token': token}
             pickle.dump(data, f)
         except:
@@ -203,7 +224,7 @@ def get_base_station_uuid():
             pass
     return base_station_uuid, token
 
-def new_bs(token):
+def new_base_station(token):
     data_sent = False
 
     if not token:
@@ -221,38 +242,6 @@ def new_bs(token):
     newuuid = response.json().get('uuid')
     return newuuid
 
-def tryserial(ser):
-    try:
-        bufferstr = ""
-        for i in range(3):
-            bufferstr = bufferstr + ser.readline().decode("utf-8")
-            sleep(2)
-        serialdata = bufferstr.split("\n")[-2]
-        serialdata = serialdata.replace("'", '"')
-        serialdata = serialdata.replace("CO2", '"CO2"')
-        serialdata = serialdata.replace(", ,", ", ")
-        serialdata = serialdata.replace(", }", "} ")
-        serialdata = serialdata.replace("nan", "-1")
-        logging.debug(serialdata)
-        serialdata = json.loads(serialdata)
-        logging.debug("data read")
-    except Exception as e:
-        #ser.close()
-        logging.debug("json next try {}".format(repr(e)))
-        sleep(10)
-        ser = connect_serial()
-        # toss any data already received, see
-        # http://pyserial.sourceforge.net/pyserial_api.html#serial.Serial.flushInput
-        return tryserial(ser)
-    else:
-        logging.debug("json read")
-        return serialdata
-
-#def readsensordata(ser, isread):
-#    sensordata = requests.get(http://localhost:8000/sensor_data)
-#    data_read = True
-#    return sensordata
-
 def post_data(token, bsuuid, take_photos):
     data_read = False
     data_sent = False
@@ -265,13 +254,16 @@ def post_data(token, bsuuid, take_photos):
         logging.debug('Not allowed')
     head = {'Authorization': 'Bearer ' + token}
 
-    # collect serial data here
     cameradata = []
-
-    # for addr in SENSOR_ADDR
-    #sensordata = readsensordata(SENSOR_ADDR, data_read)
     sensordata = {}
+    sensordata['uuid'] = bsuuid
+    sensordata['TS'] = datetime.datetime.now(tz)
     
+    newdata = BaseStationData(bs_uuid=sensordata['uuid'], ts=sensordata['TS'])
+    session.add(newdata)
+    session.commit()
+    
+
     if CONFIG_FILE:
         # Read sensors data
         sensor_urls = []
@@ -280,8 +272,12 @@ def post_data(token, bsuuid, take_photos):
             sensor_urls.append(SENSOR['URL'])
             
         loop = asyncio.get_event_loop()
-        responses = loop.run_until_complete(fetch_all_sensors_data(sensor_urls, loop))
+        async_session = create_session(db_file)
+        
+        responses = loop.run_until_complete(fetch_all_sensors_data(sensor_urls, loop, async_session, newdata.id))
+        
         logging.debug(responses)
+        async_session.close()
         
         # Take & process photos
         if take_photos:
@@ -387,14 +383,10 @@ def post_data(token, bsuuid, take_photos):
                                 sleep(5)
 
                     # ir_respr = requests.post("http://{}:{}@{}/form/IRset".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), data=ir_data)
-                    
-    sensordata['uuid'] = bsuuid
-    sensordata['TS'] = datetime.datetime.now(tz)
 
     # >>>>>>>>>> 
 
     
-    #create cache record here with status uploaded False
     #wght0 = serialdata.get('WGHT0', -1)
     #if wght0 > 0:
     #    wght0 = (wght0 - OFFSET0) / SCALE0
@@ -413,6 +405,7 @@ def post_data(token, bsuuid, take_photos):
     #if wght4 > 0:
     #    wght4 = (wght4 - OFFSET4) / SCALE4
 
+    #create cache record here with status uploaded False
     # TODO: New data structure
     
     # Create New SensorData
