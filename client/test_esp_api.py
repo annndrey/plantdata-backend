@@ -15,9 +15,9 @@ async def info():
             {"ptype":"temp","label":"T2","value": get_random(17.4, 18.5)},
             {"ptype":"humid","label":"H0","value": get_random(60.3, 70.3)},
             {"ptype":"humid","label":"H1","value": get_random(65.3, 69.3)},
-            {"ptype":"pres","label":"P0","value": get_random(100, 101)},
-            {"ptype":"co2","label":"C0","value": get_random(200, 300)},
-            {"ptype":"co2","label":"C1","value": get_random(200, 300)},
+            {"ptype":"pres","label":"P0","value": get_random(100, 101, 0)},
+            {"ptype":"co2","label":"C0","value": get_random(200, 300, 0)},
+            {"ptype":"co2","label":"C1","value": get_random(200, 300, 0)},
             {"ptype":"light","label":"L0","value": get_random(0, 100)}
     ]
 
