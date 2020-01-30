@@ -384,80 +384,32 @@ def post_data(token, bsuuid, take_photos):
 
                     # ir_respr = requests.post("http://{}:{}@{}/form/IRset".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), data=ir_data)
 
-    # >>>>>>>>>> 
 
+    if take_photos:
+        files = {}
+        for i, d in enumerate(cameradata):
+            newphoto = Photo(bs=newdata, photo_filename=d['fname'], label=d["label"], camname=d["cameraname"], camposition=d["cameraposition"])
+            session.add(newphoto)
+            session.commit()
+    else:
+        files = None
+        
+    # All data saved
+    # Now sending all cached data to the server
     
-    #wght0 = serialdata.get('WGHT0', -1)
-    #if wght0 > 0:
-    #    wght0 = (wght0 - OFFSET0) / SCALE0
-    #wght1 = serialdata.get('WGHT1', -1)
-    #if wght1 > 0:
-    #    wght1 = (wght1 - OFFSET1) / SCALE1
-    #    
-    #wght2 = serialdata.get('WGHT2', -1)
-    #if wght2 > 0:
-    #    wght2 = (wght2 - OFFSET2) / SCALE2
-    #    
-    #wght3 = serialdata.get('WGHT3', -1)
-    #if wght3 > 0:
-    #    wght3 = (wght3 - OFFSET3) / SCALE3
-    #wght4 = serialdata.get('WGHT4', -1)
-    #if wght4 > 0:
-    #    wght4 = (wght4 - OFFSET4) / SCALE4
-
-    #create cache record here with status uploaded False
-    # TODO: New data structure
-    
-    # Create New SensorData
-    # Check for existing probes
-    # Get/create probe
-    # Create Probe Data
-    # Link to Probe
-    # Link to Sensor Data
-    
-#    newdata = SensorData(ts = serialdata['TS'],
-#                         sensor_uuid = serialdata['uuid'],
-#                         temp0 = serialdata.get('T0', -1),
-#                         temp1 = serialdata.get('T1', -1),
-#                         hum0 = serialdata.get('H0', -1),
-#                         hum1 = serialdata.get('H1', -1),
-#                         tempA = serialdata.get('TA', -1),
-#                         uv = serialdata.get('UV', -1),
-#                         lux = serialdata.get('L', -1),
-#                         soilmoist = serialdata.get('M', -1),
-#                         co2 = serialdata.get('CO2', -1),
-#                         wght0 = wght0,
-#                         wght1 = wght1,
-#                         wght2 = wght2,
-#                         wght3 = wght3,
-#                         wght4 = wght4
-#                         
-#    )
-#    session.add(newdata)
-#    session.commit()
-#
-#    if take_photos:
-#        files = {}
-#        for i, d in enumerate(cameradata):
-#            newphoto = Photo(sensordata=newdata, photo_filename=d['fname'], label=d["label"], camname=d["cameraname"], camposition=d["cameraposition"])
-#            session.add(newphoto)
-#            session.commit()
-#    else:
-#        files = None
-#            
-#    # All data saved
-#    numretries = 0
-#    #while not data_sent:
-#            
-#    try:
-#        # cleanup
-#        data_uploaded = session.query(SensorData).filter(SensorData.uploaded.is_(True)).delete()
-#        session.commit()
-#        # try to send all cached data
-#        # Join SensorData, Probe, ProbeData
-#        cacheddata = session.query(SensorData).filter(SensorData.uploaded.is_(False)).all()
-#        logging.debug("CACHED DATA {}".format([(c.sensor_uuid, c.ts) for c in cacheddata]))
-#        for cd in cacheddata:
+    numretries = 0
+    while not data_sent:
+        try:
+            # cleanup
+            #data_uploaded = session.query(SensorData).filter(SensorData.uploaded.is_(True)).delete()
+            #        session.commit()
+            #        # try to send all cached data
+            #        # Join SensorData, Probe, ProbeData
+            cacheddata = session.query(BaseStationData).join(Probe).join(ProbeData).filter(BaseStationData.uploaded.is_(False)).all()
+        
+            #        logging.debug("CACHED DATA {}".format([(c.sensor_uuid, c.ts) for c in cacheddata]))
+            
+            for cd in cacheddata:
             # Create a nested dict here:
             # { uuid: ...,
             #   ts: ...,
@@ -466,63 +418,55 @@ def post_data(token, bsuuid, take_photos):
             # ...
             # ]
             # }
+                postdata = {'uuid': cd.bs_uuid, 'ts': str(cd.ts), 'probes':[]}
+                for pr in cd.probes:
+                    probe = {"uuid": pr.uuid, "data": []}
+                    for pd in pr.values:
+                        probe['data'].append({"ptype":pd.ptype, "value":float(pd.value), "label": pd.label})
+                    postdata['probes'].append(probe)
+                    
+                print(json.dumps(postdata, indent=4, sort_keys=True))
             
-#            serialdata = {'uuid': cd.sensor_uuid,
-#                          'ts': cd.ts,
-#                          'TA': cd.tempA,
-#                          'T0': cd.temp0,
-#                          'T1': cd.temp1,
-#                          'H0': cd.hum0,
-#                          'H1': cd.hum1,
-#                          'UV': cd.uv,
-#                          'L': cd.lux,
-#                          'M': cd.soilmoist,
-#                          'CO2': cd.co2,
-#                          'WGHT0':cd.wght0,
-#                          'WGHT1':cd.wght1,
-#                          'WGHT2':cd.wght2,
-#                          'WGHT3':cd.wght3,
-#                          'WGHT4':cd.wght4
-#            }
-#            logging.debug("SENDING POST REQUEST")
-#            if files:
-#                response = requests.post(SERVER_HOST.format("data"), data=serialdata, files=files, headers=head)
-#            else:
-#                response = requests.post(SERVER_HOST.format("data"), data=serialdata, headers=head)
-#            logging.debug("SERVER RESPONSE {} {}".format(response.status_code, response.text))
-#            if response.status_code == 201:
-#                resp_data = json.loads(response.text)
-#                cd.remote_data_id = resp_data['id']
-#                cd.uploaded = True
-#                session.add(cd)
-#                session.commit()
-#                data_sent=True
-#        
-#        # Send all cached photos
-#        if take_photos:
-#            cachedphotos = session.query(Photo).filter(Photo.uploaded.is_(False)).all()
-#            p = Pool(processes=10)
-#            argslist = []
-#            for i, f in enumerate(cachedphotos):
-#                if f.sensordata:
-#                    if f.sensordata.remote_data_id:
-#                        argslist.append([f.photo_filename, f.label, f.camname, f.camposition, f.sensordata.remote_data_id, f.photo_id, head])
-#                    
-#            logging.debug("START LOOP")
-#            data = p.starmap(send_patch_request, argslist)
-#            p.close()
-#            totalcount = data.count(200)
-#            # Обрабатывать неотправленные фото, не удалять их
-#            # и не удалять отправленные данные
-#            # помечать данные как sent
-#            # и после отправки всех фото
-#            # если у данных не осталось отправленных фото, от удалять
-#            logging.debug("PHOTOS SENT {}".format(totalcount))
-#            # remove cached data here
-#    except requests.exceptions.ConnectionError:
-#        sleep(2)
-#        numretries =+ 1
-#        logging.debug("Network error, trying to connect")
+            logging.debug("SENDING POST REQUEST")
+            #if files:
+            #    response = requests.post(SERVER_HOST.format("data"), data=serialdata, files=files, headers=head)
+            #else:
+            #    response = requests.post(SERVER_HOST.format("data"), data=serialdata, headers=head)
+            #logging.debug("SERVER RESPONSE {} {}".format(response.status_code, response.text))
+            #if response.status_code == 201:
+            #    resp_data = json.loads(response.text)
+            #    cd.remote_data_id = resp_data['id']
+            #    cd.uploaded = True
+            #    session.add(cd)
+            #    session.commit()
+            #    
+            #    # Send all cached photos
+            #    if take_photos:
+            #        cachedphotos = session.query(Photo).filter(Photo.uploaded.is_(False)).all()
+            #        p = Pool(processes=10)
+            #        argslist = []
+            #        for i, f in enumerate(cachedphotos):
+            #            if f.sensordata:
+            #                if f.sensordata.remote_data_id:
+            #                    argslist.append([f.photo_filename, f.label, f.camname, f.camposition, f.sensordata.remote_data_id, f.photo_id, head])
+            #                
+            #        logging.debug("START LOOP")
+            #        loopdata = p.starmap(send_patch_request, argslist)
+            #        p.close()
+            #        totalcount = loopdata.count(200)
+            #        # Обрабатывать неотправленные фото, не удалять их
+            #        # и не удалять отправленные данные
+            #        # помечать данные как sent
+            #        # и после отправки всех фото
+            #        # если у данных не осталось отправленных фото, от удалять
+            #        logging.debug("PHOTOS SENT {}".format(totalcount))
+            #        # remove cached data here
+            data_sent=True
+
+        except requests.exceptions.ConnectionError:
+            sleep(2)
+            numretries =+ 1
+            logging.debug("Network error, trying to connect")
 
 if __name__ == '__main__':
 
