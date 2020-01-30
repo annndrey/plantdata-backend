@@ -84,6 +84,8 @@ class ProbeData(db.Model):
     probe_id = db.Column(db.Integer, ForeignKey('probe.id'))
     probe = relationship("Probe", backref=backref("values", uselist=True))
     value = db.Column(db.Numeric(precision=3))
+    ptype = db.Column(db.String(200))
+    label = db.Column(db.String(200))
 
 
 class Probe(db.Model):
@@ -91,10 +93,6 @@ class Probe(db.Model):
     uuid = db.Column(db.Text(), nullable=False)
     data_id = db.Column(db.Integer, ForeignKey('data.id'))
     data = relationship("Data", backref=backref("probes", uselist=True))
-    ptype = db.Column(db.String(200))
-    label = db.Column(db.String(200))
-    minvalue = db.Column(db.Numeric(precision=3))
-    maxvalue = db.Column(db.Numeric(precision=3))
 
     
 # Sensors
@@ -148,20 +146,6 @@ class Data(db.Model):
     sensor_id = db.Column(db.Integer, ForeignKey('sensor.id'))
     sensor = relationship("Sensor", backref=backref("data", uselist=True))
     ts = db.Column(db.DateTime, default=datetime.datetime.now)
-    temp0 = db.Column(db.Numeric(precision=3))
-    wght0 = db.Column(db.Numeric(precision=3))
-    wght1 = db.Column(db.Numeric(precision=3))
-    wght2 = db.Column(db.Numeric(precision=3))
-    wght3 = db.Column(db.Numeric(precision=3))
-    wght4 = db.Column(db.Numeric(precision=3))
-    temp1 = db.Column(db.Numeric(precision=3))
-    hum0 = db.Column(db.Numeric(precision=3))
-    hum1 = db.Column(db.Numeric(precision=3))
-    tempA = db.Column(db.Numeric(precision=3))
-    uv = db.Column(db.Integer)
-    lux = db.Column(db.Integer)
-    soilmoist = db.Column(db.Integer)
-    co2 = db.Column(db.Integer)
 
     
 class DataPicture(db.Model):

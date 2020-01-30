@@ -74,16 +74,16 @@ app.logger.setLevel(gunicorn_logger.level)
 REDIS_HOST = app.config.get('REDIS_HOST', 'localhost')
 REDIS_PORT = app.config.get('REDIS_PORT', 6379)
 REDIS_DB = app.config.get('REDIS_DB', 0)
-CACHE_DB = app.config.get('CACHE_DB', 1)
+#CACHE_DB = app.config.get('CACHE_DB', 1)
 
-cache = Cache(app, config={
-    'CACHE_TYPE': 'redis',
-    'CACHE_KEY_PREFIX': 'fcache',
-    'CACHE_REDIS_HOST': REDIS_HOST,
-    'CACHE_REDIS_PORT': REDIS_PORT,
-    'CACHE_REDIS_DB'  : REDIS_DB,
-    'CACHE_REDIS_URL': 'redis://{}:{}/{}'.format(REDIS_HOST, REDIS_PORT, REDIS_DB)
-})
+#cache = Cache(app, config={
+#    'CACHE_TYPE': 'redis',
+#    'CACHE_KEY_PREFIX': 'fcache',
+#    'CACHE_REDIS_HOST': REDIS_HOST,
+#    'CACHE_REDIS_PORT': REDIS_PORT,
+#    'CACHE_REDIS_DB'  : REDIS_DB,
+#    'CACHE_REDIS_URL': 'redis://{}:{}/{}'.format(REDIS_HOST, REDIS_PORT, REDIS_DB)
+#})
 
 app.config['SWAGGER'] = {
     'uiversion': 3
@@ -351,7 +351,11 @@ def token_required(f):
             return abort(403)
 
         token = auth_headers[1]
-        data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
+        try:
+            data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
+        except:
+            return abort(403)
+        
         user = User.query.filter_by(login=data['sub']).first()
 
         if not user:
@@ -648,7 +652,7 @@ class PictAPI(Resource):
 
     #@token_required
     @cross_origin()
-    @cache.cached(timeout=300, key_prefix=cache_key)
+    #@cache.cached(timeout=300, key_prefix=cache_key)
     def get(self, path):
         """
         Get picture by URL
@@ -711,7 +715,7 @@ class CameraAPI(Resource):
 
     @token_required
     @cross_origin()
-    @cache.cached(timeout=300, key_prefix=cache_key)
+    #@cache.cached(timeout=300, key_prefix=cache_key)
     def get(self, id):
         """
         Get camera data
@@ -980,7 +984,7 @@ class ImagesAPI(Resource):
         abort(404)
         
     
-class StatsAPI(Resource):
+class DataAPI(Resource):
     def __init__(self):
         self.schema = DataSchema()
         self.m_schema = DataSchema(many=True)
@@ -1015,7 +1019,7 @@ class StatsAPI(Resource):
     
     @token_required
     @cross_origin()
-    @cache.cached(timeout=300, key_prefix=cache_key)
+    #@cache.cached(timeout=300, key_prefix=cache_key)
     def get(self):
         """
         Get sensors data
@@ -1200,7 +1204,7 @@ class StatsAPI(Resource):
           404:
             description: URL not found
         """
-        
+        app.logger.debug("GET DATA")        
         # here the data should be scaled or not
         suuid = request.args.get('uuid', None)
         dataid = request.args.get('dataid', None)
@@ -1225,6 +1229,7 @@ class StatsAPI(Resource):
         # By default show data for the last recorded day
         # 
         user = User.query.filter_by(login=data['sub']).first()
+        
         if not user:
             abort(401)
         if not suuid:
@@ -1237,7 +1242,7 @@ class StatsAPI(Resource):
                     day_st = last_rec_day.replace(hour=0, minute=0)
                     day_end = last_rec_day.replace(hour=23, minute=59, second=59)
                 else:
-                    abort(404)
+                    return jsonify([])
             else:
                 day_st = datetime.datetime.strptime(ts_from, '%d-%m-%Y %H:%M')
                 #day_st = day_st.replace(hour=0, minute=0)
@@ -1322,7 +1327,8 @@ class StatsAPI(Resource):
             sensordata = db.session.query(Data).filter(Data.sensor.has(uuid=suuid)).filter(Data.id == dataid).first()
             if sensordata:
                 return jsonify(self.schema.dump(sensordata).data), 200
-            
+            else:
+                return(jsonify([]))
         return abort(404)
 
     @token_required
@@ -1911,7 +1917,7 @@ class UserAPI(Resource):
         
     @token_required
     @cross_origin()
-    @cache.cached(timeout=300, key_prefix=cache_key)
+    #@cache.cached(timeout=300, key_prefix=cache_key)
     def get(self, id=None):
         """
         Get users
@@ -2182,10 +2188,11 @@ class UserAPI(Resource):
 api.add_resource(UserAPI, '/users', '/users/<int:id>', endpoint='users')
 api.add_resource(ImagesAPI, '/images', endpoint='images')
 api.add_resource(CameraAPI, '/cameras/<int:id>', endpoint='cameras')
-api.add_resource(StatsAPI, '/data', '/data/<int:id>', endpoint='savedata')
+api.add_resource(DataAPI, '/data', '/data/<int:id>', endpoint='savedata')
 api.add_resource(SensorAPI, '/sensors', '/sensors/<int:id>', endpoint='sensors')
 api.add_resource(PictAPI, "/p/<path:path>", endpoint="picts")
-
+# TODO Add ProbeAPI
+# TODO Add ProbeDataAPI
 
 @app.cli.command()
 @click.option('--login',  help='user@mail.com')
