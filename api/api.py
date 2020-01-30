@@ -1089,20 +1089,9 @@ class DataAPI(Resource):
                          id:
                            type: integer
                            description: Probe ID
-                         label:
+                         uuid:
                            type: string
-                           description: Probe label
-                         ptype:
-                           type: string
-                           description: Probe type
-                         minvalue:
-                           type: number
-                           format: double
-                           description: Probe min value
-                         maxvalue:
-                           type: number
-                           format: double
-                           description: Probe max value
+                           description: Probe UUID
                          values:
                            type: array
                            description: A list of probe values
@@ -1113,10 +1102,16 @@ class DataAPI(Resource):
                                id: 
                                  type: integer
                                  description: Probe Data ID
-                               value: 
+                               value:
                                  type: number
                                  format: double
                                  description: Probe Data value
+                               label:
+                                 type: string
+                                 description: Probe Data label
+                               ptype:
+                                 type: string
+                                 description: Probe Data type
                     cameras: 
                       type: array
                       items: 
@@ -1372,20 +1367,9 @@ class DataAPI(Resource):
                          id:
                            type: integer
                            description: Probe ID
-                         label:
+                         uuid:
                            type: string
-                           description: Probe label
-                         ptype:
-                           type: string
-                           description: Probe type
-                         minvalue:
-                           type: number
-                           format: double
-                           description: Probe min value
-                         maxvalue:
-                           type: number
-                           format: double
-                           description: Probe max value
+                           description: Probe UUID
                          values:
                            type: array
                            description: A list of probe values
@@ -1400,6 +1384,12 @@ class DataAPI(Resource):
                                  type: number
                                  format: double
                                  description: Probe Data value
+                               label:
+                                 type: string
+                                 description: Probe label
+                               ptype:
+                                 type: string
+                                 description: Probe type
                     cameras: 
                       type: array
                       items: 
@@ -1570,20 +1560,9 @@ class DataAPI(Resource):
                          id:
                            type: integer
                            description: Probe ID
-                         label:
+                         uuid:
                            type: string
-                           description: Probe label
-                         ptype:
-                           type: string
-                           description: Probe type
-                         minvalue:
-                           type: number
-                           format: double
-                           description: Probe min value
-                         maxvalue:
-                           type: number
-                           format: double
-                           description: Probe max value
+                           description: Probe UUID
                          values:
                            type: array
                            description: A list of probe values
@@ -1598,6 +1577,12 @@ class DataAPI(Resource):
                                  type: number
                                  format: double
                                  description: Probe Data value
+                               label:
+                                 type: string
+                                 description: Probe label
+                               ptype:
+                                 type: string
+                                 description: Probe type
                     cameras: 
                       type: array
                       items: 
