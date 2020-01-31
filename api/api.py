@@ -673,6 +673,16 @@ class FullDataSchema(ma.ModelSchema):
     cameras = ma.Nested("CameraSchema", many=True, exclude=["data",])
 
     
+class ProbeSchema(ma.ModelSchema):
+    class Meta:
+        model = Probe
+
+        
+class ProbeDataSchema(ma.ModelSchema):
+    class Meta:
+        model = ProbeData
+        
+    
 class PictAPI(Resource):
     def __init__(self):
         self.schema = DataPictureSchema()
@@ -1014,8 +1024,146 @@ class ImagesAPI(Resource):
             return jsonify(res), 200
         
         abort(404)
+
+
+class ProbeAPI(Resource):
+    def __init__(self):
+        self.schema = ProbeSchema()
+        self.m_schema = ProbeSchema(many=True)
+        self.method_decorators = []
         
+    def options(self, *args, **kwargs):
+        return jsonify([])
+
+    @token_required
+    @cross_origin()
+    def get(self):
+        """
+        GET Get probe [TODO: Fix description]
+        ---
+        """
+        auth_headers = request.headers.get('Authorization', '').split()
+        token = auth_headers[1]
+        udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
+        user = User.query.filter_by(login=udata['sub']).first()
+        puuid = request.form.get('puuid', None)
+        suuid = request.form.get('suuid', None)
+        
+        sensor = db.session.query().filter(Sensor.uuid == suuid).first()
+        
+        if sensor:
+            if sensor.user != user:
+                abort(403)
+            probe = db.session.query(Probe).join(Sensor).filter(Probe.puuid == puuid).filter(Sensor.uuid == suuid).first()
+            if probe:
+                return jsonify(self.schema.dump(probe).data), 200
+        abort(404)
+
     
+    @token_required
+    @cross_origin()
+    def post(self):
+        """
+        POST Create probe [TODO: Fix description]
+        ---
+        """
+        auth_headers = request.headers.get('Authorization', '').split()
+        token = auth_headers[1]
+        udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
+        user = User.query.filter_by(login=udata['sub']).first()
+        puuid = request.form.get('puuid', None)
+        suuid = request.form.get('suuid', None)
+        sensor = db.session.query().filter(Sensor.uuid == suuid).first()
+        
+        if sensor:
+            if sensor.user != user:
+                abort(403)
+            probe = db.session.query(Probe).join(Sensor).filter(Probe.puuid == puuid).filter(Sensor.uuid == suuid).first()
+            if not probe:
+                newprobe = Probe(sensor=sensor, uuid=puuid)
+                db.session.add(newprobe)
+                db.session.commit()
+                return jsonify(self.schema.dump(newprobe).data), 201
+            else:
+                return jsonify(self.schema.dump(probe).data), 409
+        abort(404)
+
+
+
+class ProbeDataAPI(Resource):
+    def __init__(self):
+        self.schema = ProbeDataSchema()
+        self.m_schema = ProbeDataSchema(many=True)
+        self.method_decorators = []
+        
+    def options(self, *args, **kwargs):
+        return jsonify([])
+
+    @token_required
+    @cross_origin()
+    def get(self):
+        """
+        GET Get probe data [TODO: Fix description]
+        ---
+        """
+        auth_headers = request.headers.get('Authorization', '').split()
+        token = auth_headers[1]
+        udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
+        user = User.query.filter_by(login=udata['sub']).first()
+        puuid = request.form.get('puuid', None)
+        suuid = request.form.get('suuid', None)
+        did = request.form.get('did', None)
+        sensor = db.session.query().filter(Sensor.uuid == suuid).first()
+        
+        abort(404)
+
+    
+    @token_required
+    @cross_origin()
+    def post(self):
+        """
+        POST Create probe [TODO: Fix description]
+        ---
+        """
+        auth_headers = request.headers.get('Authorization', '').split()
+        token = auth_headers[1]
+        udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
+        user = User.query.filter_by(login=udata['sub']).first()
+        puuid = request.form.get('puuid', None)
+        suuid = request.form.get('suuid', None)
+        did = request.form.get('did', None)
+        
+        sensor = db.session.query().filter(Sensor.uuid == suuid).first()
+        value = request.form.get('value', None)
+        ptype = request.form.get('ptype', None)
+        label = request.form.get('label', None)
+
+        if not value:
+            return make_response(jsonify({'error': 'No value provided'}), 400)
+        
+        if not ptype:
+            return make_response(jsonify({'error': 'No ptype provided'}), 400)
+
+        if not label:
+            return make_response(jsonify({'error': 'No label provided'}), 400)
+
+        if sensor:
+            if sensor.user != user:
+                abort(403)
+            probe = db.session.query(Probe).join(Sensor).filter(Probe.puuid == puuid).filter(Sensor.uuid == suuid).first()
+            datarecord = db.session.query(Data).join(Sensor).filter(Data.id == did).filter(Sensor.uuid == suuid).first()
+            if not probe:
+                abort(404)
+            if not datarecord:
+                abort(404)
+            newprobedata = Data(probe=probe, data=data, value=value, label=label, ptype=ptype)
+            db.session.add(newprobedata)
+            db.session.commit()
+            return jsonify(self.schema.dump(newprobedata).data), 201
+        
+        abort(404)
+
+        
 class DataAPI(Resource):
     def __init__(self):
         self.schema = DataSchema()
@@ -2210,6 +2358,8 @@ api.add_resource(ImagesAPI, '/images', endpoint='images')
 api.add_resource(CameraAPI, '/cameras/<int:id>', endpoint='cameras')
 api.add_resource(DataAPI, '/data', '/data/<int:id>', endpoint='savedata')
 api.add_resource(SensorAPI, '/sensors', '/sensors/<int:id>', endpoint='sensors')
+api.add_resource(ProbeAPI, '/probes', '/probes/<int:id>', endpoint='probes')
+api.add_resource(ProbeDataAPI, '/probedata', '/probedata/<int:id>', endpoint='probedata')
 api.add_resource(PictAPI, "/p/<path:path>", endpoint="picts")
 # TODO Add ProbeAPI
 # TODO Add ProbeDataAPI
