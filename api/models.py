@@ -23,14 +23,16 @@ class Gender(enum.Enum):
 
 
 data_cameras = db.Table('data_cameras', db.Model.metadata,
-                          db.Column('data_id', db.Integer, db.ForeignKey('data.id')),
-                          db.Column('camera_id', db.Integer, db.ForeignKey('camera.id'))
+                        db.Column('data_id', db.Integer, db.ForeignKey('data.id')),
+                        db.Column('camera_id', db.Integer, db.ForeignKey('camera.id'))
 )
 
 data_probes = db.Table('data_probes', db.Model.metadata,
-                          db.Column('data_id', db.Integer, db.ForeignKey('data.id')),
-                          db.Column('probe_id', db.Integer, db.ForeignKey('probe.id'))
+                       db.Column('data_id', db.Integer, db.ForeignKey('data.id')),
+                       db.Column('probe_id', db.Integer, db.ForeignKey('probe.id'))
 )
+
+
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -89,7 +91,9 @@ class ProbeData(db.Model):
     value = db.Column(db.Float())
     ptype = db.Column(db.String(200))
     label = db.Column(db.String(200))
-
+    prtype_id = db.Column(db.Integer, ForeignKey('sensor_type.id'))
+    prtype = relationship("SensorType", backref=backref("values", uselist=True))
+    
 
 class Probe(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -97,7 +101,7 @@ class Probe(db.Model):
     sensor_id = db.Column(db.Integer, ForeignKey('sensor.id'))
     sensor = relationship("Sensor", backref=backref("probes", uselist=True))
     datarec = relationship("Data", secondary=data_probes, backref="probe")
-    
+
     
 # Sensors
 class Sensor(db.Model):
@@ -143,8 +147,13 @@ class Location(db.Model):
     lon = db.Column(db.Text(), nullable=True)
 
 
-# Data
-# one row - one sensor
+class SensorType(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    minvalue = db.Column(db.Float(), nullable=True)
+    maxvalue = db.Column(db.Float(), nullable=True)
+    ptype = db.Column(db.String(200))
+    
+
 class Data(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     sensor_id = db.Column(db.Integer, ForeignKey('sensor.id'))

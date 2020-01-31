@@ -17,7 +17,7 @@ from flask_cors import CORS, cross_origin
 from flask_restful.utils import cors
 from marshmallow import fields
 from marshmallow_enum import EnumField
-from models import db, User, Sensor, Location, Data, DataPicture, Camera, CameraPosition, Probe, ProbeData, PictureZone
+from models import db, User, Sensor, Location, Data, DataPicture, Camera, CameraPosition, Probe, ProbeData, PictureZone, SensorType
 import logging
 import os
 import uuid
@@ -598,6 +598,11 @@ class UserSchema(ma.ModelSchema):
     class Meta:
         model = User
 
+
+class SensorTypeSchema(ma.ModelSchema):
+    class Meta:
+        model = SensorType
+
         
 class CameraOnlySchema(ma.ModelSchema):
     class Meta:
@@ -683,6 +688,8 @@ class ProbeSchema(ma.ModelSchema):
 class ProbeDataSchema(ma.ModelSchema):
     class Meta:
         model = ProbeData
+        exclude = ['prtype', ]
+    ptype = ma.Function(lambda obj: obj.prtype.ptype)
 
     
 class PictAPI(Resource):
@@ -1669,10 +1676,13 @@ class DataAPI(Resource):
                 db.session.add(probe)
                 db.session.commit()
                 for pd in pr['data']:
+                    prtype = db.session.query(SensorType).filter(SensorType.ptype==pd['ptype']).first()
                     newprobedata = ProbeData(probe=probe, value=pd['value'], label=pd['label'], ptype=pd['ptype'])
+                    if prtype:
+                        newprobedata.prtype = prtype
                     db.session.add(newprobedata)
                     db.session.commit()
-
+                    
             
             app.logger.debug(["New data saved", newdata.id])
             
