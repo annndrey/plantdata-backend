@@ -662,9 +662,9 @@ class LocationSchema(ma.ModelSchema):
 class DataSchema(ma.ModelSchema):
     class Meta:
         model = Data
-        exclude = ['pictures', "sensor"]
+        exclude = ['pictures', "sensor", "probe"]
     cameras = ma.Nested("CameraOnlySchema", many=True, exclude=["data",])
-    probes = ma.Nested("ProbeSchema", many=True, exclude=["data", "id", 'sensor',])
+    probes = ma.Nested("ProbeSchema", many=True, exclude=["data", 'sensor', "datarec"])
 
     
 class FullDataSchema(ma.ModelSchema):
@@ -677,7 +677,7 @@ class FullDataSchema(ma.ModelSchema):
 class ProbeSchema(ma.ModelSchema):
     class Meta:
         model = Probe
-    values = ma.Nested("ProbeDataSchema", many=True, exclude=['id', 'probe'])
+    values = ma.Nested("ProbeDataSchema", many=True, exclude=['probe'])
 
     
 class ProbeDataSchema(ma.ModelSchema):
@@ -1083,7 +1083,7 @@ class ProbeAPI(Resource):
             if sensor.user != user:
                 abort(403)
         
-        probe = db.session.query(Probe).join(Data).filter(Probe.uuid == puuid).filter(Data.id == did).first()
+        probe = db.session.query(Probe).filter(Probe.uuid == puuid).first()
         if not probe:
             newprobe = Probe(sensor=sensor, uuid=puuid, data=datarecord)
             db.session.add(newprobe)
@@ -1660,12 +1660,16 @@ class DataAPI(Resource):
             db.session.add(newdata)
             db.session.commit()
             for pr in probes:
-                
-                newprobe = Probe(sensor=sensor, uuid=pr['puuid'], data=newdata)
-                db.session.add(newprobe)
+                probe_uuid = pr['puuid']
+                probe = db.session.query(Probe).filter(Probe.uuid==probe_uuid).first()
+                if not probe:
+                    probe = Probe(sensor=sensor, uuid=pr['puuid'])
+                    
+                probe.datarec.append(newdata)
+                db.session.add(probe)
                 db.session.commit()
                 for pd in pr['data']:
-                    newprobedata = ProbeData(probe=newprobe, value=pd['value'], label=pd['label'], ptype=pd['ptype'])
+                    newprobedata = ProbeData(probe=probe, value=pd['value'], label=pd['label'], ptype=pd['ptype'])
                     db.session.add(newprobedata)
                     db.session.commit()
 

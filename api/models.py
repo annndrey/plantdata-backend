@@ -27,6 +27,11 @@ data_cameras = db.Table('data_cameras', db.Model.metadata,
                           db.Column('camera_id', db.Integer, db.ForeignKey('camera.id'))
 )
 
+data_probes = db.Table('data_probes', db.Model.metadata,
+                          db.Column('data_id', db.Integer, db.ForeignKey('data.id')),
+                          db.Column('probe_id', db.Integer, db.ForeignKey('probe.id'))
+)
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     login = db.Column(db.String(400))
@@ -91,8 +96,7 @@ class Probe(db.Model):
     uuid = db.Column(db.Text(), nullable=False)
     sensor_id = db.Column(db.Integer, ForeignKey('sensor.id'))
     sensor = relationship("Sensor", backref=backref("probes", uselist=True))
-    data_id = db.Column(db.Integer, ForeignKey('data.id'))
-    data = relationship("Data", backref=backref("probes", uselist=True))
+    datarec = relationship("Data", secondary=data_probes, backref="probe")
     
     
 # Sensors
@@ -146,6 +150,7 @@ class Data(db.Model):
     sensor_id = db.Column(db.Integer, ForeignKey('sensor.id'))
     sensor = relationship("Sensor", backref=backref("data", uselist=True))
     ts = db.Column(db.DateTime, default=datetime.datetime.now)
+    probes = relationship("Probe", secondary=data_probes, backref="data")
 
     
 class DataPicture(db.Model):
