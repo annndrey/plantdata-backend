@@ -419,15 +419,27 @@ def post_data(token, bsuuid, take_photos):
             # ]
             # }
                 postdata = {'uuid': cd.bs_uuid, 'ts': str(cd.ts), 'probes':[]}
+                data_resp = requests.post(SERVER_HOST.format("data"), data=postdata, headers=head)
+                data_json = data_resp.json()
+                data_id = data_json['id']
                 for pr in cd.probes:
-                    probe = {"uuid": pr.uuid, "data": []}
-                    for pd in pr.values:
-                        probe['data'].append({"ptype":pd.ptype, "value":float(pd.value), "label": pd.label})
-                    postdata['probes'].append(probe)
+                    probedata = {"puuid": pr.uuid, "did": data_id, 'suuid': cd.bs_uuid}
+                    probe_resp = requests.post(SERVER_HOST.format("probes"), data=probedata, headers=head)
+                    probe_json = probe_resp.json()
                     
-                print(json.dumps(postdata, indent=4, sort_keys=True))
+                    for pd in pr.values:
+                        probe_data  = {"ptype":pd.ptype, "value":float(pd.value), "label": pd.label, "pid": probe_json['id'], "did": data_id, 'suuid': cd.bs_uuid}
+                        print(["PR_DATA", probe_data])
+                        pd_resp = requests.post(SERVER_HOST.format("probedata"), data=probe_data, headers=head)
+                        
+                #        probe['data'].append()
+                #    postdata['probes'].append(probe)
+                    
+                #print(json.dumps(postdata, indent=4, sort_keys=True))
             
             logging.debug("SENDING POST REQUEST")
+            # TODO: Stopped here >>>>>>>>>>>>>
+            
             #if files:
             #    response = requests.post(SERVER_HOST.format("data"), data=serialdata, files=files, headers=head)
             #else:
