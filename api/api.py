@@ -1613,9 +1613,11 @@ class DataAPI(Resource):
         token = auth_headers[1]
         udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         user = User.query.filter_by(login=udata['sub']).first()
-        suuid = request.form.get('uuid')
+        request.get_json()
+        suuid = request.json.get('uuid')
         sensor = db.session.query(Sensor).filter(Sensor.uuid == suuid).first()
-        # TODO -> Change to the new format
+        probes = request.json.get('probes')
+        app.logger.debug(["PROBES", probes])
         if sensor:
             if sensor.user != user:
                 abort(403)
@@ -1625,8 +1627,18 @@ class DataAPI(Resource):
             )
             db.session.add(newdata)
             db.session.commit()
+            for pr in probes:
+                
+                newprobe = Probe(sensor=sensor, uuid=pr['puuid'], data=newdata)
+                db.session.add(newprobe)
+                db.session.commit()
+                for pd in pr['data']:
+                    newprobedata = ProbeData(probe=newprobe, value=pd['value'], label=pd['label'], ptype=pd['ptype'])
+                    db.session.add(newprobedata)
+                    db.session.commit()
+
+            
             app.logger.debug(["New data saved", newdata.id])
-        app.logger.debug(["REQUEST", request.json, user.login, sensor.uuid])
             
         return jsonify(self.schema.dump(newdata).data), 201
 
@@ -2289,8 +2301,6 @@ api.add_resource(SensorAPI, '/sensors', '/sensors/<int:id>', endpoint='sensors')
 api.add_resource(ProbeAPI, '/probes', '/probes/<int:id>', endpoint='probes')
 api.add_resource(ProbeDataAPI, '/probedata', '/probedata/<int:id>', endpoint='probedata')
 api.add_resource(PictAPI, "/p/<path:path>", endpoint="picts")
-# TODO Add ProbeAPI
-# TODO Add ProbeDataAPI
 
 @app.cli.command()
 @click.option('--login',  help='user@mail.com')
