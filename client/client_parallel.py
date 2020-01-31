@@ -423,45 +423,38 @@ def post_data(token, bsuuid, take_photos):
                 print(json.dumps(postdata, indent=4))
                 resp = requests.post(SERVER_HOST.format("data"), json=postdata, headers=head)
                 if resp.status_code == 201:
-                    session.delete(cd)
-                    session.commit()
+                    #session.delete(cd)
+                    #session.commit()
                         
                         
-            logging.debug("SENDING POST REQUEST")
             
-            #if files:
-            #    response = requests.post(SERVER_HOST.format("data"), data=serialdata, files=files, headers=head)
-            #else:
-            #    response = requests.post(SERVER_HOST.format("data"), data=serialdata, headers=head)
-            #logging.debug("SERVER RESPONSE {} {}".format(response.status_code, response.text))
-            #if response.status_code == 201:
-            #    resp_data = json.loads(response.text)
-            #    cd.remote_data_id = resp_data['id']
-            #    cd.uploaded = True
-            #    session.add(cd)
-            #    session.commit()
-            #    
-            #    # Send all cached photos
-            #    if take_photos:
-            #        cachedphotos = session.query(Photo).filter(Photo.uploaded.is_(False)).all()
-            #        p = Pool(processes=10)
-            #        argslist = []
-            #        for i, f in enumerate(cachedphotos):
-            #            if f.sensordata:
-            #                if f.sensordata.remote_data_id:
-            #                    argslist.append([f.photo_filename, f.label, f.camname, f.camposition, f.sensordata.remote_data_id, f.photo_id, head])
-            #                
-            #        logging.debug("START LOOP")
-            #        loopdata = p.starmap(send_patch_request, argslist)
-            #        p.close()
-            #        totalcount = loopdata.count(200)
-            #        # Обрабатывать неотправленные фото, не удалять их
-            #        # и не удалять отправленные данные
-            #        # помечать данные как sent
-            #        # и после отправки всех фото
-            #        # если у данных не осталось отправленных фото, от удалять
-            #        logging.debug("PHOTOS SENT {}".format(totalcount))
-            #        # remove cached data here
+                    resp_data = json.loads(resp.text)
+                    cd.remote_data_id = resp_data['id']
+                    cd.uploaded = True
+                    session.add(cd)
+                    session.commit()
+                    
+                    # Send all cached photos
+                    if take_photos:
+                        cachedphotos = session.query(Photo).filter(Photo.uploaded.is_(False)).all()
+                        p = Pool(processes=10)
+                        argslist = []
+                        for i, f in enumerate(cachedphotos):
+                            if f.sensordata:
+                                if f.sensordata.remote_data_id:
+                                    argslist.append([f.photo_filename, f.label, f.camname, f.camposition, f.sensordata.remote_data_id, f.photo_id, head])
+                            
+                        logging.debug("START LOOP")
+                        loopdata = p.starmap(send_patch_request, argslist)
+                        p.close()
+                        totalcount = loopdata.count(200)
+                        # Обрабатывать неотправленные фото, не удалять их
+                        # и не удалять отправленные данные
+                        # помечать данные как sent
+                        # и после отправки всех фото
+                        # если у данных не осталось отправленных фото, от удалять
+                        logging.debug("PHOTOS SENT {}".format(totalcount))
+                        # remove cached data here
             data_sent=True
 
         except requests.exceptions.ConnectionError:
