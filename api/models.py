@@ -79,10 +79,10 @@ class User(db.Model):
     
 class ProbeData(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    #pdata_id = db.Column(db.Integer, ForeignKey('data.id'))
-    #pdata = relationship("Data", backref=backref("probes", uselist=True))
     probe_id = db.Column(db.Integer, ForeignKey('probe.id'))
     probe = relationship("Probe", backref=backref("values", uselist=True))
+    data_id = db.Column(db.Integer, ForeignKey('data.id'))
+    data = relationship("Data", backref=backref("values", uselist=True))
     value = db.Column(db.Numeric(precision=3))
     ptype = db.Column(db.String(200))
     label = db.Column(db.String(200))
@@ -91,9 +91,9 @@ class ProbeData(db.Model):
 class Probe(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     uuid = db.Column(db.Text(), nullable=False)
-    data_id = db.Column(db.Integer, ForeignKey('data.id'))
-    data = relationship("Data", backref=backref("probes", uselist=True))
-
+    sensor_id = db.Column(db.Integer, ForeignKey('sensor.id'))
+    sensor = relationship("Sensor", backref=backref("probes", uselist=True))
+    
     
 # Sensors
 class Sensor(db.Model):
