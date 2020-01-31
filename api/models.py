@@ -81,9 +81,7 @@ class ProbeData(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     probe_id = db.Column(db.Integer, ForeignKey('probe.id'))
     probe = relationship("Probe", backref=backref("values", uselist=True))
-    data_id = db.Column(db.Integer, ForeignKey('data.id'))
-    data = relationship("Data", backref=backref("values", uselist=True))
-    value = db.Column(db.Numeric(precision=3))
+    value = db.Column(db.Float())
     ptype = db.Column(db.String(200))
     label = db.Column(db.String(200))
 
@@ -93,6 +91,8 @@ class Probe(db.Model):
     uuid = db.Column(db.Text(), nullable=False)
     sensor_id = db.Column(db.Integer, ForeignKey('sensor.id'))
     sensor = relationship("Sensor", backref=backref("probes", uselist=True))
+    data_id = db.Column(db.Integer, ForeignKey('data.id'))
+    data = relationship("Data", backref=backref("probes", uselist=True))
     
     
 # Sensors

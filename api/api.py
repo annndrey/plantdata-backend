@@ -662,8 +662,9 @@ class LocationSchema(ma.ModelSchema):
 class DataSchema(ma.ModelSchema):
     class Meta:
         model = Data
-        exclude = ['pictures', ]
+        exclude = ['pictures', "sensor"]
     cameras = ma.Nested("CameraOnlySchema", many=True, exclude=["data",])
+    probes = ma.Nested("ProbeSchema", many=True, exclude=["data", "id", 'sensor',])
 
     
 class FullDataSchema(ma.ModelSchema):
@@ -676,12 +677,13 @@ class FullDataSchema(ma.ModelSchema):
 class ProbeSchema(ma.ModelSchema):
     class Meta:
         model = Probe
+    values = ma.Nested("ProbeDataSchema", many=True, exclude=['id', 'probe'])
 
-        
+    
 class ProbeDataSchema(ma.ModelSchema):
     class Meta:
         model = ProbeData
-        
+
     
 class PictAPI(Resource):
     def __init__(self):
@@ -1072,20 +1074,23 @@ class ProbeAPI(Resource):
         udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         user = User.query.filter_by(login=udata['sub']).first()
         puuid = request.form.get('puuid', None)
-        suuid = request.form.get('suuid', None)
-        sensor = db.session.query().filter(Sensor.uuid == suuid).first()
+        did = request.form.get('did', None)
+        datarecord = db.session.query(Data).filter(Data.id == did).first()
+        suuid  = request.form.get('suuid', None)
+        sensor = db.session.query(Sensor).filter(Sensor.uuid == suuid).first()
         
         if sensor:
             if sensor.user != user:
                 abort(403)
-            probe = db.session.query(Probe).join(Sensor).filter(Probe.puuid == puuid).filter(Sensor.uuid == suuid).first()
-            if not probe:
-                newprobe = Probe(sensor=sensor, uuid=puuid)
-                db.session.add(newprobe)
-                db.session.commit()
-                return jsonify(self.schema.dump(newprobe).data), 201
-            else:
-                return jsonify(self.schema.dump(probe).data), 409
+        
+        probe = db.session.query(Probe).join(Data).filter(Probe.uuid == puuid).filter(Data.id == did).first()
+        if not probe:
+            newprobe = Probe(sensor=sensor, uuid=puuid, data=datarecord)
+            db.session.add(newprobe)
+            db.session.commit()
+            return jsonify(self.schema.dump(newprobe).data), 201
+        else:
+            return jsonify(self.schema.dump(probe).data), 409
         abort(404)
 
 
@@ -1129,15 +1134,17 @@ class ProbeDataAPI(Resource):
         token = auth_headers[1]
         udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         user = User.query.filter_by(login=udata['sub']).first()
-        puuid = request.form.get('puuid', None)
+        pid = request.form.get('pid', None)
         suuid = request.form.get('suuid', None)
         did = request.form.get('did', None)
         
-        sensor = db.session.query().filter(Sensor.uuid == suuid).first()
+        sensor = db.session.query(Sensor).filter(Sensor.uuid == suuid).first()
         value = request.form.get('value', None)
         ptype = request.form.get('ptype', None)
         label = request.form.get('label', None)
 
+        app.logger.debug(["PDATA", value, ptype, label])
+        
         if not value:
             return make_response(jsonify({'error': 'No value provided'}), 400)
         
@@ -1150,13 +1157,13 @@ class ProbeDataAPI(Resource):
         if sensor:
             if sensor.user != user:
                 abort(403)
-            probe = db.session.query(Probe).join(Sensor).filter(Probe.puuid == puuid).filter(Sensor.uuid == suuid).first()
-            datarecord = db.session.query(Data).join(Sensor).filter(Data.id == did).filter(Sensor.uuid == suuid).first()
+            probe = db.session.query(Probe).filter(Probe.id == pid).first()
+            datarecord = db.session.query(Data).filter(Data.id == did).first()
             if not probe:
                 abort(404)
             if not datarecord:
                 abort(404)
-            newprobedata = Data(probe=probe, data=data, value=value, label=label, ptype=ptype)
+            newprobedata = ProbeData(probe=probe, value=value, label=label, ptype=ptype)
             db.session.add(newprobedata)
             db.session.commit()
             return jsonify(self.schema.dump(newprobedata).data), 201
@@ -1644,60 +1651,13 @@ class DataAPI(Resource):
         if sensor:
             if sensor.user != user:
                 abort(403)
-            wght0 = float(request.form.get('WGHT0', -1))
-            wght1 = float(request.form.get('WGHT1', -1))
-            wght2 = float(request.form.get('WGHT2', -1))
-            wght3 = float(request.form.get('WGHT3', -1))
-            wght4 = float(request.form.get('WGHT4', -1))
-            temp0 = float(request.form.get('T0'))
-            temp1 = float(request.form.get("T1"))
-            tempA = float(request.form.get("TA"))
-            hum0 = float(request.form.get("H0"))
-            hum1 = float(request.form.get("H1"))
-            uv = int(request.form.get("UV"))
-            lux = int(request.form.get("L"))
-            soilmoist = int(request.form.get("M"))
-            co2 = int(request.form.get("CO2"))
             ts = request.form.get("ts")
-            
-<<<<<<< HEAD
-            # picts = parse_request_pictures(request.files, user.login, sensor.uuid)
-            # New format:
-            #{'uuid': 'sensor_id',
-            # 'ts': 'timestamp',
-            # 'data': { {'uuid':'probe_unique_id', 'ptype': 'temp', 'label': 'TEMP1', 'value': 23.5},
-            #           {}
-            #           ...
-            #           }
-            # 
-            #}
-=======
->>>>>>> Issue #51 Added 'recognize' parameter to the PATCH request to choose if it sends image to the disease recognition API or not
             newdata = Data(sensor_id=sensor.id,
-                           wght0 = wght0,
-                           wght1 = wght1,
-                           wght2 = wght2,
-                           wght3 = wght3,
-                           wght4 = wght4,
-                           ts = ts,
-                           temp0 = temp0,
-                           temp1 = temp1,
-                           tempA = tempA,
-                           hum0 = hum0,
-                           hum1 = hum1,
-                           uv = uv,
-                           lux = lux,
-                           soilmoist = soilmoist,
-                           co2 = co2
+                           ts = ts
             )
             db.session.add(newdata)
             db.session.commit()
             app.logger.debug(["New data saved", newdata.id])
-                        
-            # for p in picts:
-            #    p.data_id = newdata.id
-            #    db.session.add(p)
-            #    db.session.commit()
         app.logger.debug(["REQUEST", request.json, user.login, sensor.uuid])
             
         return jsonify(self.schema.dump(newdata).data), 201
