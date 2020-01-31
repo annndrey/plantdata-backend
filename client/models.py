@@ -13,13 +13,12 @@ class Probe(Base):
     id = Column(Integer, primary_key=True)
     uuid = Column(Text(), nullable=False)
     bs_id = Column(Integer, ForeignKey('bsdata.id'))
-    basestation = relationship("BaseStationData", backref=backref("probes", uselist=True))
+    values = relationship("ProbeData", backref="probe", cascade="all,delete")
 
 class ProbeData(Base):
     __tablename__ = 'probedata'
     id = Column(Integer, primary_key=True)
     probe_id = Column(Integer, ForeignKey('probe.id'))
-    probe = relationship("Probe", backref=backref("values", uselist=True))
     value = Column(Numeric(precision=3))
     ptype = Column(String(200))
     label = Column(String(200))
@@ -32,6 +31,7 @@ class BaseStationData(Base):
     bs_uuid = Column(Text(), nullable=False)
     remote_data_id = Column(Integer)
     photos = relationship("Photo", backref="bs", cascade="all,delete")
+    probes = relationship("Probe", backref="basestation", cascade="all,delete")
     uploaded = Column(Boolean, default=False)
     
     
