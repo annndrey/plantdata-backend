@@ -422,6 +422,9 @@ def post_data(token, bsuuid, take_photos):
                     postdata['probes'].append(probe)
                 print(json.dumps(postdata, indent=4))
                 resp = requests.post(SERVER_HOST.format("data"), json=postdata, headers=head)
+                if resp.status_code == 201:
+                    session.delete(cd)
+                    session.commit()
                         
                         
             logging.debug("SENDING POST REQUEST")
