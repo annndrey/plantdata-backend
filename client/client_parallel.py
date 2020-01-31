@@ -400,45 +400,31 @@ def post_data(token, bsuuid, take_photos):
     numretries = 0
     while not data_sent:
         try:
-            # cleanup
-            #data_uploaded = session.query(SensorData).filter(SensorData.uploaded.is_(True)).delete()
-            #        session.commit()
-            #        # try to send all cached data
-            #        # Join SensorData, Probe, ProbeData
+            data_uploaded = session.query(BaseStationData).filter(BaseStationData.uploaded.is_(True)).delete()
+            session.commit()
+            
             cacheddata = session.query(BaseStationData).join(Probe).join(ProbeData).filter(BaseStationData.uploaded.is_(False)).all()
-        
-            #        logging.debug("CACHED DATA {}".format([(c.sensor_uuid, c.ts) for c in cacheddata]))
             
             for cd in cacheddata:
-            # Create a nested dict here:
-            # { uuid: ...,
-            #   ts: ...,
-            # data: [
-            # {'ptype': 'temp', 'label': 'T1', 'value': '11'},
-            # ...
-            # ]
-            # }
                 postdata = {'uuid': cd.bs_uuid, 'ts': str(cd.ts), 'probes':[]}
-                data_resp = requests.post(SERVER_HOST.format("data"), data=postdata, headers=head)
-                data_json = data_resp.json()
-                data_id = data_json['id']
+                
+                #data_resp = requests.post(SERVER_HOST.format("data"), data=postdata, headers=head)
+                #data_json = data_resp.json()
+                #data_id = data_json['id']
                 for pr in cd.probes:
-                    probedata = {"puuid": pr.uuid, "did": data_id, 'suuid': cd.bs_uuid}
-                    probe_resp = requests.post(SERVER_HOST.format("probes"), data=probedata, headers=head)
-                    probe_json = probe_resp.json()
-                    
+                    # probedata = {"puuid": pr.uuid, }
+                    # probe_resp = requests.post(SERVER_HOST.format("probes"), data=probedata, headers=head) 
+                    # probe_json = probe_resp.json()
+                    probe = {"puuid": pr.uuid, "data": []}
                     for pd in pr.values:
-                        probe_data  = {"ptype":pd.ptype, "value":float(pd.value), "label": pd.label, "pid": probe_json['id'], "did": data_id, 'suuid': cd.bs_uuid}
-                        print(["PR_DATA", probe_data])
-                        pd_resp = requests.post(SERVER_HOST.format("probedata"), data=probe_data, headers=head)
+                        probe_data  = {"ptype":pd.ptype, "value":float(pd.value), "label": pd.label}
+                        probe['data'].append(probe_data)
+                    postdata['probes'].append(probe)
+                print(json.dumps(postdata, indent=4))
+                resp = requests.post(SERVER_HOST.format("data"), json=postdata, headers=head)
                         
-                #        probe['data'].append()
-                #    postdata['probes'].append(probe)
-                    
-                #print(json.dumps(postdata, indent=4, sort_keys=True))
-            
+                        
             logging.debug("SENDING POST REQUEST")
-            # TODO: Stopped here >>>>>>>>>>>>>
             
             #if files:
             #    response = requests.post(SERVER_HOST.format("data"), data=serialdata, files=files, headers=head)
