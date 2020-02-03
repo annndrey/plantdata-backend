@@ -1,18 +1,19 @@
 import random
+import os
 from fastapi import FastAPI
 
 app = FastAPI()
-
 
 
 def get_random(a=1, b=100, roundto=2):
     return round(random.uniform(a, b), roundto)
 
 def get_macaddr():
-    mac = "02:00:00:%02x:%02x:%02x" % (random.randint(0, 255),
-                                 random.randint(0, 255),
-                                 random.randint(0, 255))
-    return mac
+    #mac = "02:00:00:%02x:%02x:%02x" % (random.randint(0, 255),
+    #                             random.randint(0, 255),
+    #                             random.randint(0, 255))
+    MAC = os.environ.get("MAC")
+    return MAC
 
 @app.get("/sensor_data")
 async def info():
