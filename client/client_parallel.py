@@ -9,7 +9,7 @@ import requests
 import pickle
 import os
 import json
-#import cv2
+import cv2
 import shutil
 import uuid
 import datetime
@@ -21,8 +21,6 @@ import aiohttp
 import asyncio
 
 from multiprocessing import Pool
-
-#from picamera import PiCamera
 from time import sleep
 from PIL import Image
 
@@ -130,29 +128,36 @@ async def async_read_sensor_data(session, url, dbsession, bsid):
             data = resp_json.get("data")
             logging.debug(["UUID", uuid])
             logging.debug(["DATA", data])
-            basestation = dbsession.query(BaseStationData).filter(BaseStationData.id==bsid).first()
+            bsrecord = dbsession.query(BaseStationData).filter(BaseStationData.id==bsid).first()
             dbprobe = dbsession.query(Probe).filter(Probe.uuid==uuid).first()
             if not dbprobe:
                 # Create Probe record
-                dbprobe = Probe(uuid=uuid, basestation=basestation)
+                dbprobe = Probe(uuid=uuid)
                 dbsession.add(dbprobe)
                 dbsession.commit()
+
+            bsrecord.probes.append(dbprobe)
+            dbsession.add(bsrecord)
+            dbsession.commit()
+                
             for pdata in data:
                 {'ptype': 'temp', 'label': 'T0', 'value': 18.43}
                 newpdata = ProbeData(probe=dbprobe, value=pdata['value'], ptype=pdata['ptype'], label=pdata['label'])
                 dbsession.add(newpdata)
                 dbsession.commit()
-                
+            basestation
             # Create ProbeData records
         else:
             logging.debug(["NO RESPONSE FROM {}".format(url), response.status])
         return resp_json
 
+    
 async def fetch_all_sensors_data(urls, loop, dbsession, bsid):
     async with aiohttp.ClientSession(loop=loop) as session:
         results = await asyncio.gather(*[async_read_sensor_data(session, url, dbsession, bsid) for url in urls], return_exceptions=True)
         return results
 
+    
 def send_patch_request(fname, flabel, fcamname, fcamposition, data_id, photo_id, header):
     files = {}
     files['{}'.format(flabel)] = open(fname, 'rb')
@@ -166,7 +171,7 @@ def send_patch_request(fname, flabel, fcamname, fcamposition, data_id, photo_id,
         session = Session()
         dbphoto = session.query(Photo).filter(Photo.photo_id == photo_id).first()
         if dbphoto:
-            #dbphoto.uploaded = True
+            dbphoto.uploaded = True
             session.delete(dbphoto)
             session.commit()
             logging.debug("LOCAL PHOTO REMOVED {} {}".format(fname, flabel))
@@ -182,6 +187,7 @@ def get_token():
     }
     token = None
     while not data_sent:
+        print("SEND DATA")
         try:
             res = requests.post(SERVER_HOST.format("token"), json=login_data)
             data_sent = True
@@ -217,7 +223,7 @@ def get_base_station_uuid():
     with open('bs.dat', 'rb') as f:
         try:
             data = pickle.load(f)
-            logging.debug(data)
+            #logging.debug(data)
             base_station_uuid = data['uuid']
             token = data['token']
         except:
@@ -273,10 +279,9 @@ def post_data(token, bsuuid, take_photos):
             
         loop = asyncio.get_event_loop()
         async_session = create_session(db_file)
-        
+        # Colloecting sensors data
         responses = loop.run_until_complete(fetch_all_sensors_data(sensor_urls, loop, async_session, newdata.id))
-        
-        logging.debug(responses)
+        #logging.debug(responses)
         async_session.close()
         
         # Take & process photos
@@ -398,23 +403,17 @@ def post_data(token, bsuuid, take_photos):
     # Now sending all cached data to the server
     
     numretries = 0
+
     while not data_sent:
         try:
             data_uploaded = session.query(BaseStationData).filter(BaseStationData.uploaded.is_(True)).delete()
             session.commit()
-            
-            cacheddata = session.query(BaseStationData).join(Probe).join(ProbeData).filter(BaseStationData.uploaded.is_(False)).all()
-            
+            cacheddata = session.query(BaseStationData).filter(BaseStationData.uploaded.is_(False)).all()
+            logging.debug("send data")
+            logging.debug(cacheddata)
             for cd in cacheddata:
                 postdata = {'uuid': cd.bs_uuid, 'ts': str(cd.ts), 'probes':[]}
-                
-                #data_resp = requests.post(SERVER_HOST.format("data"), data=postdata, headers=head)
-                #data_json = data_resp.json()
-                #data_id = data_json['id']
                 for pr in cd.probes:
-                    # probedata = {"puuid": pr.uuid, }
-                    # probe_resp = requests.post(SERVER_HOST.format("probes"), data=probedata, headers=head) 
-                    # probe_json = probe_resp.json()
                     probe = {"puuid": pr.uuid, "data": []}
                     for pd in pr.values:
                         probe_data  = {"ptype":pd.ptype, "value":float(pd.value), "label": pd.label}
@@ -423,10 +422,6 @@ def post_data(token, bsuuid, take_photos):
                 print(json.dumps(postdata, indent=4))
                 resp = requests.post(SERVER_HOST.format("data"), json=postdata, headers=head)
                 if resp.status_code == 201:
-                    #session.delete(cd)
-                    #session.commit()
-                        
-                        
             
                     resp_data = json.loads(resp.text)
                     cd.remote_data_id = resp_data['id']
@@ -470,7 +465,7 @@ if __name__ == '__main__':
         token = get_token()
         base_station_uuid = register_base_station(token)
 
-    #scheduler = SafeScheduler()
+    scheduler = SafeScheduler()
     #scheduler.every(5).minutes.do(post_data, token, base_station_uuid, False)
     #scheduler.every(60).minutes.do(post_data, token, base_station_uuid, True)
     logging.debug(base_station_uuid)
