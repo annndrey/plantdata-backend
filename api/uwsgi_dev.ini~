@@ -2,8 +2,7 @@
 project = plantdatab-dev
 module = wsgi:app
 master = True
-http-socket = localhost:5599
-socket-timeout = 300
+http-socket = :5599
 protocol = http
 processes = 2
 vacuum = true
