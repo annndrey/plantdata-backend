@@ -1,12 +1,15 @@
-#define TEST true   //Set TRUE for testing
+#define TEST false   //Set TRUE for testing
 
 #include <ArduinoJson.h>
 
 #include <EEPROM.h>
 
+#include <SPI.h>
 #include <DallasTemperature.h>
 #include <OneWire.h>
 #include <Adafruit_BMP280.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_APDS9960.h>
 #include <Digital_Light_ISL29035.h>
 #include <Digital_Light_TSL2561.h>
 #include <DHT.h>
@@ -52,21 +55,21 @@ const int LOADCELL_SCK_PIN[6] = {D3, D4, D5, D6, D7, D8};
 const int B = 4275;
 const int R0 = 100000; //B value of the thermistor
 
-Adafruit_BMP280 bmp; 
+Adafruit_BMP280 bmp; //pressure sensor
+Adafruit_APDS9960 apds; //light sensor
 DHT dht0(DHTPIN0, DHTTYPE0);
 DHT dht1(DHTPIN1, DHTTYPE0);
 HX711 scale[WEIGHT_SENSORS_AMOUNT];
 int scale_factor = 911100;
 OneWire oneWire(ONE_WIRE_BUS);// Setup a oneWire instance to communicate with a OneWire device
 DallasTemperature tempSensors(&oneWire);// Pass our oneWire reference to Dallas Temperature sensor 
-DeviceAddress sensor0 = {0x28, 0x62, 0xDA, 0x05, 0x00, 0x00, 0x00, 0xD1};
 
 void setup()
 {
   Serial.begin(115200);
   Serial.println("Connecting to ");
   Serial.println(ssid);
-  WiFi.mode(WIFI_AP_STA);
+  WiFi.mode(WIFI_STA);
   WiFi.config(local_ip, gateway, subnet);
   WiFi.begin(ssid, password);
   //check wi-fi is connected to wi-fi network
@@ -110,10 +113,10 @@ void setup()
   });
   
   //Sensors init section
-  tempSensors.begin();
+  tempSensors.begin();  //Dallas temperature sensors init
   
   pinMode(DHTPIN0, INPUT);
-  Wire.begin();
+  //Wire.begin();
   dht0.begin();  //  запуск датчика DHT
   
   dht1.begin();
@@ -121,17 +124,24 @@ void setup()
   Serial.println("Light ready!");
 
   //BMP280 init section
-  if (!bmp.begin()) {
+  
+  if (!bmp.begin(0x76)) {
     Serial.println(F("Could not find a valid BMP280 sensor, check wiring!"));
     while (1);
-  }
-
+  }  
   // Default settings from datasheet. 
   bmp.setSampling(Adafruit_BMP280::MODE_NORMAL,     // Operating Mode
                   Adafruit_BMP280::SAMPLING_X2,     // Temp. oversampling 
                   Adafruit_BMP280::SAMPLING_X16,    // Pressure oversampling 
                   Adafruit_BMP280::FILTER_X16,      // Filtering
                   Adafruit_BMP280::STANDBY_MS_500); // Standby time
+
+  //APDS 9960 init section
+
+  if(!apds.begin()){
+    Serial.println("failed to initialize device! Please check your wiring.");
+  }
+  apds.enableColor(true); //enable color sensign mode
 
   //Scales init section
   for (int i = 0; i < WEIGHT_SENSORS_AMOUNT; i++)
@@ -193,9 +203,13 @@ String ReadSensors()  {
   float t1 = bmp.readTemperature();  // reading temperature from BMP280
 
   tempSensors.requestTemperatures(); // Send the command to get temperatures from Dallas temp sensors
-  float t2 = tempSensors.getTempC(sensor0);
+  float t2 = tempSensors.getTempCByIndex(0);
   
-  unsigned long l0 = TSL2561.readVisibleLux();
+  //unsigned long l0 = TSL2561.readVisibleLux();
+
+  uint16_t r, g, b, c; //variables to store the color data from APDS 9960
+  apds.getColorData(&r, &g, &b, &c);
+  uint16_t l0 = apds.calculateLux(r, g, b);
   
   /*Reading temperature sensor
   int tmpA = analogRead(ADC1);
