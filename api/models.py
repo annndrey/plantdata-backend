@@ -159,20 +159,8 @@ class Data(db.Model):
     sensor_id = db.Column(db.Integer, ForeignKey('sensor.id'))
     sensor = relationship("Sensor", backref=backref("data", uselist=True))
     ts = db.Column(db.DateTime, default=datetime.datetime.now)
-    probes = relationship("Probe", secondary=data_probes, backref="data")
+    probes = relationship("Probe", secondary=data_probes, lazy='joined', backref=backref('data', lazy='joined'))
 
-    #@hybrid_property
-    #def pprobes(self):
-    #    pr = []
-    #    for p in self.probes:
-    #        values = []
-    #        for val in p.values:
-    #            if val.data.id == self.id:
-    #                values.append(val)
-    #        p.values = values
-    #        pr.append(p)
-    #    return pr
-    
     
 class DataPicture(db.Model):
     id = db.Column(db.Integer, primary_key=True)
