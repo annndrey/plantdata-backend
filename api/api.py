@@ -8,7 +8,8 @@ from flask.json import jsonify
 from flasgger import Swagger
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import or_, desc
+from sqlalchemy import or_, desc, and_
+from sqlalchemy.orm import contains_eager
 from sqlalchemy import func as sql_func
 from sqlalchemy.pool import NullPool
 from flask_marshmallow import Marshmallow
@@ -18,7 +19,7 @@ from flask_restful.utils import cors
 from marshmallow import fields, pre_dump, post_dump
 from marshmallow_enum import EnumField
 from itertools import groupby
-from models import db, User, Sensor, Location, Data, DataPicture, Camera, CameraPosition, Probe, ProbeData, PictureZone, SensorType
+from models import db, User, Sensor, Location, Data, DataPicture, Camera, CameraPosition, Probe, ProbeData, PictureZone, SensorType, data_probes
 import logging
 import os
 import copy
@@ -77,16 +78,16 @@ app.logger.setLevel(gunicorn_logger.level)
 REDIS_HOST = app.config.get('REDIS_HOST', 'localhost')
 REDIS_PORT = app.config.get('REDIS_PORT', 6379)
 REDIS_DB = app.config.get('REDIS_DB', 0)
-#CACHE_DB = app.config.get('CACHE_DB', 1)
+CACHE_DB = app.config.get('CACHE_DB', 1)
 
-#cache = Cache(app, config={
-#    'CACHE_TYPE': 'redis',
-#    'CACHE_KEY_PREFIX': 'fcache',
-#    'CACHE_REDIS_HOST': REDIS_HOST,
-#    'CACHE_REDIS_PORT': REDIS_PORT,
-#    'CACHE_REDIS_DB'  : REDIS_DB,
-#    'CACHE_REDIS_URL': 'redis://{}:{}/{}'.format(REDIS_HOST, REDIS_PORT, REDIS_DB)
-#})
+cache = Cache(app, config={
+    'CACHE_TYPE': 'redis',
+    'CACHE_KEY_PREFIX': 'fcache',
+    'CACHE_REDIS_HOST': REDIS_HOST,
+    'CACHE_REDIS_PORT': REDIS_PORT,
+    'CACHE_REDIS_DB'  : REDIS_DB,
+    'CACHE_REDIS_URL': 'redis://{}:{}/{}'.format(REDIS_HOST, REDIS_PORT, REDIS_DB)
+})
 
 app.config['SWAGGER'] = {
     'uiversion': 3
@@ -638,20 +639,17 @@ class LocationSchema(ma.ModelSchema):
 class DataSchema(ma.ModelSchema):
     class Meta:
         model = Data
-        exclude = ['pictures', "sensor", "probe", "probes"]
+        exclude = ['pictures',]
     cameras = ma.Nested("CameraOnlySchema", many=True, exclude=["data",])
-    #probes = ma.Nested("ProbeSchema", many=True)
     records = ma.Nested("ProbeDataSchema", many=True)
-    
-    #pprobes = ma.Function(lambda obj: obj.pprobes())
-    #pprobes = ma.Nested("ProbeSchema", many=True, exclude=["data", 'sensor', "datarec"])
+
     
     @post_dump(pass_many=True)
     def filter_fields(self, data, many, **kwargs):
         if many:
             for d in data:
                 probes = [r['probe'] for r in d['records']]
-                d['probes'] = list({v['id']:v for v in probes}.values())
+                d['probes'] = list({v['uuid']:v for v in probes}.values())
                 for pr in d['probes']:
                     pr['values'] = []
 
@@ -679,14 +677,14 @@ class FullDataSchema(ma.ModelSchema):
 class ProbeSchema(ma.ModelSchema):
     class Meta:
         model = Probe
-        exclude = ['values',]
+        exclude = ['values', 'id']
     values = ma.Nested("ProbeDataSchema", many=True, exclude=['probe'])
 
     
 class ProbeDataSchema(ma.ModelSchema):
     class Meta:
         model = ProbeData
-        exclude = ['prtype', 'data', 'id']
+        exclude = ['prtype', 'id', 'data']
     ptype = ma.Function(lambda obj: obj.prtype.ptype)
     probe = ma.Nested("ProbeSchema", many=False, exclude=["data", 'sensor'])
     
@@ -1211,7 +1209,7 @@ class DataAPI(Resource):
     
     @token_required
     @cross_origin()
-    #@cache.cached(timeout=300, key_prefix=cache_key)
+    #@cache.cached(timeout=60, key_prefix=cache_key)
     def get(self):
         """
         Get sensors data
@@ -1225,9 +1223,14 @@ class DataAPI(Resource):
            description: Data ID
          - in: query
            name: uuid
-           type: integer
+           type: string
            required: false
            description: Sensor UUID
+         - in: query
+           name: puuid
+           type: string
+           required: false
+           description: Probe UUID
          - in: query
            name: ts_from
            type: string
@@ -1394,6 +1397,7 @@ class DataAPI(Resource):
         app.logger.debug("GET DATA")        
         # here the data should be scaled or not
         suuid = request.args.get('uuid', None)
+        puuid = request.args.get('puuid', None)
         dataid = request.args.get('dataid', None)
         auth_headers = request.headers.get('Authorization', '').split()
         token = auth_headers[1]
@@ -1432,13 +1436,17 @@ class DataAPI(Resource):
                     return jsonify([])
             else:
                 day_st = datetime.datetime.strptime(ts_from, '%d-%m-%Y %H:%M')
-                #day_st = day_st.replace(hour=0, minute=0)
                 day_end = datetime.datetime.strptime(ts_to, '%d-%m-%Y %H:%M')
-                #day_end = day_end.replace(hour=23, minute=59, second=59)
             
-            sensordata_query = db.session.query(Data).join(Sensor).filter(Sensor.uuid == suuid).order_by(Data.ts).filter(Data.ts >= day_st).filter(Data.ts <= day_end)
+            sensordata_query = db.session.query(Data).filter(Data.sensor.has(Sensor.uuid == suuid))
+            #if puuid:
+            #    sensordata_query = #db.session.query(Data).join(data_probes).join(Probe).filter(Probe.uuid==puuid)#.options(contains_eager(Data.probes, data_probes, Probe.uuid))
+                
+            
+            sensordata_query = sensordata_query.order_by(Data.ts).filter(Data.ts >= day_st).filter(Data.ts <= day_end)
             
             sensordata = sensordata_query.all()
+            
             if sensordata:
                 if fill_date:
                     pass
@@ -1504,13 +1512,13 @@ class DataAPI(Resource):
                     if full_data:
                         data = self.f_schema.dump(sensordata).data
                     else:
-                        #for d in sensordata:
-                        #    for pr in d.probes:
-                        #        newvals = [v for v in pr.values if v.data.id == d.id]
-                        #        pr.values = newvals
-                                
                         data = self.m_schema.dump(sensordata).data
-                        
+                    if puuid:
+                        for d in data:
+                            for ind, pr in enumerate(d['probes']):
+                                if pr['uuid'] != puuid:
+                                    d['probes'].pop(ind)
+                                    
                     res = {"numrecords": len(sensordata),
                            'mindate': first_rec_day,
                            'maxdate': last_rec_day,
