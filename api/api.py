@@ -639,7 +639,7 @@ class LocationSchema(ma.ModelSchema):
 class DataSchema(ma.ModelSchema):
     class Meta:
         model = Data
-        #exclude = ['pictures',]
+        exclude = ['pictures', 'sensor']
     cameras = ma.Nested("CameraOnlySchema", many=True, exclude=["data",])
     records = ma.Nested("ProbeDataSchema", many=True)
 
@@ -652,8 +652,6 @@ class DataSchema(ma.ModelSchema):
                 d['probes'] = list({v['uuid']:v for v in probes}.values())
                 for pr in d['probes']:
                     pr['values'] = []
-
-                    
                 for k, v in groupby(d['records'], key=lambda x:x['probe']['uuid']):
                     for pr in d['probes']:
                         if pr['uuid'] == k:
@@ -1430,6 +1428,9 @@ class DataAPI(Resource):
             last_rec_day = db.session.query(sql_func.max(Data.ts)).filter(Data.sensor.has(Sensor.uuid == suuid)).first()[0]
             if not all([ts_from, ts_to]):
                 if all([first_rec_day, last_rec_day]):
+                    # IF NO DATES SPECIFIED,
+                    # SHOW ONLY LAST DAY RECORDS!!
+                    
                     day_st = last_rec_day.replace(hour=0, minute=0)
                     day_end = last_rec_day.replace(hour=23, minute=59, second=59)
                 else:
@@ -1442,7 +1443,8 @@ class DataAPI(Resource):
             if puuid:
                 sensordata_query = sensordata_query.join(Data.records).options(contains_eager(Data.records)).filter(ProbeData.probe.has(Probe.uuid==puuid))
                 
-            
+            app.logger.debug(["DATES", day_st, day_end])
+            app.logger.debug(["DATES", first_rec_day, last_rec_day])
             sensordata_query = sensordata_query.order_by(Data.ts).filter(Data.ts >= day_st).filter(Data.ts <= day_end)
             
             sensordata = sensordata_query.all()
