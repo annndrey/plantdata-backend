@@ -17,6 +17,7 @@ from flask_cors import CORS, cross_origin
 from flask_restful.utils import cors
 from marshmallow import fields, pre_dump, post_dump
 from marshmallow_enum import EnumField
+from itertools import groupby
 from models import db, User, Sensor, Location, Data, DataPicture, Camera, CameraPosition, Probe, ProbeData, PictureZone, SensorType
 import logging
 import os
@@ -37,6 +38,7 @@ import datetime
 import calendar
 from dateutil.relativedelta import relativedelta
 from dateutil import parser
+from collections import defaultdict
 import jwt
 import json
 import yaml
@@ -668,47 +670,35 @@ class LocationSchema(ma.ModelSchema):
 class DataSchema(ma.ModelSchema):
     class Meta:
         model = Data
-        exclude = ['pictures', "sensor", "probe"]
+        exclude = ['pictures', "sensor", "probe", "probes"]
     cameras = ma.Nested("CameraOnlySchema", many=True, exclude=["data",])
-    probes = ma.Nested("ProbeSchema", many=True)
+    #probes = ma.Nested("ProbeSchema", many=True)
     records = ma.Nested("ProbeDataSchema", many=True)
     
     #pprobes = ma.Function(lambda obj: obj.pprobes())
     #pprobes = ma.Nested("ProbeSchema", many=True, exclude=["data", 'sensor', "datarec"])
     
-    #@post_dump(pass_many=True)
-    #def filter_fields(self, data, many, **kwargs):
-    #    if many:
-    #        for d in data:
-    #            data_id = d['id']
-    #            for probe in d['probes']:
-    #                newvals = []
-    #                for val in probe['values']:
-    #                    if val['data'] == data_id:
-    #                        newvals.append(val)
-    #                probe['values'] = newvals
-    #                
-    #    return data
+    @post_dump(pass_many=True)
+    def filter_fields(self, data, many, **kwargs):
+        if many:
+            for d in data:
+                probes = [r['probe'] for r in d['records']]
+                d['probes'] = list({v['id']:v for v in probes}.values())
+                for pr in d['probes']:
+                    pr['values'] = []
 
-    #@pre_dump(pass_many=True)
-    #def filter_results(self, data, many, **kwargs):
-    #    if many:
-    #        for d in data:
-    #            new_probes = []
-    #            for pr in d.probes:
-    #                pr_copy = pr
-    #                newvals = []
-    #                for v in pr_copy.values:
-    #                    if v.data.id == d.id:
-    #                        newvals.append(v)
-                            #                        
-                            #                #newvals = [v for v in pr.values if v.data.id == d.id]
-                            #                #app.logger.debug(["NEWVALS", d.id, [v for v in pr.values if v.data.id == d.id]])
-    #                pr_copy.values = newvals
-    #                new_probes.append(pr_copy)
-    #            d.probes = new_probes
-    #            #                
-    #    return data
+                    
+                for k, v in groupby(d['records'], key=lambda x:x['probe']['uuid']):
+                    for pr in d['probes']:
+                        if pr['uuid'] == k:
+                            vals = list(v)
+                            for vl in vals:
+                                del vl['probe']
+                            app.logger.debug(["DATA", k, vals])
+                            pr['values'].append(vals)
+                del d['records']
+
+        return data
 
     
 class FullDataSchema(ma.ModelSchema):
@@ -721,15 +711,16 @@ class FullDataSchema(ma.ModelSchema):
 class ProbeSchema(ma.ModelSchema):
     class Meta:
         model = Probe
+        exclude = ['values',]
     values = ma.Nested("ProbeDataSchema", many=True, exclude=['probe'])
 
     
 class ProbeDataSchema(ma.ModelSchema):
     class Meta:
         model = ProbeData
-        exclude = ['prtype', ]
+        exclude = ['prtype', 'data', 'id']
     ptype = ma.Function(lambda obj: obj.prtype.ptype)
-
+    probe = ma.Nested("ProbeSchema", many=False, exclude=["data", 'sensor'])
     
 class PictAPI(Resource):
     def __init__(self):
@@ -1716,12 +1707,12 @@ class DataAPI(Resource):
             db.session.commit()
             for pr in probes:
                 probe_uuid = pr['puuid']
-                #probe = db.session.query(Probe).filter(Probe.uuid==probe_uuid).first()
-                #if not probe:
-                probe = Probe(sensor=sensor, uuid=pr['puuid'], data=newdata)
-                db.session.add(probe)
-                db.session.commit()
-                #newdata.probes.append(probe)    
+                probe = db.session.query(Probe).filter(Probe.uuid==probe_uuid).first()
+                if not probe:
+                    probe = Probe(sensor=sensor, uuid=pr['puuid'])#, data=newdata)
+                    db.session.add(probe)
+                    db.session.commit()
+                newdata.probes.append(probe)    
                 #probe.data.append(newdata)
                 for pd in pr['data']:
                     app.logger.debug(pr['data'])

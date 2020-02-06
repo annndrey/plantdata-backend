@@ -27,10 +27,10 @@ class Gender(enum.Enum):
 #                        db.Column('camera_id', db.Integer, db.ForeignKey('camera.id'))
 #)
 #
-#data_probes = db.Table('data_probes', db.Model.metadata,
-#                       db.Column('data_id', db.Integer, db.ForeignKey('data.id')),
-#                       db.Column('probe_id', db.Integer, db.ForeignKey('probe.id'))
-#)
+data_probes = db.Table('data_probes', db.Model.metadata,
+                       db.Column('data_id', db.Integer, db.ForeignKey('data.id')),
+                       db.Column('probe_id', db.Integer, db.ForeignKey('probe.id'))
+)
 
 
 
@@ -99,8 +99,8 @@ class Probe(db.Model):
     sensor_id = db.Column(db.Integer, ForeignKey('sensor.id'))
     sensor = relationship("Sensor", backref=backref("probes", uselist=True))
     #records = relationship("Data", secondary=data_probes)
-    data_id = db.Column(db.Integer, ForeignKey('data.id'))
-    data = relationship("Data", backref=backref("probes", uselist=True))
+    #data_id = db.Column(db.Integer, ForeignKey('data.id'))
+    #data = relationship("Data", backref=backref("probes", uselist=True))
 
     
 # Sensors
@@ -159,7 +159,7 @@ class Data(db.Model):
     sensor_id = db.Column(db.Integer, ForeignKey('sensor.id'))
     sensor = relationship("Sensor", backref=backref("data", uselist=True))
     ts = db.Column(db.DateTime, default=datetime.datetime.now)
-    #probes = relationship("Probe", secondary=data_probes, backref="data")
+    probes = relationship("Probe", secondary=data_probes, backref="data")
 
     #@hybrid_property
     #def pprobes(self):
