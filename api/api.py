@@ -15,11 +15,12 @@ from flask_marshmallow import Marshmallow
 from flask_httpauth import HTTPBasicAuth
 from flask_cors import CORS, cross_origin
 from flask_restful.utils import cors
-from marshmallow import fields
+from marshmallow import fields, pre_dump, post_dump
 from marshmallow_enum import EnumField
 from models import db, User, Sensor, Location, Data, DataPicture, Camera, CameraPosition, Probe, ProbeData, PictureZone, SensorType
 import logging
 import os
+import copy
 import uuid
 import tempfile
 import shutil
@@ -637,7 +638,45 @@ class DataSchema(ma.ModelSchema):
         model = Data
         exclude = ['pictures', "sensor", "probe"]
     cameras = ma.Nested("CameraOnlySchema", many=True, exclude=["data",])
-    probes = ma.Nested("ProbeSchema", many=True, exclude=["data", 'sensor', "datarec"])
+    probes = ma.Nested("ProbeSchema", many=True)
+    records = ma.Nested("ProbeDataSchema", many=True)
+    
+    #pprobes = ma.Function(lambda obj: obj.pprobes())
+    #pprobes = ma.Nested("ProbeSchema", many=True, exclude=["data", 'sensor', "datarec"])
+    
+    #@post_dump(pass_many=True)
+    #def filter_fields(self, data, many, **kwargs):
+    #    if many:
+    #        for d in data:
+    #            data_id = d['id']
+    #            for probe in d['probes']:
+    #                newvals = []
+    #                for val in probe['values']:
+    #                    if val['data'] == data_id:
+    #                        newvals.append(val)
+    #                probe['values'] = newvals
+    #                
+    #    return data
+
+    #@pre_dump(pass_many=True)
+    #def filter_results(self, data, many, **kwargs):
+    #    if many:
+    #        for d in data:
+    #            new_probes = []
+    #            for pr in d.probes:
+    #                pr_copy = pr
+    #                newvals = []
+    #                for v in pr_copy.values:
+    #                    if v.data.id == d.id:
+    #                        newvals.append(v)
+                            #                        
+                            #                #newvals = [v for v in pr.values if v.data.id == d.id]
+                            #                #app.logger.debug(["NEWVALS", d.id, [v for v in pr.values if v.data.id == d.id]])
+    #                pr_copy.values = newvals
+    #                new_probes.append(pr_copy)
+    #            d.probes = new_probes
+    #            #                
+    #    return data
 
     
 class FullDataSchema(ma.ModelSchema):
@@ -1407,70 +1446,78 @@ class DataAPI(Resource):
                 #day_end = day_end.replace(hour=23, minute=59, second=59)
             
             sensordata_query = db.session.query(Data).join(Sensor).filter(Sensor.uuid == suuid).order_by(Data.ts).filter(Data.ts >= day_st).filter(Data.ts <= day_end)
+            
             sensordata = sensordata_query.all()
             if sensordata:
                 if fill_date:
-                    sensordata = self.fill_empty_dates(sensordata_query)
-                if export_data:
-                    app.logger.debug(f"EXPORT DATA, {export_data}")
-                    proxy = io.StringIO()
-                    writer = csv.writer(proxy, delimiter=';', quotechar='"',quoting=csv.QUOTE_MINIMAL)
-                    writer.writerow(['sensor_id',
-                                     'timestamp',
-                                     'wght0',
-                                     'wght1',
-                                     'wght2',
-                                     'wght3',
-                                     'wght4',
-                                     'temp0',
-                                     'temp1',
-                                     'hum0',
-                                     'hum1',
-                                     'tempA0',
-                                     'lux',
-                                     'co2'
-                    ])
-                    for r in sensordata:
-                        writer.writerow([r.sensor.id,
-                                         r.ts,
-                                         r.wght0,
-                                         r.wght1,
-                                         r.wght2,
-                                         r.wght3,
-                                         r.wght4,
-                                         r.temp0,
-                                         r.temp1,
-                                         r.hum0,
-                                         r.hum1,
-                                         r.tempA,
-                                         r.lux,
-                                         r.co2
-                        ])
-                    mem = io.BytesIO()
-                    mem.write(proxy.getvalue().encode('utf-8'))
-                    mem.seek(0)
-                    proxy.close()
-                    return send_file(mem, mimetype='text/csv', attachment_filename="file.csv", as_attachment=True)
-                if export_zones:
-                    app.logger.debug(f"EXPORT ZONES, {export_zones}")
-                    if ignore_night_photos:
-                        sensordata_query = sensordata_query.filter(Data.lux > 30)
-                        
-                    res_data = sensordata_query.filter(Data.pictures.any()).all()
-                    app.logger.debug(len(res_data))
-                    crop_zones.delay(self.f_schema.dump(res_data).data, cam_names, cam_positions, cam_zones, cam_numsamples, cam_skipsamples, label_text)
-                    
-                    res = {"numrecords": len(res_data),
-                           'mindate': first_rec_day,
-                           'maxdate': last_rec_day,
-                           'data': self.m_schema.dump(res_data).data
-                    }
-                    return jsonify(res), 200
+                    pass
+                #if fill_date:
+                #    sensordata = self.fill_empty_dates(sensordata_query)
+                #if export_data:
+                #    app.logger.debug(f"EXPORT DATA, {export_data}")
+                #    proxy = io.StringIO()
+                #    writer = csv.writer(proxy, delimiter=';', quotechar='"',quoting=csv.QUOTE_MINIMAL)
+                #    writer.writerow(['sensor_id',
+                #                     'timestamp',
+                #                     'wght0',
+                #                     'wght1',
+                #                     'wght2',
+                #                     'wght3',
+                #                     'wght4',
+                #                     'temp0',
+                #                     'temp1',
+                #                     'hum0',
+                #                     'hum1',
+                #                     'tempA0',
+                #                     'lux',
+                #                     'co2'
+                #    ])
+                #    for r in sensordata:
+                #        writer.writerow([r.sensor.id,
+                #                         r.ts,
+                #                         r.wght0,
+                #                         r.wght1,
+                #                         r.wght2,
+                #                         r.wght3,
+                #                         r.wght4,
+                #                         r.temp0,
+                #                         r.temp1,
+                #                         r.hum0,
+                #                         r.hum1,
+                #                         r.tempA,
+                #                         r.lux,
+                #                         r.co2
+                #        ])
+                #    mem = io.BytesIO()
+                #    mem.write(proxy.getvalue().encode('utf-8'))
+                #    mem.seek(0)
+                #    proxy.close()
+                #    return send_file(mem, mimetype='text/csv', attachment_filename="file.csv", as_attachment=True)
+                #if export_zones:
+                #    app.logger.debug(f"EXPORT ZONES, {export_zones}")
+                #    if ignore_night_photos:
+                #        sensordata_query = sensordata_query.filter(Data.lux > 30)
+                #        
+                #    res_data = sensordata_query.filter(Data.pictures.any()).all()
+                #    app.logger.debug(len(res_data))
+                #    crop_zones.delay(self.f_schema.dump(res_data).data, cam_names, cam_positions, cam_zones, cam_numsamples, cam_skipsamples, label_text)
+                #    
+                #    res = {"numrecords": len(res_data),
+                #           'mindate': first_rec_day,
+                #           'maxdate': last_rec_day,
+                #           'data': self.m_schema.dump(res_data).data
+                #    }
+                #    return jsonify(res), 200
                     
                 else:
                     if full_data:
                         data = self.f_schema.dump(sensordata).data
                     else:
+                        #for d in sensordata:
+                        #    for pr in d.probes:
+                        #        newvals = [v for v in pr.values if v.data.id == d.id]
+                        #        pr.values = newvals
+                                
                         data = self.m_schema.dump(sensordata).data
                         
                     res = {"numrecords": len(sensordata),
@@ -1478,6 +1525,7 @@ class DataAPI(Resource):
                            'maxdate': last_rec_day,
                            'data': data
                     }
+                    #app.logger.debug(["RESPONSE", res])
                     return jsonify(res), 200
 
         else:
@@ -1624,7 +1672,7 @@ class DataAPI(Resource):
         suuid = request.json.get('uuid')
         sensor = db.session.query(Sensor).filter(Sensor.uuid == suuid).first()
         probes = request.json.get('probes')
-        app.logger.debug(["PROBES", probes])
+        # app.logger.debug(["PROBES", probes])
         if sensor:
             if sensor.user != user:
                 abort(403)
@@ -1636,21 +1684,25 @@ class DataAPI(Resource):
             db.session.commit()
             for pr in probes:
                 probe_uuid = pr['puuid']
-                probe = db.session.query(Probe).filter(Probe.uuid==probe_uuid).first()
-                if not probe:
-                    probe = Probe(sensor=sensor, uuid=pr['puuid'])
-                    
-                probe.datarec.append(newdata)
+                #probe = db.session.query(Probe).filter(Probe.uuid==probe_uuid).first()
+                #if not probe:
+                probe = Probe(sensor=sensor, uuid=pr['puuid'], data=newdata)
                 db.session.add(probe)
                 db.session.commit()
+                #newdata.probes.append(probe)    
+                #probe.data.append(newdata)
                 for pd in pr['data']:
+                    app.logger.debug(pr['data'])
                     prtype = db.session.query(SensorType).filter(SensorType.ptype==pd['ptype']).first()
                     newprobedata = ProbeData(probe=probe, value=pd['value'], label=pd['label'], ptype=pd['ptype'])
                     if prtype:
                         newprobedata.prtype = prtype
+                        
                     db.session.add(newprobedata)
                     db.session.commit()
-                    
+                    newdata.records.append(newprobedata)
+                    db.session.add(newdata)
+                    db.session.commit()
             
             app.logger.debug(["New data saved", newdata.id])
             

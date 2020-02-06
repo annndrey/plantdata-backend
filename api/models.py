@@ -22,15 +22,15 @@ class Gender(enum.Enum):
     n = 'na'
 
 
-data_cameras = db.Table('data_cameras', db.Model.metadata,
-                        db.Column('data_id', db.Integer, db.ForeignKey('data.id')),
-                        db.Column('camera_id', db.Integer, db.ForeignKey('camera.id'))
-)
-
-data_probes = db.Table('data_probes', db.Model.metadata,
-                       db.Column('data_id', db.Integer, db.ForeignKey('data.id')),
-                       db.Column('probe_id', db.Integer, db.ForeignKey('probe.id'))
-)
+#data_cameras = db.Table('data_cameras', db.Model.metadata,
+#                        db.Column('data_id', db.Integer, db.ForeignKey('data.id')),
+#                        db.Column('camera_id', db.Integer, db.ForeignKey('camera.id'))
+#)
+#
+#data_probes = db.Table('data_probes', db.Model.metadata,
+#                       db.Column('data_id', db.Integer, db.ForeignKey('data.id')),
+#                       db.Column('probe_id', db.Integer, db.ForeignKey('probe.id'))
+#)
 
 
 
@@ -79,15 +79,13 @@ class User(db.Model):
         user = Staff.query.get(data['id'])
         return user
 
-
-# Data -> Probes -> ProbeData
-# Probe should be registered once
-# Client should send Probe UUID
     
 class ProbeData(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     probe_id = db.Column(db.Integer, ForeignKey('probe.id'))
     probe = relationship("Probe", backref=backref("values", uselist=True))
+    data_id = db.Column(db.Integer, ForeignKey('data.id'))
+    data = relationship("Data", backref=backref("records", uselist=True))
     value = db.Column(db.Float())
     ptype = db.Column(db.String(200))
     label = db.Column(db.String(200))
@@ -100,7 +98,9 @@ class Probe(db.Model):
     uuid = db.Column(db.Text(), nullable=False)
     sensor_id = db.Column(db.Integer, ForeignKey('sensor.id'))
     sensor = relationship("Sensor", backref=backref("probes", uselist=True))
-    datarec = relationship("Data", secondary=data_probes, backref="probe")
+    #records = relationship("Data", secondary=data_probes)
+    data_id = db.Column(db.Integer, ForeignKey('data.id'))
+    data = relationship("Data", backref=backref("probes", uselist=True))
 
     
 # Sensors
@@ -159,8 +159,20 @@ class Data(db.Model):
     sensor_id = db.Column(db.Integer, ForeignKey('sensor.id'))
     sensor = relationship("Sensor", backref=backref("data", uselist=True))
     ts = db.Column(db.DateTime, default=datetime.datetime.now)
-    probes = relationship("Probe", secondary=data_probes, backref="data")
+    #probes = relationship("Probe", secondary=data_probes, backref="data")
 
+    #@hybrid_property
+    #def pprobes(self):
+    #    pr = []
+    #    for p in self.probes:
+    #        values = []
+    #        for val in p.values:
+    #            if val.data.id == self.id:
+    #                values.append(val)
+    #        p.values = values
+    #        pr.append(p)
+    #    return pr
+    
     
 class DataPicture(db.Model):
     id = db.Column(db.Integer, primary_key=True)
