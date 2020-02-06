@@ -9,7 +9,7 @@ import requests
 import pickle
 import os
 import json
-import cv2
+#import cv2
 import shutil
 import uuid
 import datetime
@@ -35,8 +35,8 @@ from schedule import Scheduler
 
 
 
-logging.basicConfig(#filename='client_parallel.log',
-                    #filemode='w',
+logging.basicConfig(filename='client_parallel.log',
+                    filemode='w',
                     format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
                     datefmt='%H:%M:%S',
                     level=logging.DEBUG)
@@ -115,6 +115,7 @@ def create_session(db_file):
     engine = create_engine('sqlite:///{}'.format(db_file))
     Session = sessionmaker(bind=engine)
     session = Session()
+    session.execute('pragma foreign_keys=on')
     return session
 
 async def async_read_sensor_data(session, url, dbsession, bsid):
@@ -129,12 +130,12 @@ async def async_read_sensor_data(session, url, dbsession, bsid):
             logging.debug(["UUID", uuid])
             logging.debug(["DATA", data])
             bsrecord = dbsession.query(BaseStationData).filter(BaseStationData.id==bsid).first()
-            dbprobe = dbsession.query(Probe).filter(Probe.uuid==uuid).first()
-            if not dbprobe:
-                # Create Probe record
-                dbprobe = Probe(uuid=uuid)
-                dbsession.add(dbprobe)
-                dbsession.commit()
+            #dbprobe = dbsession.query(Probe).filter(Probe.uuid==uuid).first()
+            #if not dbprobe:
+            # Create Probe record
+            dbprobe = Probe(uuid=uuid)
+            dbsession.add(dbprobe)
+            dbsession.commit()
 
             bsrecord.probes.append(dbprobe)
             dbsession.add(bsrecord)
@@ -145,7 +146,7 @@ async def async_read_sensor_data(session, url, dbsession, bsid):
                 newpdata = ProbeData(probe=dbprobe, value=pdata['value'], ptype=pdata['ptype'], label=pdata['label'])
                 dbsession.add(newpdata)
                 dbsession.commit()
-            basestation
+            #basestation
             # Create ProbeData records
         else:
             logging.debug(["NO RESPONSE FROM {}".format(url), response.status])
@@ -406,18 +407,17 @@ def post_data(token, bsuuid, take_photos):
 
     while not data_sent:
         try:
-            data_uploaded = session.query(BaseStationData).filter(BaseStationData.uploaded.is_(True)).delete()
-            session.commit()
             cacheddata = session.query(BaseStationData).filter(BaseStationData.uploaded.is_(False)).all()
             logging.debug("send data")
-            logging.debug(cacheddata)
+            #logging.debug(cacheddata)
             for cd in cacheddata:
                 postdata = {'uuid': cd.bs_uuid, 'ts': str(cd.ts), 'probes':[]}
                 for pr in cd.probes:
                     probe = {"puuid": pr.uuid, "data": []}
                     for pd in pr.values:
-                        probe_data  = {"ptype":pd.ptype, "value":float(pd.value), "label": pd.label}
-                        probe['data'].append(probe_data)
+                        if pd.value:
+                            probe_data  = {"ptype":pd.ptype, "value":float(pd.value), "label": pd.label}
+                            probe['data'].append(probe_data)
                     postdata['probes'].append(probe)
                 print(json.dumps(postdata, indent=4))
                 resp = requests.post(SERVER_HOST.format("data"), json=postdata, headers=head)
@@ -451,6 +451,11 @@ def post_data(token, bsuuid, take_photos):
                         logging.debug("PHOTOS SENT {}".format(totalcount))
                         # remove cached data here
             data_sent=True
+            data_uploaded = session.query(BaseStationData).filter(BaseStationData.uploaded.is_(True)).all()
+            for du in data_uploaded:
+                session.delete(du)
+            session.commit()
+
 
         except requests.exceptions.ConnectionError:
             sleep(2)
@@ -466,11 +471,11 @@ if __name__ == '__main__':
         base_station_uuid = register_base_station(token)
 
     scheduler = SafeScheduler()
-    #scheduler.every(5).minutes.do(post_data, token, base_station_uuid, False)
+    scheduler.every(5).minutes.do(post_data, token, base_station_uuid, False)
     #scheduler.every(60).minutes.do(post_data, token, base_station_uuid, True)
     logging.debug(base_station_uuid)
-    post_data(token, base_station_uuid, False)
-    sys.exit(1)
+    #post_data(token, base_station_uuid, False)
+    #sys.exit(1)
     while 1:
         scheduler.run_pending()
         sleep(1)
