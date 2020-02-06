@@ -671,7 +671,7 @@ class LocationSchema(ma.ModelSchema):
 class DataSchema(ma.ModelSchema):
     class Meta:
         model = Data
-        exclude = ['pictures',]
+        #exclude = ['pictures',]
     cameras = ma.Nested("CameraOnlySchema", many=True, exclude=["data",])
     records = ma.Nested("ProbeDataSchema", many=True)
 
@@ -710,7 +710,7 @@ class ProbeSchema(ma.ModelSchema):
     class Meta:
         model = Probe
         exclude = ['values', 'id']
-    values = ma.Nested("ProbeDataSchema", many=True, exclude=['probe'])
+    #values = ma.Nested("ProbeDataSchema", many=True, exclude=['probe'])
 
     
 class ProbeDataSchema(ma.ModelSchema):
@@ -1471,8 +1471,8 @@ class DataAPI(Resource):
                 day_end = datetime.datetime.strptime(ts_to, '%d-%m-%Y %H:%M')
             
             sensordata_query = db.session.query(Data).filter(Data.sensor.has(Sensor.uuid == suuid))
-            #if puuid:
-            #    sensordata_query = #db.session.query(Data).join(data_probes).join(Probe).filter(Probe.uuid==puuid)#.options(contains_eager(Data.probes, data_probes, Probe.uuid))
+            if puuid:
+                sensordata_query = sensordata_query.join(Data.records).options(contains_eager(Data.records)).filter(ProbeData.probe.has(Probe.uuid==puuid))
                 
             
             sensordata_query = sensordata_query.order_by(Data.ts).filter(Data.ts >= day_st).filter(Data.ts <= day_end)
@@ -1545,11 +1545,11 @@ class DataAPI(Resource):
                         data = self.f_schema.dump(sensordata).data
                     else:
                         data = self.m_schema.dump(sensordata).data
-                    if puuid:
-                        for d in data:
-                            for ind, pr in enumerate(d['probes']):
-                                if pr['uuid'] != puuid:
-                                    d['probes'].pop(ind)
+                    #if puuid:
+                    #    for d in data:
+                    #        for ind, pr in enumerate(d['probes']):
+                    #            if pr['uuid'] != puuid:
+                    #                d['probes'].pop(ind)
                                     
                     res = {"numrecords": len(sensordata),
                            'mindate': first_rec_day,
