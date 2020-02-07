@@ -658,7 +658,7 @@ class DataSchema(ma.ModelSchema):
                             vals = list(v)
                             for vl in vals:
                                 del vl['probe']
-                            app.logger.debug(["DATA", k, vals])
+                            # app.logger.debug(["DATA", k, vals])
                             pr['values'].append(vals)
                 del d['records']
 
@@ -1443,8 +1443,8 @@ class DataAPI(Resource):
             if puuid:
                 sensordata_query = sensordata_query.join(Data.records).options(contains_eager(Data.records)).filter(ProbeData.probe.has(Probe.uuid==puuid))
                 
-            app.logger.debug(["DATES", day_st, day_end])
-            app.logger.debug(["DATES", first_rec_day, last_rec_day])
+            #app.logger.debug(["DATES", day_st, day_end])
+            #app.logger.debug(["DATES", first_rec_day, last_rec_day])
             sensordata_query = sensordata_query.order_by(Data.ts).filter(Data.ts >= day_st).filter(Data.ts <= day_end)
             
             sensordata = sensordata_query.all()
