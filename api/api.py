@@ -691,7 +691,7 @@ class DataSchema(ma.ModelSchema):
                             for vl in vals:
                                 del vl['probe']
                             # app.logger.debug(["DATA", k, vals])
-                            pr['values'].append(vals)
+                            pr['values'].extend(vals)
                 del d['records']
 
         return data
