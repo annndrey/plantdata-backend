@@ -7,6 +7,7 @@ import websockets
 import json
 import time
 
+# the code to be run in browser
 async def hello():
     uri = "ws://trololo.info:6789"
     async with websockets.connect(uri, extra_headers={"client":"222"}) as websocket:
