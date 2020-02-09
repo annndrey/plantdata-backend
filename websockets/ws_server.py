@@ -4,17 +4,16 @@
 
 import asyncio
 import json
-import logging
 import websockets
 
 clients = {}
 
 async def counter(websocket, path):
     # register(websocket) sends user_event() to websocket
-    
-    client_id = websocket.request_headers.get("client")
+    client_id = websocket.request_headers.get("suuid")
     if client_id not in clients.keys():
         clients[client_id] = websocket
+    print(f"Registered {client_id}")
     while True:
         try:
             name = await websocket.recv()
@@ -26,7 +25,7 @@ async def counter(websocket, path):
                     await sendto.send(str("Hello from {}".format(client_id)))
 
         except websockets.ConnectionClosed:
-            print(f"Terminated")
+            print(f"Connection closed for {client_id}")
             del clients[client_id]
             break
 

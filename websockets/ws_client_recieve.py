@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # WS client example
 
@@ -7,10 +7,17 @@ import websockets
 import json
 import time
 
+from client_parallel import get_base_station_uuid
 
-async def hello():
-    uri = "ws://trololo.info:6789"
-    async with websockets.connect(uri, extra_headers={"client":"111"}) as websocket:
+
+
+
+SERVER_URL = "ws://dev.plantdata.fermata.tech:6789"
+
+async def rpi_client():
+    bsuuid, _ = get_base_station_uuid()
+    print(f"Registering the BS {bsuuid}")
+    async with websockets.connect(SERVER_URL, extra_headers={"suuid": bsuuid}) as websocket:
         while True:
             try:
                 #await websocket.send(data)
@@ -21,6 +28,7 @@ async def hello():
             except websockets.ConnectionClosed:
                 print("Terminated")
                 break
-            
-asyncio.get_event_loop().run_until_complete(hello())
+
+print("Starting the ws app")
+asyncio.get_event_loop().run_until_complete(rpi_client())
         
