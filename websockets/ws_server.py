@@ -20,9 +20,8 @@ async def counter(websocket, path):
         try:
             data = await websocket.recv()
             # Simple redirect from 222 to 111
-            print(clients)
             if sendto:
-                print("sending message to 111")
+                print(f"sending data to sendto")
                 reciever = clients.get(sendto, None)
                 if reciever:
                     await reciever.send(data)
