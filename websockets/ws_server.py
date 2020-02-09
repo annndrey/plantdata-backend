@@ -11,18 +11,21 @@ clients = {}
 async def counter(websocket, path):
     # register(websocket) sends user_event() to websocket
     client_id = websocket.request_headers.get("suuid")
+    sendto = websocket.request_headers.get("sendto", None)
+    #
     if client_id not in clients.keys():
         clients[client_id] = websocket
     print(f"Registered {client_id}")
     while True:
         try:
-            name = await websocket.recv()
+            data = await websocket.recv()
+            # Simple redirect from 222 to 111
             print(clients)
-            if client_id == "222":
+            if sendto:
                 print("sending message to 111")
-                sendto = clients.get('111', None)
-                if sendto:
-                    await sendto.send(str("Hello from {}".format(client_id)))
+                reciever = clients.get(sendto, None)
+                if reciever:
+                    await reciever.send(data)
 
         except websockets.ConnectionClosed:
             print(f"Connection closed for {client_id}")
