@@ -14,4 +14,37 @@ Then add header `'Authorization': 'Bearer Replace-With-Auth-Token'` to every req
 
 ## deploy
 
-* 
+Prerequisites: Python3, MySQL
+
+```
+python3 -m venv /path/to/new/virtual/environment
+source /path/to/new/virtual/environment/bin/activate
+
+pip3 install -p requirements.txt
+```
+
+Then create a database, grant all privileges, etc. 
+
+Update the config_dev.py file with the new DB settings
+
+Set env vars,
+
+```
+export FLASK_APP=/path/to/the/api/file.py
+export APPSETTINGS=/path/to/the/config/file.py
+
+```
+
+Create DB tables
+
+```
+flask db init
+flask db migrate
+flask db upgrade
+```
+
+Now start the app with the uwsgi
+
+```
+uwsgi --ini uwsgi.ini
+```
