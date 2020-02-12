@@ -23,7 +23,17 @@ source /path/to/new/virtual/environment/bin/activate
 pip3 install -p requirements.txt
 ```
 
-Then create a database, grant all privileges, etc. 
+Then create a database:
+
+```
+mysql -u your_user -p
+
+> CREATE DATABASE DBNAME;
+> GRANT ALL PRIVILEGES TO your_user;
+> FLUSH PRIVILEGES
+
+```
+
 
 Update the config_dev.py file with the new DB settings
 
