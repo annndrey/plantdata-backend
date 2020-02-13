@@ -212,12 +212,13 @@ def check_unhealthy_zones(pict, suuid):
     for zone in pict.zones:
         # Check prev zones here >>>
         app.logger.debug(["ZONE RESULTS", zone.results])
-        if 'unhealthy' in zone.results:
-            prev_three_zones = db.session.query(PictureZone).join(DataPicture).join(CameraPosition).join(Camera).join(Data).join(Sensor).order_by(PictureZone.id.desc()).filter(PictureZone.zone==zone.zone).filter(CameraPosition.poslabel==res['position']).filter(Camera.camlabel==res['camname']).filter(Sensor.uuid==suuid).limit(3).offset(1).all()
-            app.logger.debug(["PREV THEE ZONES", zone.id, [(z.results, z.id) for z in prev_three_zones]])
+        if zone.results:
+            if 'unhealthy' in zone.results:
+                prev_three_zones = db.session.query(PictureZone).join(DataPicture).join(CameraPosition).join(Camera).join(Data).join(Sensor).order_by(PictureZone.id.desc()).filter(PictureZone.zone==zone.zone).filter(CameraPosition.poslabel==res['position']).filter(Camera.camlabel==res['camname']).filter(Sensor.uuid==suuid).limit(3).offset(1).all()
+                app.logger.debug(["PREV THEE ZONES", zone.id, [(z.results, z.id) for z in prev_three_zones]])
             
-            if all(['unhealthy' in z.results for z in prev_three_zones]):
-                res['zones'].append("{} {}".format(zone.zone, zone.results))
+                if all(['unhealthy' in z.results for z in prev_three_zones]):
+                    res['zones'].append("{} {}".format(zone.zone, zone.results))
     if res['zones']:
         return res
     
@@ -540,7 +541,7 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
                     
                     if zones_ids:
                         newzones = db.session.query(PictureZone).filter(PictureZone.id.in_(zones_ids)).all()
-                        app.logger.debug(["NEWZONES", newzones])
+                        app.logger.debug(["NEWZONES", [(n.id, n.results) for n in newzones]])
                         classification_results = "ZONES Results: {}".format(", ".join(["{}: {}".format(z.zone, z.results) for z in newzones]))
                     else:
                         app.logger.debug(["NO ZONES", newzones])
@@ -1571,16 +1572,6 @@ class StatsAPI(Resource):
             co2 = int(request.form.get("CO2"))
             ts = request.form.get("ts")
             
-            # picts = parse_request_pictures(request.files, user.login, sensor.uuid)
-            # New format:
-            #{'uuid': 'sensor_id',
-            # 'ts': 'timestamp',
-            # 'data': { {'uuid':'probe_unique_id', 'ptype': 'temp', 'label': 'TEMP1', 'value': 23.5},
-            #           {}
-            #           ...
-            #           }
-            # 
-            #}
             newdata = Data(sensor_id=sensor.id,
                            wght0 = wght0,
                            wght1 = wght1,
@@ -1782,6 +1773,10 @@ class StatsAPI(Resource):
             app.logger.debug(["DB CAMERA", camera.camlabel, camera_position.poslabel])
             # data.cameras.append(camera)
             app.logger.debug(["RECOGNIZE", recognize])
+            # To be sure to consume request data
+            # to aviod "uwsgi-body-read Error reading Connection reset by peer" errors
+            request_data = request.data
+            app.logger.debug(["Consuming request data", len(request_data)])
             picts = parse_request_pictures(request.files, camera, camera_position, user.login, sensor.uuid, recognize)
             if picts:
                 for p in picts:
