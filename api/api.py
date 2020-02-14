@@ -357,7 +357,7 @@ def crop_zones(results, cam_names, cam_positions, cam_zones, cam_numsamples, cam
                                                 #app.logger.debug(f"Filtering results {camname}, {position}, {ts}")
                                                 prefix = f"{camname}-{position}-{ts}"
                                                 # Saving original_file
-                                                p['original'] = p['original'].replace(f'https://plantdata.fermata.tech:5498/api/v{API_VERSION}/p/', '')
+                                                p['original'] = p['original'].replace(f'https://dev.plantdata.fermata.tech:5598/api/v{API_VERSION}/p/', '')
                                                 orig_fpath = os.path.join(current_app.config['FILE_PATH'], p['original'])
                                                 orig_newpath = os.path.join(temp_dir, prefix+".jpg")
                                                 if label_text:
@@ -385,7 +385,7 @@ def crop_zones(results, cam_names, cam_positions, cam_zones, cam_numsamples, cam
         shutil.move(zipname, os.path.join('/home/annndrey/Dropbox/plantdata', zfname))
         
 
-@app.before_first_request
+#@app.before_first_request
 def login_to_classifier():
     app.logger.debug("Logging to CF server")
     login_data = {"username": CF_LOGIN,
@@ -692,7 +692,15 @@ class SensorSchema(ma.ModelSchema):
     numrecords = ma.Function(lambda obj: obj.numrecords)
     mindate = ma.Function(lambda obj: obj.mindate)
     maxdate = ma.Function(lambda obj: obj.maxdate)
-    
+
+
+class SensorShortSchema(ma.ModelSchema):
+    class Meta:
+        model = Sensor
+    numrecords = ma.Function(lambda obj: obj.numrecords)
+    mindate = ma.Function(lambda obj: obj.mindate)
+    maxdate = ma.Function(lambda obj: obj.maxdate)
+
 
 class PictureZoneSchema(ma.ModelSchema):
     class Meta:
@@ -769,6 +777,12 @@ class ProbeSchema(ma.ModelSchema):
         model = Probe
         exclude = ['values', 'id']
     #values = ma.Nested("ProbeDataSchema", many=True, exclude=['probe'])
+
+    
+class ProbeShortSchema(ma.ModelSchema):
+    class Meta:
+        model = Probe
+        exclude = ['values', 'id', 'data', 'sensor']
 
     
 class ProbeDataSchema(ma.ModelSchema):
@@ -1124,7 +1138,7 @@ class ImagesAPI(Resource):
 class ProbeAPI(Resource):
     def __init__(self):
         self.schema = ProbeSchema()
-        self.m_schema = ProbeSchema(many=True)
+        self.m_schema = ProbeShortSchema(many=True)
         self.method_decorators = []
         
     def options(self, *args, **kwargs):
@@ -1141,17 +1155,21 @@ class ProbeAPI(Resource):
         token = auth_headers[1]
         udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         user = User.query.filter_by(login=udata['sub']).first()
-        puuid = request.form.get('puuid', None)
-        suuid = request.form.get('suuid', None)
+        puuid = request.args.get('puuid', None)
+        suuid = request.args.get('suuid', None)
         
-        sensor = db.session.query().filter(Sensor.uuid == suuid).first()
-        
+        sensor = db.session.query(Sensor).filter(Sensor.uuid == suuid).first()
+        app.logger.debug(["SENSOR", suuid, sensor])
         if sensor:
             if sensor.user != user:
                 abort(403)
-            probe = db.session.query(Probe).join(Sensor).filter(Probe.puuid == puuid).filter(Sensor.uuid == suuid).first()
+        if puuid:
+            probe = db.session.query(Probe).join(Sensor).filter(Probe.uuid == puuid).filter(Sensor.uuid == suuid).first()
             if probe:
                 return jsonify(self.schema.dump(probe).data), 200
+        elif suuid:
+            probes = db.session.query(Probe).join(Sensor).filter(Sensor.uuid == suuid).all()
+            return jsonify(self.m_schema.dump(probes).data), 200
         abort(404)
 
     
@@ -1486,7 +1504,7 @@ class DataAPI(Resource):
         """
         app.logger.debug("GET DATA")        
         # here the data should be scaled or not
-        suuid = request.args.get('uuid', None)
+        suuid = request.args.get('suuid', None)
         puuid = request.args.get('puuid', None)
         dataid = request.args.get('dataid', None)
         auth_headers = request.headers.get('Authorization', '').split()
@@ -1514,7 +1532,11 @@ class DataAPI(Resource):
         if not user:
             abort(401)
         if not suuid:
+            return make_response(jsonify({'error': 'No sensor uuid provided'}), 400)
             abort(404)
+        #if not puuid:
+        #    return make_response(jsonify({'error': 'No probe uuid provided'}), 400)
+
         if not dataid:
             first_rec_day = db.session.query(sql_func.min(Data.ts)).filter(Data.sensor.has(Sensor.uuid == suuid)).first()[0]
             last_rec_day = db.session.query(sql_func.max(Data.ts)).filter(Data.sensor.has(Sensor.uuid == suuid)).first()[0]
