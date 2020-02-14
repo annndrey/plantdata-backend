@@ -9,7 +9,7 @@ import requests
 import pickle
 import os
 import json
-#import cv2
+import cv2
 import shutil
 import uuid
 import datetime
@@ -435,9 +435,9 @@ def post_data(token, bsuuid, take_photos):
                         p = Pool(processes=10)
                         argslist = []
                         for i, f in enumerate(cachedphotos):
-                            if f.sensordata:
-                                if f.sensordata.remote_data_id:
-                                    argslist.append([f.photo_filename, f.label, f.camname, f.camposition, f.sensordata.remote_data_id, f.photo_id, head])
+                            if f.bs:
+                                if f.bs.remote_data_id:
+                                    argslist.append([f.photo_filename, f.label, f.camname, f.camposition, f.bs.remote_data_id, f.photo_id, head])
                             
                         logging.debug("START LOOP")
                         loopdata = p.starmap(send_patch_request, argslist)
@@ -471,10 +471,10 @@ if __name__ == '__main__':
         base_station_uuid = register_base_station(token)
 
     scheduler = SafeScheduler()
-    scheduler.every(5).minutes.do(post_data, token, base_station_uuid, False)
+    #scheduler.every(5).minutes.do(post_data, token, base_station_uuid, False)
     #scheduler.every(60).minutes.do(post_data, token, base_station_uuid, True)
     logging.debug(base_station_uuid)
-    #post_data(token, base_station_uuid, False)
+    post_data(token, base_station_uuid, True)
     #sys.exit(1)
     while 1:
         scheduler.run_pending()
