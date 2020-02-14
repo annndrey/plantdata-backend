@@ -37,6 +37,7 @@ class User(db.Model):
     confirmed_on = db.Column(db.DateTime, default=False)
     registered_on = db.Column(db.DateTime, default=datetime.datetime.today)
     phone = db.Column(db.String(400))
+    additional_email = db.Column(db.String(400))
     is_admin = db.Column(db.Boolean, default=False)
     
     @validates('login')

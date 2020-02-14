@@ -25,6 +25,10 @@ import tempfile
 import shutil
 import zipfile
 import urllib.parse
+
+# for emails
+import smtplib
+from email.message import EmailMessage
 from celery import Celery
 
 # caching
@@ -130,6 +134,7 @@ FONTSIZE = app.config['FONTSIZE']
 zonefont = ImageFont.truetype(FONT, size=FONTSIZE)
 
 CLASSIFY_ZONES = app.config['CLASSIFY_ZONES']
+SEND_EMAILS = app.config.get('SEND_EMAILS', False)
 
 app.config['CELERY_BROKER_URL'] = 'redis://{}:{}/{}'.format(REDIS_HOST, REDIS_PORT, REDIS_DB)
 app.config['CELERY_RESULT_BACKEND'] = 'redis://{}:{}/{}'.format(REDIS_HOST, REDIS_PORT, REDIS_DB)
@@ -184,15 +189,40 @@ def send_zones(zone, zonelabel, fuuid, file_format, fpath, user_login, sensor_uu
         #responses.append("{}: {}".format(z, cf_result))
         newzone.results = cf_result
         app.logger.debug(f"CF RESULTS {cf_result}")
-    #else:
-        #responses.append("{}".format(z))
                             
     db.session.add(newzone)
     db.session.commit()
     return newzone.id
-    #newzones.append(newzone)
 
 
+def check_unhealthy_zones(pict, suuid):
+    # return Location, SensorUUID, Camname, Position, Zones
+    app.logger.debug("CHECKING PICTURE ZONES")
+    res = {'location': None,
+           'sensor_uuid': None,
+           'camname': pict.camera_position.camera.camlabel,
+           'position': pict.camera_position.poslabel,
+           'zones':[],
+           'ts': pict.ts
+    }
+    # pict.zones
+    # pict.camera_position.poslabel
+    # pict.camera_position.camera.camlabel
+    # [zone.zone for zone in pict.zones]
+    for zone in pict.zones:
+        # Check prev zones here >>>
+        app.logger.debug(["ZONE RESULTS", zone.results])
+        if zone.results:
+            if 'unhealthy' in zone.results:
+                prev_three_zones = db.session.query(PictureZone).join(DataPicture).join(CameraPosition).join(Camera).join(Data).join(Sensor).order_by(PictureZone.id.desc()).filter(PictureZone.zone==zone.zone).filter(CameraPosition.poslabel==res['position']).filter(Camera.camlabel==res['camname']).filter(Sensor.uuid==suuid).limit(3).offset(1).all()
+                app.logger.debug(["PREV THEE ZONES", zone.id, [(z.results, z.id) for z in prev_three_zones]])
+            
+                if all(['unhealthy' in z.results for z in prev_three_zones]):
+                    res['zones'].append("{} {}".format(zone.zone, zone.results))
+    if res['zones']:
+        return res
+    
+        
 def cache_key():
    args = request.args
    key = request.path + '?' + urllib.parse.urlencode([
@@ -239,6 +269,40 @@ def get_zones():
             }
             res[f'zone{n}'] = zone
     return res
+
+
+@celery.task
+def send_email_notification(email, pict_status_list):
+    #some text formatting
+    email_body = """
+    The following images may need your attention:
+
+    {}
+    
+    """
+
+    status_text = []
+    
+    for p in pict_status_list:
+        r = """{} {} {} {} {}
+    {}
+        """.format(p['ts'], p['location'], p['sensor_uuid'], p['camname'], p['position'], "\n".join([z for z in p['zones']]))
+        status_text.append(r)
+        
+    status_text = "\n".join(status_text)
+
+    email_body = email_body.format(status_text)
+    
+    msg = EmailMessage()
+    msg.set_content(email_body)
+
+    msg['Subject'] = 'Plantdata Service Notification'
+    msg['From'] = "noreply@plantdata.fermata.tech"
+    msg['To'] = email
+    s = smtplib.SMTP('localhost')
+    s.send_message(msg)
+    s.quit()
+
 
 
 @celery.task
@@ -417,9 +481,9 @@ def process_single_file(uplname, pict):
 
 def parse_request_pictures(req_files, camname, camposition, user_login, sensor_uuid, recognize):
     picts = []
-    
+    picts_unhealthy_status = []
+    app.logger.debug("PARSING REQUEST PICTURES")
     for uplname in sorted(request.files):
-
         pict = request.files.get(uplname)
         fpath = os.path.join(current_app.config['FILE_PATH'], user_login, sensor_uuid)
         app.logger.debug(fpath)
@@ -456,11 +520,11 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
                 zones = get_zones()
                 cf_headers = {'Authorization': 'Bearer ' + CF_TOKEN}
                 # 2592x1944
+                app.logger.debug(["ZONES", zones])
                 if zones:
                     responses = []
                     newzones = []
                     argslist = []
-                    #original = Image.open(fullpath)
                     dr = ImageDraw.Draw(original)
                     for z in zones.keys():
                         argslist.append([zones[z], z, fuuid, FORMAT, fpath, user_login, sensor_uuid, cf_headers, original])
@@ -477,9 +541,10 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
                     
                     if zones_ids:
                         newzones = db.session.query(PictureZone).filter(PictureZone.id.in_(zones_ids)).all()
-                        app.logger.debug(newzones)
-                        classification_results = "Results: {}".format(", ".join(["{}: {}".format(z.zone, z.results) for z in newzones]))
+                        app.logger.debug(["NEWZONES", [(n.id, n.results) for n in newzones]])
+                        classification_results = "ZONES Results: {}".format(", ".join(["{}: {}".format(z.zone, z.results) for z in newzones]))
                     else:
+                        app.logger.debug(["NO ZONES", newzones])
                         newzones = None
                         classification_results = ""
                 original.save(fullpath)
@@ -497,11 +562,34 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
         )
         if newzones:
             newpicture.zones = newzones
+            
         db.session.add(newpicture)
         camposition.pictures.append(newpicture)
         db.session.commit()
         picts.append(newpicture)
+        # Here we have linked the picture with zones,
+        # and can check now for the unhealthy results
+        # and send emails
+        pict_zones_info = check_unhealthy_zones(newpicture, sensor_uuid)
+        if pict_zones_info:
+            picts_unhealthy_status.append(pict_zones_info)
+            
         app.logger.debug("NEW PICTURE ADDED")
+
+    if picts_unhealthy_status:
+        # send email to user's additional email
+        sensor = db.session.query(Sensor).filter(Sensor.uuid == sensor_uuid).first()
+        if sensor:
+            if sensor.user.login == user_login:
+                user_email = sensor.user.additional_email
+                if user_email:
+                    # update results list:
+                    for pict_res in picts_unhealthy_status:
+                        pict_res['location'] = sensor.location.address
+                        pict_res['sensor_uuid'] = sensor.uuid
+                    app.logger.debug("SENDING EMAIL")
+                    send_email_notification.delay(user_email, picts_unhealthy_status)
+        
     return picts
 
 
@@ -1484,16 +1572,6 @@ class StatsAPI(Resource):
             co2 = int(request.form.get("CO2"))
             ts = request.form.get("ts")
             
-            # picts = parse_request_pictures(request.files, user.login, sensor.uuid)
-            # New format:
-            #{'uuid': 'sensor_id',
-            # 'ts': 'timestamp',
-            # 'data': { {'uuid':'probe_unique_id', 'ptype': 'temp', 'label': 'TEMP1', 'value': 23.5},
-            #           {}
-            #           ...
-            #           }
-            # 
-            #}
             newdata = Data(sensor_id=sensor.id,
                            wght0 = wght0,
                            wght1 = wght1,
@@ -1694,6 +1772,11 @@ class StatsAPI(Resource):
 
             app.logger.debug(["DB CAMERA", camera.camlabel, camera_position.poslabel])
             # data.cameras.append(camera)
+            app.logger.debug(["RECOGNIZE", recognize])
+            # To be sure to consume request data
+            # to aviod "uwsgi-body-read Error reading Connection reset by peer" errors
+            request_data = request.data
+            app.logger.debug(["Consuming request data", len(request_data)])
             picts = parse_request_pictures(request.files, camera, camera_position, user.login, sensor.uuid, recognize)
             if picts:
                 for p in picts:
