@@ -280,7 +280,7 @@ def create_email_text(pict_status):
     r = """{} {} {} {} {}
     {}
         """.format(pict_status['ts'], pict_status['location'], pict_status['sensor_uuid'], pict_status['camname'], pict_status['position'], "\n".join([z for z in pict_status['zones']]))
-
+    return r
 
 @celery.on_after_configure.connect
 def setup_periodic_tasks(sender, **kwargs):
@@ -291,27 +291,31 @@ def setup_periodic_tasks(sender, **kwargs):
     #dbusers = db.session.query(User).filter(User.additional_email != None).filter(User.notifications.has(Notification.sent.is_(False))).all()
     #    if dbusers:
     #        for dbuser in dbusers:
-    sender.add_periodic_task(60.0, check_pending_notifications.s())
-
+    #sender.add_periodic_task(60.0, check_pending_notifications.s())
+    sender.add_periodic_task(
+        crontab(minute='30'),
+        check_pending_notifications.s(),
+    )
 
 
     
 @celery.task
-def check_pending_notifications(user_id):
+def check_pending_notifications():
     with app.app_context():
-        dbusers = db.session.query(User).filter(User.additional_email != None).filter(User.notifications.has(Notification.sent.is_(False))).all()
+        print("Checking pending notifications")
+        dbusers = db.session.query(User).filter(User.additional_email != None).filter(User.notifications.any(Notification.sent.is_(False))).all()
         if dbusers:
             for dbuser in dbusers:
                 notifications = []
-                for n in user.notifications:
+                for n in dbuser.notifications:
                     if not n.sent:
                         notifications.append(n.text)
                         n.sent = True
-                        db.session.add()
+                        db.session.add(n)
                         db.session.commit()
                 app.logger.debug(f"Sending user notifications {dbuser.additional_email}")
                 # TODO Check email status before setting notification status to "Sent"
-                send_email_notification.delay(dbuser, notifications)
+                send_email_notification.delay(dbuser.additional_email, notifications)
                 
 
 @celery.task
@@ -330,7 +334,7 @@ def send_email_notification(email, pict_status_list):
     #    r  = create_email_text(p)
     #    status_text.append(r)
         
-    status_text = "\n".join(picts_status_list)
+    status_text = "\n".join(pict_status_list)
 
     email_body = email_body.format(status_text)
     
@@ -628,11 +632,11 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
                     for pict_res in picts_unhealthy_status:
                         pict_res['location'] = sensor.location.address
                         pict_res['sensor_uuid'] = sensor.uuid
-                    app.logger.debug("SENDING EMAIL")
+                    #app.logger.debug("SENDING EMAIL")
                     for p in picts_unhealthy_status:
                         email_text = create_email_text(p)
                         # Now we only add a pending notification to be send
-                        newnotification = Notification(user=user, text=email_text)
+                        newnotification = Notification(user=sensor.user, text=email_text)
                         db.session.add(newnotification)
                         db.session.commit()
                         
