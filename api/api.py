@@ -151,6 +151,8 @@ if CLASSIFY_ZONES:
             app.logger.debug(exc)
 
 
+            
+
 class SQLAlchemyNoPool(SQLAlchemy):
     def apply_driver_hacks(self, app, info, options):
         options.update({
@@ -235,6 +237,7 @@ def cache_key():
             
 
 def make_celery(app):
+    app = app 
     celery = Celery(app.import_name, broker=app.config['CELERY_BROKER_URL'])
     celery.conf.update(app.config)
     TaskBase = celery.Task
@@ -279,6 +282,38 @@ def create_email_text(pict_status):
         """.format(pict_status['ts'], pict_status['location'], pict_status['sensor_uuid'], pict_status['camname'], pict_status['position'], "\n".join([z for z in pict_status['zones']]))
 
 
+@celery.on_after_configure.connect
+def setup_periodic_tasks(sender, **kwargs):
+    # Calls test('hello') every 10 seconds.
+    # for every db user set a task
+    # select all users with additional_email and notifications unsent
+    #
+    #dbusers = db.session.query(User).filter(User.additional_email != None).filter(User.notifications.has(Notification.sent.is_(False))).all()
+    #    if dbusers:
+    #        for dbuser in dbusers:
+    sender.add_periodic_task(60.0, check_pending_notifications.s())
+
+
+
+    
+@celery.task
+def check_pending_notifications(user_id):
+    with app.app_context():
+        dbusers = db.session.query(User).filter(User.additional_email != None).filter(User.notifications.has(Notification.sent.is_(False))).all()
+        if dbusers:
+            for dbuser in dbusers:
+                notifications = []
+                for n in user.notifications:
+                    if not n.sent:
+                        notifications.append(n.text)
+                        n.sent = True
+                        db.session.add()
+                        db.session.commit()
+                app.logger.debug(f"Sending user notifications {dbuser.additional_email}")
+                # TODO Check email status before setting notification status to "Sent"
+                send_email_notification.delay(dbuser, notifications)
+                
+
 @celery.task
 def send_email_notification(email, pict_status_list):
     #some text formatting
@@ -289,13 +324,13 @@ def send_email_notification(email, pict_status_list):
     
     """
 
-    status_text = []
+    #status_text = []
     
-    for p in pict_status_list:
-        r  = create_email_text(p)
-        status_text.append(r)
+    # for p in pict_status_list:
+    #    r  = create_email_text(p)
+    #    status_text.append(r)
         
-    status_text = "\n".join(status_text)
+    status_text = "\n".join(picts_status_list)
 
     email_body = email_body.format(status_text)
     
@@ -308,7 +343,7 @@ def send_email_notification(email, pict_status_list):
     s = smtplib.SMTP('localhost')
     s.send_message(msg)
     s.quit()
-
+    
 
 
 @celery.task
