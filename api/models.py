@@ -97,6 +97,14 @@ class Probe(db.Model):
     minvalue = db.Column(db.Numeric(precision=3))
     maxvalue = db.Column(db.Numeric(precision=3))
 
+
+# Notifications
+class Notification(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    text = db.Column(db.Text(), nullable=False)
+    user_id = db.Column(db.Integer, ForeignKey('user.id'))
+    user = relationship("User", backref=backref("notifications"))
+    sent = db.Column(db.Boolean, default=False)
     
 # Sensors
 class Sensor(db.Model):

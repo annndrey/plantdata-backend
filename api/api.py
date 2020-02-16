@@ -17,7 +17,7 @@ from flask_cors import CORS, cross_origin
 from flask_restful.utils import cors
 from marshmallow import fields
 from marshmallow_enum import EnumField
-from models import db, User, Sensor, Location, Data, DataPicture, Camera, CameraPosition, Probe, ProbeData, PictureZone
+from models import db, User, Sensor, Location, Data, DataPicture, Camera, CameraPosition, Probe, ProbeData, PictureZone, Notification
 import logging
 import os
 import uuid
@@ -30,6 +30,7 @@ import urllib.parse
 import smtplib
 from email.message import EmailMessage
 from celery import Celery
+from celery.schedules import crontab
 
 # caching
 from flask_caching import Cache
@@ -150,6 +151,8 @@ if CLASSIFY_ZONES:
             app.logger.debug(exc)
 
 
+            
+
 class SQLAlchemyNoPool(SQLAlchemy):
     def apply_driver_hacks(self, app, info, options):
         options.update({
@@ -183,7 +186,8 @@ def send_zones(zone, zonelabel, fuuid, file_format, fpath, user_login, sensor_uu
     # send CF request
     #original.save(fullpath)
     
-    response = requests.post(CF_HOST.format("loadimage"), headers=cf_headers, files = {'croppedfile': img_io}, data={'index':0, 'filename': ''})
+    #response = requests.post(CF_HOST.format("loadimage"), headers=cf_headers, files = {'croppedfile': img_io}, data={'index':0, 'filename': ''})
+    response = requests.post(CF_HOST.format("loadimage"), auth=(CF_LOGIN, CF_PASSWORD), files = {'imagefile': img_io}, data={'index':0, 'filename': fuuid})
     if response.status_code == 200:
         cf_result = response.json().get('objtype')
         #responses.append("{}: {}".format(z, cf_result))
@@ -233,6 +237,7 @@ def cache_key():
             
 
 def make_celery(app):
+    app = app 
     celery = Celery(app.import_name, broker=app.config['CELERY_BROKER_URL'])
     celery.conf.update(app.config)
     TaskBase = celery.Task
@@ -271,25 +276,65 @@ def get_zones():
     return res
 
 
+def create_email_text(pict_status):
+    r = """{} {} {} {} {}
+    {}
+        """.format(pict_status['ts'], pict_status['location'], pict_status['sensor_uuid'], pict_status['camname'], pict_status['position'], "\n".join([z for z in pict_status['zones']]))
+    return r
+
+@celery.on_after_configure.connect
+def setup_periodic_tasks(sender, **kwargs):
+    # Calls test('hello') every 10 seconds.
+    # for every db user set a task
+    # select all users with additional_email and notifications unsent
+    #
+    #dbusers = db.session.query(User).filter(User.additional_email != None).filter(User.notifications.has(Notification.sent.is_(False))).all()
+    #    if dbusers:
+    #        for dbuser in dbusers:
+    #sender.add_periodic_task(60.0, check_pending_notifications.s())
+    sender.add_periodic_task(
+        crontab(minute='30'),
+        check_pending_notifications.s(),
+    )
+
+
+    
+@celery.task
+def check_pending_notifications():
+    with app.app_context():
+        print("Checking pending notifications")
+        dbusers = db.session.query(User).filter(User.additional_email != None).filter(User.notifications.any(Notification.sent.is_(False))).all()
+        if dbusers:
+            for dbuser in dbusers:
+                notifications = []
+                for n in dbuser.notifications:
+                    if not n.sent:
+                        notifications.append(n.text)
+                        n.sent = True
+                        db.session.add(n)
+                        db.session.commit()
+                app.logger.debug(f"Sending user notifications {dbuser.additional_email}")
+                # TODO Check email status before setting notification status to "Sent"
+                send_email_notification.delay(dbuser.additional_email, notifications)
+                
+
 @celery.task
 def send_email_notification(email, pict_status_list):
     #some text formatting
     email_body = """
     The following images may need your attention:
 
-    {}
+{}
     
     """
 
-    status_text = []
+    #status_text = []
     
-    for p in pict_status_list:
-        r = """{} {} {} {} {}
-    {}
-        """.format(p['ts'], p['location'], p['sensor_uuid'], p['camname'], p['position'], "\n".join([z for z in p['zones']]))
-        status_text.append(r)
+    # for p in pict_status_list:
+    #    r  = create_email_text(p)
+    #    status_text.append(r)
         
-    status_text = "\n".join(status_text)
+    status_text = "\n".join(pict_status_list)
 
     email_body = email_body.format(status_text)
     
@@ -302,7 +347,7 @@ def send_email_notification(email, pict_status_list):
     s = smtplib.SMTP('localhost')
     s.send_message(msg)
     s.quit()
-
+    
 
 
 @celery.task
@@ -381,7 +426,7 @@ def crop_zones(results, cam_names, cam_positions, cam_zones, cam_numsamples, cam
         shutil.move(zipname, os.path.join('/home/annndrey/Dropbox/plantdata', zfname))
         
 
-@app.before_first_request
+#@app.before_first_request
 def login_to_classifier():
     app.logger.debug("Logging to CF server")
     login_data = {"username": CF_LOGIN,
@@ -515,10 +560,10 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
         newzones = []
 
         if recognize:
-            if CLASSIFY_ZONES and CF_TOKEN:
+            if CLASSIFY_ZONES:# and CF_TOKEN:
                 # zones = CROP_SETTINGS.get(uplname, None)
                 zones = get_zones()
-                cf_headers = {'Authorization': 'Bearer ' + CF_TOKEN}
+                cf_headers = None #= {'Authorization': 'Bearer ' + CF_TOKEN}
                 # 2592x1944
                 app.logger.debug(["ZONES", zones])
                 if zones:
@@ -587,8 +632,15 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
                     for pict_res in picts_unhealthy_status:
                         pict_res['location'] = sensor.location.address
                         pict_res['sensor_uuid'] = sensor.uuid
-                    app.logger.debug("SENDING EMAIL")
-                    send_email_notification.delay(user_email, picts_unhealthy_status)
+                    #app.logger.debug("SENDING EMAIL")
+                    for p in picts_unhealthy_status:
+                        email_text = create_email_text(p)
+                        # Now we only add a pending notification to be send
+                        newnotification = Notification(user=sensor.user, text=email_text)
+                        db.session.add(newnotification)
+                        db.session.commit()
+                        
+                    #send_email_notification.delay(user_email, picts_unhealthy_status)
         
     return picts
 
@@ -1775,8 +1827,8 @@ class StatsAPI(Resource):
             app.logger.debug(["RECOGNIZE", recognize])
             # To be sure to consume request data
             # to aviod "uwsgi-body-read Error reading Connection reset by peer" errors
-            request_data = request.data
-            app.logger.debug(["Consuming request data", len(request_data)])
+            #request_data = request.data
+            app.logger.debug(["Parsing request files", request.files])
             picts = parse_request_pictures(request.files, camera, camera_position, user.login, sensor.uuid, recognize)
             if picts:
                 for p in picts:
