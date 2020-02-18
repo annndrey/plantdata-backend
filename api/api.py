@@ -743,21 +743,37 @@ class DataSchema(ma.ModelSchema):
     @post_dump(pass_many=True)
     def filter_fields(self, data, many, **kwargs):
         if many:
+            pr_labels = {}
             for d in data:
+                
                 probes = [r['probe'] for r in d['records']]
+                
                 d['probes'] = list({v['uuid']:v for v in probes}.values())
                 for pr in d['probes']:
                     pr['values'] = []
+                    logging.debug(pr)
+                    if pr['uuid'] not in pr_labels:
+                        pr_labels[pr['uuid']] = []
+                        
                 for k, v in groupby(d['records'], key=lambda x:x['probe']['uuid']):
+                    #logging.debug(list(v))
                     for pr in d['probes']:
                         if pr['uuid'] == k:
                             vals = list(v)
+                            # Detecting missing points
+                            diff = list(set(pr_labels[k]) - set([vl['label'] for vl in vals]))
+                            if len(diff) > 0:
+                                logging.debug(vals)
+                                for df in diff:
+                                    vals.append({'ptype': 'missing', 'value': None, 'label': df, 'probe': {'uuid': k}})
                             for vl in vals:
+                                if vl['label'] not in pr_labels[vl['probe']['uuid']]:
+                                    pr_labels[vl['probe']['uuid']].append(vl['label'])
                                 del vl['probe']
-                            # app.logger.debug(["DATA", k, vals])
-                            pr['values'].extend(vals)
-                del d['records']
 
+                            pr['values'].extend(vals)
+                            del d['records']
+            logging.debug(pr_labels)
         return data
 
     
@@ -1524,7 +1540,9 @@ class DataAPI(Resource):
         # By default show data for the last recorded day
         # 
         user = User.query.filter_by(login=data['sub']).first()
-        
+        sensor = db.session.query(Sensor).filter(Sensor.uuid == suuid).first()
+        if user != sensor.user:
+            abort(403)
         if not user:
             abort(401)
         if not suuid:
