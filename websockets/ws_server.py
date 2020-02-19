@@ -5,6 +5,7 @@
 import asyncio
 import json
 import websockets
+import datetime
 
 clients = {}
 
@@ -15,7 +16,8 @@ async def counter(websocket, path):
     #
     if client_id not in clients.keys():
         clients[client_id] = websocket
-    print(f"Registered {client_id}")
+    now = datetime.datetime.now().strftime('%d/%m/%y %H:%M:%S')
+    print(f"Registered {client_id} at {now}")
     while True:
         try:
             data = await websocket.recv()
@@ -27,7 +29,8 @@ async def counter(websocket, path):
                     await reciever.send(data)
 
         except websockets.ConnectionClosed:
-            print(f"Connection closed for {client_id}")
+            now = datetime.datetime.now().strftime('%d/%m/%y %H:%M:%S')
+            print(f"Connection closed for {client_id} at {now}")
             del clients[client_id]
             break
 
