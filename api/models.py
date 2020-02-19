@@ -92,7 +92,7 @@ class ProbeData(db.Model):
     label = db.Column(db.String(200))
     prtype_id = db.Column(db.Integer, ForeignKey('sensor_type.id'))
     prtype = relationship("SensorType", backref=backref("values", uselist=True))
-    
+
 
 class Probe(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -102,6 +102,7 @@ class Probe(db.Model):
     #records = relationship("Data", secondary=data_probes)
     #data_id = db.Column(db.Integer, ForeignKey('data.id'))
     #data = relationship("Data", backref=backref("probes", uselist=True))
+
 
     
 # Sensors

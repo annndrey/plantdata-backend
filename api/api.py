@@ -755,7 +755,7 @@ class DataSchema(ma.ModelSchema):
                 d['probes'] = list({v['uuid']:v for v in probes}.values())
                 for pr in d['probes']:
                     pr['values'] = []
-                    logging.debug(pr)
+                    # logging.debug(pr)
                     if pr['uuid'] not in pr_labels:
                         pr_labels[pr['uuid']] = []
                         
@@ -767,17 +767,15 @@ class DataSchema(ma.ModelSchema):
                             # Detecting missing points
                             diff = list(set(pr_labels[k]) - set([vl['label'] for vl in vals]))
                             if len(diff) > 0:
-                                logging.debug(vals)
+                                # logging.debug(vals)
                                 for df in diff:
                                     vals.append({'ptype': 'missing', 'value': None, 'label': df, 'probe': {'uuid': k}})
                             for vl in vals:
                                 if vl['label'] not in pr_labels[vl['probe']['uuid']]:
                                     pr_labels[vl['probe']['uuid']].append(vl['label'])
                                 del vl['probe']
-
                             pr['values'].extend(vals)
-                            del d['records']
-            logging.debug(pr_labels)
+                del d['records']
         return data
 
     
@@ -1233,6 +1231,7 @@ class ProbeDataAPI(Resource):
 
     @token_required
     @cross_origin()
+    @cache.cached(timeout=300, key_prefix=cache_key)
     def get(self):
         """
         GET Get probe data [TODO: Fix description]
@@ -1333,7 +1332,7 @@ class DataAPI(Resource):
     
     @token_required
     @cross_origin()
-    #@cache.cached(timeout=60, key_prefix=cache_key)
+    @cache.cached(timeout=60, key_prefix=cache_key)
     def get(self):
         """
         Get sensors data
