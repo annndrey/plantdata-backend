@@ -10,7 +10,7 @@ import time
 from threading import Thread
 import cv2
 
-base_url = "http://admin:plantdata@cf-fungi-cam1.ngrok.io"
+base_url = "http://admin:plantdata@trololo.info:7008"
 
 def on_change(e):
     print(e)
