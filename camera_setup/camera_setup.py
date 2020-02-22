@@ -10,7 +10,7 @@ import time
 from threading import Thread
 import cv2
 
-base_url = "http://admin:plantdata@trololo.info:7008"
+base_url = "http://admin:plantdata@cf-fungi-cam1.ngrok.io"
 
 def on_change(e):
     print(e)
@@ -22,16 +22,19 @@ def on_change(e):
 def open_img():
     global base_url
     img_url = base_url + "/jpgimage/1/image.jpg"
-    cap = cv2.VideoCapture(img_url)
-    _, frame = cap.read()
-    #frame = cv2.flip(frame, 1)
-    cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
-    img = Image.fromarray(cv2image)
-    imgtk = ImageTk.PhotoImage(image=img)
+    try:
+        cap = cv2.VideoCapture(img_url)
+        _, frame = cap.read()
+        #frame = cv2.flip(frame, 1)
+        cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
+        img = Image.fromarray(cv2image)
+        imgtk = ImageTk.PhotoImage(image=img)
     
-    label1.image = imgtk
-    label1.configure(image = imgtk)
-    label1.after(50, open_img)
+        label1.image = imgtk
+        label1.configure(image = imgtk)
+        label1.after(50, open_img)
+    except:
+        pass
     #img_url = base_url + "/jpgimage/1/image.jpg"
     #response = requests.get(img_url)
     #print(response.status_code)
