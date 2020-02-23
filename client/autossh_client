@@ -1,0 +1,1 @@
+autossh -M 0 -R 7005:localhost:22 tun-user@trololo.info -N -f
