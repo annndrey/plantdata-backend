@@ -53,7 +53,6 @@ import glob
 from collections import OrderedDict
 
 
-
 from multiprocessing import Pool
 
 logging.basicConfig(format='%(levelname)s: %(asctime)s - %(message)s',
