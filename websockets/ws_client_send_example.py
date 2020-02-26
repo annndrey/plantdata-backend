@@ -14,8 +14,14 @@ async def hello():
     async with websockets.connect(uri, extra_headers={'suuid':'123asd', "sendto":"fe62aa26-9936-4aed-b6bb-81714fee630e"}) as websocket:
         #while True:
         try:
-            #time.sleep(1)
+                #time.sleep(1)
             message = sys.argv[1]
+                #with open('/home/annndrey/desktop/sima.jpg', 'rb') as f:
+                #    while True:
+                #        data = f.read(1024)
+                #        if not data:
+                #            break
+                #        await websocket.send(data)
             await websocket.send(message)
                 
             # print("> {}".format(name))
