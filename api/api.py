@@ -278,11 +278,11 @@ def get_zones():
     return res
 
 
-def create_email_text(pict_status):
-    r = """{} {} {} {} {}
-    {}
-        """.format(pict_status['ts'], pict_status['location'], pict_status['sensor_uuid'], pict_status['camname'], pict_status['position'], "\n".join([z for z in pict_status['zones']]))
-    return r
+#def create_email_text(pict_status):
+#    r = """{} {} {} {} {}
+#    {}
+#        """.format(pict_status['ts'], pict_status['location'], pict_status['sensor_uuid'], pict_status['camname'], pict_status['position'], "\n".join([z for z in pict_status['zones']]))
+#    return r
 
 @celery.on_after_configure.connect
 def setup_periodic_tasks(sender, **kwargs):
@@ -295,7 +295,7 @@ def setup_periodic_tasks(sender, **kwargs):
     #        for dbuser in dbusers:
     #sender.add_periodic_task(60.0, check_pending_notifications.s())
     sender.add_periodic_task(
-        crontab(minute='30'),
+        crontab(minute='1'),
         check_pending_notifications.s(),
     )
 
@@ -345,7 +345,8 @@ def send_email_notification(email, pict_status_list):
 
     status_text = []
     
-    for i, p in enumerate(pict_status_list):
+    for i, obj in enumerate(pict_status_list):
+        p = json.loads(obj.text)
         figure_template = """
         <p>
         <figure>
@@ -669,7 +670,7 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
                     for p in picts_unhealthy_status:
                         email_text = create_email_text(p)
                         # Now we only add a pending notification to be send
-                        newnotification = Notification(user=sensor.user, text=email_text)
+                        newnotification = Notification(user=sensor.user, text=json.dumps(p))
                         db.session.add(newnotification)
                         db.session.commit()
                         
