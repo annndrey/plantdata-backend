@@ -358,7 +358,7 @@ def send_email_notification(email, pict_status_list):
         for j, z in enumerate(p[zones]):
             fig_html = figure_template.format(i, j, z['results'])
             fig_list.append(fig_html)
-            with img_file as open(os.path.join(BASEDIR, z['fpath']), 'rb'):
+            with open(os.path.join(BASEDIR, z['fpath']), 'rb') as img_file:
                 msgImage = MIMEImage(img_file.read())
                 msgImage.add_header('Content-ID', '<image{}_{}>'.format(i, j))
                 msg.attach(msgImage)
