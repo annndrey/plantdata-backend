@@ -82,6 +82,7 @@ REDIS_HOST = app.config.get('REDIS_HOST', 'localhost')
 REDIS_PORT = app.config.get('REDIS_PORT', 6379)
 REDIS_DB = app.config.get('REDIS_DB', 0)
 CACHE_DB = app.config.get('CACHE_DB', 1)
+FILE_PATH = app.config.get('FILE_PATH', 1)
 
 cache = Cache(app, config={
     'CACHE_TYPE': 'redis',
@@ -286,18 +287,11 @@ def get_zones():
 
 @celery.on_after_configure.connect
 def setup_periodic_tasks(sender, **kwargs):
-    # Calls test('hello') every 10 seconds.
-    # for every db user set a task
-    # select all users with additional_email and notifications unsent
-    #
-    #dbusers = db.session.query(User).filter(User.additional_email != None).filter(User.notifications.has(Notification.sent.is_(False))).all()
-    #    if dbusers:
-    #        for dbuser in dbusers:
-    #sender.add_periodic_task(60.0, check_pending_notifications.s())
-    sender.add_periodic_task(
-        crontab(minute='1'),
-        check_pending_notifications.s(),
-    )
+    sender.add_periodic_task(1200.0, check_pending_notifications.s())
+    #sender.add_periodic_task(
+    #    crontab(minute='1'),
+    #    check_pending_notifications.s(),
+    #)
 
 
     
@@ -344,14 +338,14 @@ def send_email_notification(email, pict_status_list):
     """
 
     status_text = []
-    
+    email_images = []
     for i, obj in enumerate(pict_status_list):
-        p = json.loads(obj.text)
+        p = json.loads(obj)
         figure_template = """
         <p>
         <figure>
         <img src='cid:image{}_{}' alt='missing'/>
-        <figcaption></figcaption>
+        <figcaption>{}</figcaption>
         </figure>
         </p>
         """
@@ -359,10 +353,10 @@ def send_email_notification(email, pict_status_list):
         for j, z in enumerate(p['zones']):
             fig_html = figure_template.format(i, j, z['results'])
             fig_list.append(fig_html)
-            with open(os.path.join(BASEDIR, z['fpath']), 'rb') as img_file:
+            with open(os.path.join(FILE_PATH, z['fpath']), 'rb') as img_file:
                 msgImage = MIMEImage(img_file.read())
                 msgImage.add_header('Content-ID', '<image{}_{}>'.format(i, j))
-                msg.attach(msgImage)
+                email_images.append(msgImage)
                 
         figs = "\n".join(fig_list)
         
@@ -378,6 +372,10 @@ def send_email_notification(email, pict_status_list):
     message_text = MIMEText(email_body, 'html')
     msg.attach(message_text)
 
+    for img in email_images:
+        msg.attach(img)
+
+    
     s = smtplib.SMTP('localhost')
     s.sendmail(sender, email, msg.as_string())
     s.quit()
@@ -668,8 +666,10 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
                         pict_res['sensor_uuid'] = sensor.uuid
                     #app.logger.debug("SENDING EMAIL")
                     for p in picts_unhealthy_status:
-                        email_text = create_email_text(p)
+                        # email_text = create_email_text(p)
                         # Now we only add a pending notification to be send
+                        app.logger.debug(["CREATING NOTIFICATION", p])
+                        p['ts'] = p['ts'].strftime("%d-%m-%Y %H:%M:%S")
                         newnotification = Notification(user=sensor.user, text=json.dumps(p))
                         db.session.add(newnotification)
                         db.session.commit()
