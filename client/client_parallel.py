@@ -86,8 +86,8 @@ with open("config.yaml", 'r') as stream:
     except yaml.YAMLError as exc:
         logging.debug(exc)
 
-SERVER_LOGIN = "peksha@plantdata.tech"
-SERVER_PASSWORD = "pekshapasswd"
+SERVER_LOGIN = "test@test.com"
+SERVER_PASSWORD = "testpassword"
 SERVER_HOST = "https://dev.plantdata.fermata.tech:5598/api/v2/{}"
 db_file = 'localdata.db'
 DATADIR = "picts"
@@ -142,6 +142,7 @@ async def async_read_sensor_data(session, url, dbsession, bsid):
             dbsession.commit()
                 
             for pdata in data:
+                logging.debug([pdata['ptype'], pdata['value']])
                 newpdata = ProbeData(probe=dbprobe, value=pdata['value'], ptype=pdata['ptype'], label=pdata['label'])
                 dbsession.add(newpdata)
                 dbsession.commit()
@@ -414,17 +415,17 @@ def post_data(token, bsuuid, take_photos):
                 for pr in cd.probes:
                     probe = {"puuid": pr.uuid, "data": []}
                     for pd in pr.values:
-                        if pd.value:
-                            pdvalue = float(pdvalue)
+                        if pd.value is not None:
+                            pdvalue = float(pd.value)
                         else:
                             pdvalue = None
-                        probe_data  = {"ptype":pd.ptype, "value":pdvalue, "label": pd.label}
+                        probe_data  = {"ptype":pd.ptype, "value": pdvalue, "label": pd.label}
+                        logging.debug(["PROBE DATA", pd.ptype, pdvalue])
                         probe['data'].append(probe_data)
                     postdata['probes'].append(probe)
-                print(json.dumps(postdata, indent=4))
+                logging.debug(json.dumps(postdata, indent=4))
                 resp = requests.post(SERVER_HOST.format("data"), json=postdata, headers=head)
                 if resp.status_code == 201:
-            
                     resp_data = json.loads(resp.text)
                     cd.remote_data_id = resp_data['id']
                     cd.uploaded = True
@@ -474,10 +475,10 @@ if __name__ == '__main__':
 
     scheduler = SafeScheduler()
     scheduler.every(5).minutes.do(post_data, token, base_station_uuid, False)
-    #scheduler.every(60).minutes.do(post_data, token, base_station_uuid, True)
+    scheduler.every(60).minutes.do(post_data, token, base_station_uuid, True)
     logging.debug(base_station_uuid)
-    #post_data(token, base_station_uuid, False)
-    #sys.exit(1)
+    post_data(token, base_station_uuid, False)
+    sys.exit(1)
     while 1:
         scheduler.run_pending()
         sleep(1)
