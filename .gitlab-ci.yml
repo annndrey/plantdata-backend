@@ -10,6 +10,7 @@ build:
     - mkdir builds
     - touch builds/data.txt
     - echo "ololo" > builds/data.txt
+    - ls -latr
   artifacts:
     paths:
       - builds/
@@ -20,5 +21,6 @@ test:
     - echo "this is testing"
     - hostname
     - test -f builds/data.txt
+    - ls -latr
     #- grep "true" builds/data.txt
 
