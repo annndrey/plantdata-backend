@@ -5,11 +5,11 @@ stages:
 build:
   stage: build
   script:
-    - echo "this is building"
+    - echo "this is building..."
     - hostname
     - mkdir builds
     - touch builds/data.txt
-    - echo "true" > builds/data.txt
+    - echo "ololo" > builds/data.txt
   artifacts:
     paths:
       - builds/
