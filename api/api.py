@@ -61,6 +61,7 @@ from multiprocessing import Pool
 logging.basicConfig(format='%(levelname)s: %(asctime)s - %(message)s',
                     level=logging.DEBUG, datefmt='%d.%m.%Y %I:%M:%S %p')
 
+
 app = Flask(__name__)
 app.config.from_envvar('APPSETTINGS')
 API_VERSION = app.config.get('API_VERSION', 1)
