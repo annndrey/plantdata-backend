@@ -2,20 +2,18 @@ stages:
   - build
   - test
 
-build:
+test:
   stage: build
   script:
     - echo "this is building..."
     - hostname
-    - mkdir builds
-    - touch builds/data.txt
-    - echo "ololo" > builds/data.txt
-    - ls -latr
-  artifacts:
-    paths:
-      - builds/
+    - pip3 install flake8
+    - flake8 api/api.py
+  #artifacts:
+  #  paths:
+  #    - builds/
 
-test:
+build:
   stage: test
   script:
     - echo "this is testing"
