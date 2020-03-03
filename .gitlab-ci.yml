@@ -1,24 +1,19 @@
 stages:
-  - build
   - test
+  - build
 
 test:
-  stage: build
-  script:
-    - echo "this is building..."
-    - hostname
-    - pip3 install pylint
-    - pylint api/api.py
-  #artifacts:
-  #  paths:
-  #    - builds/
-
-build:
   stage: test
   script:
-    - echo "this is testing"
-    - hostname
-    - test -f builds/data.txt
-    - ls -latr
-    #- grep "true" builds/data.txt
+    - echo "Testing..."
+    - python --version
+    - pip3 install flake8
+    - python -m py_compile api/api.py
+    - flake8 --exit-zero api/api.py
+
+build:
+  stage: build
+  script:
+    - echo "this is building"
+
 
