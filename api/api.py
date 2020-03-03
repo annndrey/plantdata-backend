@@ -26,6 +26,7 @@ import shutil
 import zipfile
 import urllib.parse
 
+
 # for emails
 import smtplib
 from email.message import EmailMessage
@@ -287,7 +288,7 @@ def get_zones():
 
 @celery.on_after_configure.connect
 def setup_periodic_tasks(sender, **kwargs):
-    sender.add_periodic_task(1200.0, check_pending_notifications.s())
+    sender.add_periodic_task(3600.0, check_pending_notifications.s())
     #sender.add_periodic_task(
     #    crontab(minute='1'),
     #    check_pending_notifications.s(),
