@@ -35,7 +35,6 @@ from email.mime.image import MIMEImage
 from celery import Celery
 from celery.schedules import crontab
 
-
 # caching
 from flask_caching import Cache
 import urllib.parse
