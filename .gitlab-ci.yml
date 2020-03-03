@@ -7,8 +7,8 @@ test:
   script:
     - echo "this is building..."
     - hostname
-    - pip3 install flake8
-    - flake8 api/api.py
+    - pip3 install pylint
+    - pylint api/api.py
   #artifacts:
   #  paths:
   #    - builds/
