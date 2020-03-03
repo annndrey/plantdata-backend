@@ -26,7 +26,6 @@ import shutil
 import zipfile
 import urllib.parse
 
-
 # for emails
 import smtplib
 from email.message import EmailMessage
