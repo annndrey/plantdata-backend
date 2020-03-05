@@ -14,10 +14,10 @@ services:
       TEXT_FONT: /data/fonts/truetype/liberation/LiberationSans-Regular.ttf
     ports:
       - "9200:8000"
-  database:
-    image: mysql:5.7
-    #volumes:
-    #  - ./.data/database:/var/lib/mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: root
+  #database:
+  #  image: mysql:5.7
+  #  #volumes:
+  #  #  - ./.data/database:/var/lib/mysql
+  #  environment:
+  #    MYSQL_ROOT_PASSWORD: root
+  #    MYSQL_DATABASE: root
