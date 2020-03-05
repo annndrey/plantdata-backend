@@ -19,5 +19,5 @@ build:
   script:
     - echo "Deploy...."
     - echo "Starting docker..."
-    - docker-compose up --build api
+    - docker-compose up -d --build api
 
