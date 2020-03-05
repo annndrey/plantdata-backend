@@ -1,11 +1,3 @@
-image: docker:stable
-
-#variables:
-#  DOCKER_DRIVER: overlay
-  
-services:
-- docker:dind
-
 before_script:
 - docker info
 - apk update
