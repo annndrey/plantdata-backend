@@ -1,7 +1,7 @@
 DEBUG = True
 DEVELOPMENT = True
 SECRET_KEY='secretkeyformyapp'
-SQLALCHEMY_DATABASE_URI='mysql+pymysql://root:root@database/plantdb_docker'
+SQLALCHEMY_DATABASE_URI='mysql+pymysql://plantdata:plantdatapass@192.168.1.4/plantdb_copy'
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 FILE_PATH = "/media/MEDIA/PLANTDATA"
 #CF_LOGIN = "demouser@fermata.tech"

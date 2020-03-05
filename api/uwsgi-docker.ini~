@@ -1,0 +1,19 @@
+[uwsgi]
+project = plantdatab
+module = wsgi:app
+master = True
+http-socket = :5499
+socket-timeout = 3000
+buffer-size = 65535
+protocol = http
+processes = 2
+vacuum = true
+chdir = /app
+home = /app
+logto = plantdata.log
+cheaper-algo = spare
+cheaper = 2
+cheaper-initial = 2
+workers = 10
+cheaper-step = 1
+wsgi-disable-file-wrapper = true

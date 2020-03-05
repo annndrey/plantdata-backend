@@ -1,7 +1,7 @@
 DEBUG = True
 DEVELOPMENT = True
 SECRET_KEY='secretkeyformyapp'
-SQLALCHEMY_DATABASE_URI='mysql+pymysql://plantdata:plantdatapass@192.168.1.4/plantdb'
+SQLALCHEMY_DATABASE_URI='mysql+pymysql://root:root@database/plantdb'
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 FILE_PATH = "/media/MEDIA/PLANTDATA"
 #CF_LOGIN = "demouser@fermata.tech"
@@ -10,7 +10,7 @@ CF_LOGIN = "saladuser"
 CF_PASSWORD = "saladpass1a1"
 CF_HOST = "https://salad.fermata.tech/{}"
 CLASSIFY_ZONES = True
-FONT = "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
+FONT = "/data/fonts/truetype/liberation/LiberationSans-Regular.ttf"
 FONTSIZE = 50
 TEMPDIR = "/media/MEDIA/TMP"
 REDIS_HOST = "localhost"
