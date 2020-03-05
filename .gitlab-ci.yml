@@ -18,6 +18,7 @@ test:
 build:
   stage: build
   script:
+    - sudo git clean -ffdx
     - echo "Deploy...."
     - echo "Starting docker..."
     - docker-compose stop api
