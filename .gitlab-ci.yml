@@ -8,7 +8,7 @@ test:
     - echo "Testing..."
     - python3 --version
     - pip3 install flake8
-    - python3 -m py_compile api/api.py
+    #- python3 -m py_compile api/api.py
     - flake8 --exit-zero api/api.py
 
 build:
