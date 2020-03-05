@@ -8,4 +8,5 @@
 #flask db init
 #flask db migrate
 #flask db upgrade
+ls /data
 uwsgi --ini uwsgi-docker.ini --socket :8000 --protocol=http 

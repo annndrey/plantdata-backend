@@ -20,4 +20,4 @@ services:
     #  - ./.data/database:/var/lib/mysql
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: image_finder
+      MYSQL_DATABASE: root
