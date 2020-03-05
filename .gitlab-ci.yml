@@ -15,6 +15,5 @@ build:
   stage: build
   script:
     - echo "Starting docker"
-    - mkdir .data/fonts/truetype/liberation
     - docker-compose up --build api
 
