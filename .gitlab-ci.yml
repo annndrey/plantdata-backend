@@ -5,11 +5,10 @@ stages:
   - test
   - build
 
-
 test:
   stage: test
   script:
-    - echo "Testing...."
+    - echo "Testing....."
     - python3 --version
     #- pip3 install flake8
     #- python -m py_compile api/api.py
