@@ -6,7 +6,6 @@ test:
   stage: test
   script:
     - echo "Testing..."
-    - pwd
     - python --version
     - pip3 install flake8
     - python -m py_compile api/api.py
