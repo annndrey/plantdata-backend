@@ -6,7 +6,7 @@ services:
     build: ./api
     volumes:
       - ./api:/app
-      #- ./.data/pip-cache:/root/.cache/pip
+      - ./.data/pip-cache:/root/.cache/pip
       - ./.data/fonts:/data/fonts
       - ./.socket:/socket
     environment:
