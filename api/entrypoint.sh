@@ -8,5 +8,6 @@
 #flask db migrate
 #flask db upgrade
 #export PYTHONPYCACHEPREFIX="/tmp/.cache/cpython/"
+export PYTHONDONTWRITEBYTECODE=1
 ls /data
 uwsgi --ini uwsgi-docker.ini --socket :8000 --protocol=http 
