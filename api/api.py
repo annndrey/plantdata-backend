@@ -1864,6 +1864,8 @@ class StatsAPI(Resource):
             # to aviod "uwsgi-body-read Error reading Connection reset by peer" errors
             #request_data = request.data
             app.logger.debug(["Parsing request files", request.files])
+            if data.lux < 30:
+                recognize = False
             picts = parse_request_pictures(request.files, camera, camera_position, user.login, sensor.uuid, recognize)
             if picts:
                 for p in picts:
