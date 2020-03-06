@@ -8,7 +8,7 @@ stages:
 test:
   stage: test
   script:
-    - echo "Testing.........."
+    - echo "Testing..........."
     - python3 --version
     - echo $CI_PROJECT_DIR
     #- pip3 install flake8
