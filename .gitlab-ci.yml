@@ -19,7 +19,7 @@ build:
   stage: build
   script:
     - echo "Deploy...."
-    - echo "Starting docker...."
+    - echo "Starting docker....."
     - docker-compose stop api
     - docker-compose up -d --build api
     - echo $CI_BUILDs_DIR/$CI_CONCURRENT_ID/$CI_PROJECT_NAMESPACE/$CI_PROJECT_ID
