@@ -18,7 +18,7 @@ test:
 build:
   stage: build
   script:
-    - echo "Deploy...."
+    - echo "Deploy....."
     - echo "Starting docker....."
     - docker-compose stop api
     - docker-compose up -d --build api
