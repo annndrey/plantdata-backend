@@ -554,12 +554,9 @@ def process_single_file(uplname, pict):
 
 
 def process_result(result):
-    if 'salat' in result: result = 'salat_' + result.split('_')[-1]
-    elif 'melissa' in result: return 'melissa_' + result.split('_')[-1]
-    elif 'bazilik' in result: return 'bazilik_' + result.split('_')[-1]
-    elif 'rukola' in result: return 'rukola_' + result.split('_')[-1]
-    elif 'pakchol' in result: return 'pakchol_' + result.split('_')[-1]
+    if 'healthy' in result: return '_'.join(result.split('_')[:-1])
     else: return result
+
 
 # TODO: async
 # process_single_picture
