@@ -32,6 +32,9 @@ import urllib.parse
 # for emails
 import smtplib
 from email.message import EmailMessage
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
 from celery import Celery
 
 # caching
@@ -83,6 +86,9 @@ REDIS_HOST = app.config.get('REDIS_HOST', 'localhost')
 REDIS_PORT = app.config.get('REDIS_PORT', 6379)
 REDIS_DB = app.config.get('REDIS_DB', 0)
 CACHE_DB = app.config.get('CACHE_DB', 1)
+
+BASEDIR = app.config.get('FILE_PATH')
+
 
 cache = Cache(app, config={
     'CACHE_TYPE': 'redis',
@@ -222,7 +228,7 @@ def check_unhealthy_zones(pict, suuid):
                 app.logger.debug(["PREV THEE ZONES", zone.id, [(z.results, z.id) for z in prev_three_zones]])
             
                 if all(['unhealthy' in z.results for z in prev_three_zones]):
-                    res['zones'].append("{} {}".format(zone.zone, zone.results))
+                    res['zones'].append({"results": "{} {}".format(zone.zone, zone.results), "fpath": zone.fpath})
     if res['zones']:
         return res
     
@@ -277,34 +283,63 @@ def get_zones():
 
 @celery.task
 def send_email_notification(email, pict_status_list):
-    #some text formatting
-    email_body = """
-    The following images may need your attention:
+    sender = "noreply@plantdata.fermata.tech"
+    msg = MIMEMultipart('related')
+    msg['Subject'] = 'Plantdata Service Notification'
+    msg['From'] = sender
+    msg['To'] = email
 
-    {}
+    # form message body here
     
+    email_body = """\
+<html>
+    <head></head>
+       <body>
+
+    The following images may need your attention:
+    <ul>
+    {}
+    </ul>
+       </body>
+</html>    
     """
 
     status_text = []
     
-    for p in pict_status_list:
-        r = """{} {} {} {} {}
-    {}
-        """.format(p['ts'], p['location'], p['sensor_uuid'], p['camname'], p['position'], "\n".join([z for z in p['zones']]))
+    for i, p in enumerate(pict_status_list):
+        figure_template = """
+        <p>
+        <figure>
+        <img src='cid:image{}_{}' alt='missing'/>
+        <figcaption></figcaption>
+        </figure>
+        </p>
+        """
+        fig_list = []
+        for j, z in enumerate(p['zones']):
+            fig_html = figure_template.format(i, j, z['results'])
+            fig_list.append(fig_html)
+            with open(os.path.join(BASEDIR, z['fpath']), 'rb') as img_file:
+                msgImage = MIMEImage(img_file.read())
+                msgImage.add_header('Content-ID', '<image{}_{}>'.format(i, j))
+                msg.attach(msgImage)
+                
+        figs = "\n".join(fig_list)
+        
+        r = """<li>
+        {} {} {} {} {}
+        {}
+        </li>
+        """.format(p['ts'], p['location'], p['sensor_uuid'], p['camname'], p['position'], figs)
         status_text.append(r)
         
     status_text = "\n".join(status_text)
-
     email_body = email_body.format(status_text)
-    
-    msg = EmailMessage()
-    msg.set_content(email_body)
+    message_text = MIMEText(email_body, 'html')
+    msg.attach(message_text)
 
-    msg['Subject'] = 'Plantdata Service Notification'
-    msg['From'] = "noreply@plantdata.fermata.tech"
-    msg['To'] = email
     s = smtplib.SMTP('localhost')
-    s.send_message(msg)
+    s.sendmail(sender, email, msg.as_string())
     s.quit()
 
 
@@ -739,15 +774,24 @@ class DataSchema(ma.ModelSchema):
     cameras = ma.Nested("CameraOnlySchema", many=True, exclude=["data",])
     records = ma.Nested("ProbeDataSchema", many=True)
 
-    
+    @pre_dump(pass_many=True)
+    def filter_outliers(self, data, many, **kwargs):
+        app.logger.debug(["PRE DUMP"])
+        for d in data:
+            for p in d.records:
+                if p.value:
+                    if p.value < p.prtype.minvalue:
+                        p.value = p.prtype.minvalue
+                    if p.value > p.prtype.maxvalue:
+                        p.value = p.prtype.maxvalue
+                        
+                    
     @post_dump(pass_many=True)
     def filter_fields(self, data, many, **kwargs):
         if many:
             pr_labels = {}
             for d in data:
-                
                 probes = [r['probe'] for r in d['records']]
-                
                 d['probes'] = list({v['uuid']:v for v in probes}.values())
                 for pr in d['probes']:
                     pr['values'] = []
@@ -801,6 +845,7 @@ class ProbeDataSchema(ma.ModelSchema):
         exclude = ['prtype', 'id', 'data']
     ptype = ma.Function(lambda obj: obj.prtype.ptype)
     probe = ma.Nested("ProbeSchema", many=False, exclude=["data", 'sensor'])
+
     
 class PictAPI(Resource):
     def __init__(self):
@@ -1647,7 +1692,7 @@ class DataAPI(Resource):
                     #        for ind, pr in enumerate(d['probes']):
                     #            if pr['uuid'] != puuid:
                     #                d['probes'].pop(ind)
-                                    
+                    
                     res = {"numrecords": len(sensordata),
                            'mindate': first_rec_day,
                            'maxdate': last_rec_day,
@@ -1820,7 +1865,7 @@ class DataAPI(Resource):
                 newdata.probes.append(probe)    
                 #probe.data.append(newdata)
                 for pd in pr['data']:
-                    app.logger.debug(pr['data'])
+                    app.logger.debug(pd)
                     prtype = db.session.query(SensorType).filter(SensorType.ptype==pd['ptype']).first()
                     newprobedata = ProbeData(probe=probe, value=pd['value'], label=pd['label'], ptype=pd['ptype'])
                     if prtype:
