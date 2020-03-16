@@ -15,6 +15,7 @@ services:
       TEXT_FONT: /data/fonts/truetype/liberation/LiberationSans-Regular.ttf
     ports:
       - "$CI_LIVE_PORT:8000"
+      - 6379:6379
   #database:
   #  image: mysql:5.7
   #  #volumes:
