@@ -17,11 +17,41 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_DB: 0
+    depends_on:
+      - redis
     ports:
       - "$CI_LIVE_PORT:8000"
   redis:
     image: redis:alpine
-    
+  celery:
+    build: ./api
+    command: celery worker -E -A api.celery --loglevel=info
+    volumes:
+      - ./api:/app
+    environment:
+      APPSETTINGS: config_docker.py
+      TEXT_FONT: /data/fonts/truetype/liberation/LiberationSans-Regular.ttf
+      HOST_ADDR: $ENV_HOST_ADDR
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 1
+    depends_on:
+      - redis
+  celery-beat:
+    build: ./api
+    command: celery beat -A api.celery
+    volumes:
+      - ./api:/app
+    environment:
+      APPSETTINGS: config_docker.py
+      TEXT_FONT: /data/fonts/truetype/liberation/LiberationSans-Regular.ttf
+      HOST_ADDR: $ENV_HOST_ADDR
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 1
+    depends_on:
+      - redis  
+
   #database:
   #  image: mysql:5.7
   #  #volumes:
