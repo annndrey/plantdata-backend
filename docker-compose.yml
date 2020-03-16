@@ -1,0 +1,57 @@
+version: '3'
+
+services:
+  
+  api:
+    build: ./api
+    volumes:
+      - ./api:/app
+      - ./.data/pip-cache:/root/.cache/pip
+      - ./.data/fonts:/data/fonts
+      - ./.socket:/socket
+      - $ENV_PICT_DIR_LIVE:/data/picts
+    environment:
+      APPSETTINGS: config_docker.py
+      TEXT_FONT: /data/fonts/truetype/liberation/LiberationSans-Regular.ttf
+      HOST_ADDR: $ENV_HOST_ADDR
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+    depends_on:
+      - redis
+    ports:
+      - "$CI_LIVE_PORT:8000"
+  redis:
+    image: redis:alpine
+  celery:
+    build: ./api
+    command: celery worker -E -A api.celery --loglevel=info
+    volumes:
+      - ./api:/app
+      - ./.data/fonts:/data/fonts
+    environment:
+      PYTHONDONTWRITEBYTECODE: 1
+      APPSETTINGS: config_docker.py
+      TEXT_FONT: /data/fonts/truetype/liberation/LiberationSans-Regular.ttf
+      HOST_ADDR: $ENV_HOST_ADDR
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 1
+    depends_on:
+      - redis
+  celery-beat:
+    build: ./api
+    command: celery beat -A api.celery
+    volumes:
+      - ./api:/app
+      - ./.data/fonts:/data/fonts
+    environment:
+      PYTHONDONTWRITEBYTECODE: 1
+      APPSETTINGS: config_docker.py
+      TEXT_FONT: /data/fonts/truetype/liberation/LiberationSans-Regular.ttf
+      HOST_ADDR: $ENV_HOST_ADDR
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 1
+    depends_on:
+      - redis  

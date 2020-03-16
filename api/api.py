@@ -61,6 +61,7 @@ from multiprocessing import Pool
 logging.basicConfig(format='%(levelname)s: %(asctime)s - %(message)s',
                     level=logging.DEBUG, datefmt='%d.%m.%Y %I:%M:%S %p')
 
+
 app = Flask(__name__)
 app.config.from_envvar('APPSETTINGS')
 API_VERSION = app.config.get('API_VERSION', 1)
@@ -212,16 +213,13 @@ def check_unhealthy_zones(pict, suuid):
            'zones':[],
            'ts': pict.ts
     }
-    # pict.zones
-    # pict.camera_position.poslabel
-    # pict.camera_position.camera.camlabel
-    # [zone.zone for zone in pict.zones]
     for zone in pict.zones:
         # Check prev zones here >>>
         app.logger.debug(["ZONE RESULTS", zone.results])
         if zone.results:
             if 'unhealthy' in zone.results:
                 prev_three_zones = db.session.query(PictureZone).join(DataPicture).join(CameraPosition).join(Camera).join(Data).join(Sensor).order_by(PictureZone.id.desc()).filter(PictureZone.zone==zone.zone).filter(CameraPosition.poslabel==res['position']).filter(Camera.camlabel==res['camname']).filter(Sensor.uuid==suuid).limit(3).offset(1).all()
+                
                 app.logger.debug(["PREV THEE ZONES", zone.id, [(z.results, z.id) for z in prev_three_zones]])
 
                 if all(['unhealthy' in z.results for z in prev_three_zones]):
@@ -287,7 +285,7 @@ def get_zones():
 
 @celery.on_after_configure.connect
 def setup_periodic_tasks(sender, **kwargs):
-    sender.add_periodic_task(1200.0, check_pending_notifications.s())
+    sender.add_periodic_task(3600.0, check_pending_notifications.s())
     #sender.add_periodic_task(
     #    crontab(minute='1'),
     #    check_pending_notifications.s(),
@@ -594,7 +592,7 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
         imglabel = uplname
         app.logger.debug(["UPLNAME", uplname])
         classification_results = ""
-        app.logger.debug("FILE SAVED")
+        app.logger.debug(["FILE SAVED", fullpath, camname, camposition])
         newzones = []
 
         if recognize:
@@ -1718,103 +1716,16 @@ class StatsAPI(Resource):
                   type: object
                   description: A single data record
                   properties:
-                    id:
-                      type: integer
-                      description: Data ID
-                    ts:
+                    camname:
                       type: string
-                      format: date-time
-                      description: Data record timestamp
-                    probes:
-                      type: array
-                      items:
-                        type: object
-                        description: Probe data
-                        properties:
-                         id:
-                           type: integer
-                           description: Probe ID
-                         label:
-                           type: string
-                           description: Probe label
-                         ptype:
-                           type: string
-                           description: Probe type
-                         minvalue:
-                           type: number
-                           format: double
-                           description: Probe min value
-                         maxvalue:
-                           type: number
-                           format: double
-                           description: Probe max value
-                         values:
-                           type: array
-                           description: A list of probe values
-                           items:
-                             type: object
-                             description: Probe data value
-                             properties:
-                               id:
-                                 type: integer
-                                 description: Probe Data ID
-                               value:
-                                 type: number
-                                 format: double
-                                 description: Probe Data value
-                    cameras:
-                      type: array
-                      items:
-                        type: object
-                        description: Camera data
-                        properties:
-                         id:
-                           type: integer
-                           description: Camera ID
-                         camlabel:
-                           type: string
-                           description: Camera label
-                         positions:
-                           type: array
-                           description: A list of camera positions
-                           items:
-                             type: object
-                             description: Camera position
-                             properties:
-                               id:
-                                 type: integer
-                                 description: Camera Position ID
-                               poslabel:
-                                 type: string
-                                 description: Camera Position Label
-                               pictures:
-                                 type: array
-                                 items:
-                                   type: object
-                                   description: Picture
-                                   properties:
-                                     id:
-                                       type: integer
-                                       description: Picture ID
-                                     fpath:
-                                       type: string
-                                       description: Picture URL
-                                     thumbnail:
-                                       type: string
-                                       description: Picture thumbnail
-                                     label:
-                                       type: string
-                                       description: Picture label
-                                     original:
-                                       type: string
-                                       description: Picture Original URL
-                                     results:
-                                       type: string
-                                       description: Picture recognition results
-                                     ts:
-                                       type: string
-                                       format: date-time
-                                       description: Picture timestamp
+                      description: Camera Name, CAM1, CAM2, etc
+                    camposition:
+                      type: integer
+                      description: Camera Position, 1,2,3, etc
+                    recognize:
+                      type: boolean
+                      description: Recognize picture, yes or no
+                      
         responses:
           201:
             description: Sensor data created
@@ -1869,6 +1780,9 @@ class StatsAPI(Resource):
             # to aviod "uwsgi-body-read Error reading Connection reset by peer" errors
             #request_data = request.data
             app.logger.debug(["Parsing request files", request.files])
+            # Ignore low-light pictures
+            if data.lux < 30:
+                recognize = False
             picts = parse_request_pictures(request.files, camera, camera_position, user.login, sensor.uuid, recognize)
             if picts:
                 for p in picts:
