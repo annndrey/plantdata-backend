@@ -13,7 +13,7 @@ services:
     environment:
       APPSETTINGS: config_docker.py
       TEXT_FONT: /data/fonts/truetype/liberation/LiberationSans-Regular.ttf
-      HOST_ADDR: $HOST_ADDR
+      HOST_ADDR: $ENV_HOST_ADDR
     ports:
       - "$CI_LIVE_PORT:8000"
   #database:
