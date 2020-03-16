@@ -13,7 +13,7 @@ services:
       APPSETTINGS: config_docker.py
       TEXT_FONT: /data/fonts/truetype/liberation/LiberationSans-Regular.ttf
     ports:
-      - "9200:8000"
+      - "$LIVE_PORT:8000"
   #database:
   #  image: mysql:5.7
   #  #volumes:
