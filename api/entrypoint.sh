@@ -10,4 +10,5 @@
 #export PYTHONPYCACHEPREFIX="/tmp/.cache/cpython/"
 export PYTHONDONTWRITEBYTECODE=1
 ls /data
+date
 uwsgi --ini uwsgi-docker.ini --socket :8000 --protocol=http 
