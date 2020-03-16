@@ -8,15 +8,15 @@ stages:
 test:
   stage: test
   script:
-    - echo "Testing............"
+    - echo "Testing..."
     - python3 --version
     - echo $CI_PROJECT_DIR
 
 deploy_live:
   stage: deploy
   script:
-    - echo "Deploy....."
-    - echo "Starting docker....."
+    - echo "Deploying live..."
+    - echo "Starting docker..."
     - docker-compose stop api redis celery celery-beat
     - docker-compose up -d --build redis celery celery-beat api 
     - echo $CI_BUILDs_DIR/$CI_CONCURRENT_ID/$CI_PROJECT_NAMESPACE/$CI_PROJECT_ID
@@ -25,5 +25,27 @@ deploy_live:
   variables:
     PICT_DIR: $ENV_PICT_DIR_LIVE
     APP_PORT: $CI_LIVE_PORT
+    DBUSER: $ENV_DBUSER_LIVE
+    DBPASS: $ENV_DBPASS_LIVE
+    DBNAME: $ENV_DBNAME_LIVE
   only:
-    - master    
+    - master
+
+deploy_beta:
+  stage: deploy
+  script:
+    - echo "Deploying beta..."
+    - echo "Starting docker..."
+    - docker-compose stop api redis celery celery-beat
+    - docker-compose up -d --build redis celery celery-beat api 
+    - echo $CI_BUILDs_DIR/$CI_CONCURRENT_ID/$CI_PROJECT_NAMESPACE/$CI_PROJECT_ID
+  environment:
+    name: beta
+  variables:
+    PICT_DIR: $ENV_PICT_DIR_DEV
+    APP_PORT: $CI_DEV_PORT
+    DBUSER: $ENV_DBUSER_DEV
+    DBPASS: $ENV_DBPASS_DEV
+    DBNAME: $ENV_DBNAME_DEV
+  only:
+    - develop

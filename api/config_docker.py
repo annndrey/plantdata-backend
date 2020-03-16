@@ -1,9 +1,14 @@
 import os
 
+DBUSER = os.environ.get('DBUSER', '')
+DBPASS = os.environ.get('DBPASS', '')
+DBNAME = os.environ.get('DBNAME', '')
+HOST = os.environ.get('HOST_ADDR', '')
+
 DEBUG = True
 DEVELOPMENT = True
 SECRET_KEY='secretkeyformyapp'
-SQLALCHEMY_DATABASE_URI='mysql+pymysql://plantdata:plantdatapass@192.168.1.4/plantdb'
+SQLALCHEMY_DATABASE_URI=f'mysql+pymysql://{DBUSER}:{DBPASS}@{HOST}/{DBNAME}'
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 FILE_PATH = "/data/picts"
 CF_LOGIN = "saladuser"
