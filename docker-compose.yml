@@ -9,7 +9,7 @@ services:
       - ./.data/pip-cache:/root/.cache/pip
       - ./.data/fonts:/data/fonts
       - ./.socket:/socket
-      - $PICT_DIR:/data/picts
+      - $ENV_PICT_DIR:/data/picts
     environment:
       APPSETTINGS: config_docker.py
       TEXT_FONT: /data/fonts/truetype/liberation/LiberationSans-Regular.ttf
