@@ -29,6 +29,7 @@ services:
     volumes:
       - ./api:/app
     environment:
+      PYTHONDONTWRITEBYTECODE: 1
       APPSETTINGS: config_docker.py
       TEXT_FONT: /data/fonts/truetype/liberation/LiberationSans-Regular.ttf
       HOST_ADDR: $ENV_HOST_ADDR
@@ -43,6 +44,7 @@ services:
     volumes:
       - ./api:/app
     environment:
+      PYTHONDONTWRITEBYTECODE: 1
       APPSETTINGS: config_docker.py
       TEXT_FONT: /data/fonts/truetype/liberation/LiberationSans-Regular.ttf
       HOST_ADDR: $ENV_HOST_ADDR
