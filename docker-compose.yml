@@ -28,6 +28,7 @@ services:
     command: celery worker -E -A api.celery --loglevel=info
     volumes:
       - ./api:/app
+      - ./.data/fonts:/data/fonts
     environment:
       PYTHONDONTWRITEBYTECODE: 1
       APPSETTINGS: config_docker.py
@@ -43,6 +44,7 @@ services:
     command: celery beat -A api.celery
     volumes:
       - ./api:/app
+      - ./.data/fonts:/data/fonts
     environment:
       PYTHONDONTWRITEBYTECODE: 1
       APPSETTINGS: config_docker.py
