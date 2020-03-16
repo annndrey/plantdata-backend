@@ -1,6 +1,5 @@
 FROM python:3.6
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get -yq update && apt-get install tzdata mariadb-client
+RUN apt-get --yes --force-yes  update && apt-get install tzdata mariadb-client
 ENV TZ Europe/Moscow
 
 COPY requirements.txt /tmp/requirements.txt
