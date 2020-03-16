@@ -1,5 +1,5 @@
 FROM python:3.6
-RUN apt-get --yes --force-yes  update && apt-get install tzdata mariadb-client
+RUN apt-get -y  update && apt-get -y install tzdata mariadb-client
 ENV TZ Europe/Moscow
 
 COPY requirements.txt /tmp/requirements.txt
