@@ -9,7 +9,7 @@ services:
       - ./.data/pip-cache:/root/.cache/pip
       - ./.data/fonts:/data/fonts
       - ./.socket:/socket
-      - $ENV_PICT_DIR_LIVE:/data/picts
+      - $PICT_DIR:/data/picts
       - /etc/localtime:/etc/localtime
     environment:
       APPSETTINGS: config_docker.py
@@ -21,7 +21,7 @@ services:
     depends_on:
       - redis
     ports:
-      - "$CI_LIVE_PORT:8000"
+      - "$APP_PORT:8000"
   redis:
     image: redis:alpine
   celery:

@@ -3,7 +3,7 @@ before_script:
 
 stages:
   - test
-  - build
+  - deploy
 
 test:
   stage: test
@@ -11,17 +11,19 @@ test:
     - echo "Testing............"
     - python3 --version
     - echo $CI_PROJECT_DIR
-    #- pip3 install flake8
-    #- python -m py_compile api/api.py
-    #- flake8 --exit-zero api/api.py
 
-build:
-  stage: build
+deploy_live:
+  stage: deploy
   script:
     - echo "Deploy....."
     - echo "Starting docker....."
     - docker-compose stop api redis celery celery-beat
     - docker-compose up -d --build redis celery celery-beat api 
     - echo $CI_BUILDs_DIR/$CI_CONCURRENT_ID/$CI_PROJECT_NAMESPACE/$CI_PROJECT_ID
+  environment:
+    name: live
+  variables:
+    PICT_DIR: $ENV_PICT_DIR_LIVE
+    APP_PORT: $CI_LIVE_PORT
   only:
     - master    
