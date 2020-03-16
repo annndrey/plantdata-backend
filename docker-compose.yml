@@ -14,8 +14,13 @@ services:
       APPSETTINGS: config_docker.py
       TEXT_FONT: /data/fonts/truetype/liberation/LiberationSans-Regular.ttf
       HOST_ADDR: $ENV_HOST_ADDR
+      REDIS_PORT: 6379
+      REDIS_DB: 0
     ports:
       - "$CI_LIVE_PORT:8000"
+  redis:
+    image: redis:alpine
+    
   #database:
   #  image: mysql:5.7
   #  #volumes:
