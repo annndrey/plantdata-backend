@@ -15,12 +15,13 @@ test:
     #- python -m py_compile api/api.py
     #- flake8 --exit-zero api/api.py
 
-#build:
-#  stage: build
-#  script:
-#    - echo "Deploy....."
-#    - echo "Starting docker....."
-#    - docker-compose stop api redis celery celery-beat
-#    - docker-compose up -d --build redis celery celery-beat api 
-#    - echo $CI_BUILDs_DIR/$CI_CONCURRENT_ID/$CI_PROJECT_NAMESPACE/$CI_PROJECT_ID
-    
+build:
+  stage: build
+  script:
+    - echo "Deploy....."
+    - echo "Starting docker....."
+    - docker-compose stop api redis celery celery-beat
+    - docker-compose up -d --build redis celery celery-beat api 
+    - echo $CI_BUILDs_DIR/$CI_CONCURRENT_ID/$CI_PROJECT_NAMESPACE/$CI_PROJECT_ID
+  only:
+    - master    
