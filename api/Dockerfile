@@ -1,4 +1,6 @@
 FROM python:3.6
+RUN apk add --no-cache tzdata
+ENV TZ Europe/Moscow
 
 COPY requirements.txt /tmp/requirements.txt
 RUN pip install -U pip
