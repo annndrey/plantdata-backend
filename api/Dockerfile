@@ -1,5 +1,5 @@
 FROM python:3.6
-RUN apt-get -y update && apt-get install tzdata
+RUN apt-get -y update && apt-get install tzdata mysql-client
 ENV TZ Europe/Moscow
 
 COPY requirements.txt /tmp/requirements.txt
