@@ -10,6 +10,7 @@ services:
       - ./.data/fonts:/data/fonts
       - ./.socket:/socket
       - $ENV_PICT_DIR_LIVE:/data/picts
+      - /etc/localtime:/etc/localtime
     environment:
       APPSETTINGS: config_docker.py
       TEXT_FONT: /data/fonts/truetype/liberation/LiberationSans-Regular.ttf
@@ -29,6 +30,7 @@ services:
     volumes:
       - ./api:/app
       - ./.data/fonts:/data/fonts
+      - /etc/localtime:/etc/localtime
     environment:
       PYTHONDONTWRITEBYTECODE: 1
       APPSETTINGS: config_docker.py
@@ -45,6 +47,7 @@ services:
     volumes:
       - ./api:/app
       - ./.data/fonts:/data/fonts
+      - /etc/localtime:/etc/localtime
     environment:
       PYTHONDONTWRITEBYTECODE: 1
       APPSETTINGS: config_docker.py
