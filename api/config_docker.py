@@ -1,3 +1,5 @@
+import os
+
 DEBUG = True
 DEVELOPMENT = True
 SECRET_KEY='secretkeyformyapp'
@@ -11,7 +13,7 @@ CLASSIFY_ZONES = True
 FONT = "/data/fonts/truetype/liberation/LiberationSans-Regular.ttf"
 FONTSIZE = 50
 TEMPDIR = "/tmp"
-REDIS_HOST = "localhost"
+REDIS_HOST = os.environ.get('HOST_ADDR', '')
 REDIS_PORT = 6379
 REDIS_DB = 3
 CACHE_DB = 4

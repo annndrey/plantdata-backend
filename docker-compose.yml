@@ -9,13 +9,12 @@ services:
       - ./.data/pip-cache:/root/.cache/pip
       - ./.data/fonts:/data/fonts
       - ./.socket:/socket
-      - $CI_PICT_DIR:/data/picts
+      - $PICT_DIR:/data/picts
     environment:
       APPSETTINGS: config_docker.py
       TEXT_FONT: /data/fonts/truetype/liberation/LiberationSans-Regular.ttf
     ports:
       - "$CI_LIVE_PORT:8000"
-      - 6379:6379
   #database:
   #  image: mysql:5.7
   #  #volumes:
