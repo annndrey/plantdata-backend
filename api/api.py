@@ -377,7 +377,7 @@ def send_email_notification(email, pict_status_list):
         msg.attach(img)
 
 
-    s = smtplib.SMTP("172.19.0.1")
+    s = smtplib.SMTP("172.20.0.1")
     s.sendmail(sender, email, msg.as_string())
     s.quit()
 
