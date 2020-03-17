@@ -18,6 +18,8 @@ services:
       DBUSER: $DBUSER
       DBPASS: $DBPASS
       DBNAME: $DBNAME
+      MAILUSER: $MAILUSER
+      MAILPASS: $MAILPASS
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_DB: 0
@@ -47,6 +49,8 @@ services:
       DBUSER: $DBUSER
       DBPASS: $DBPASS
       DBNAME: $DBNAME
+      MAILUSER: $MAILUSER
+      MAILPASS: $MAILPASS
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_DB: 1
@@ -70,6 +74,8 @@ services:
       DBUSER: $DBUSER
       DBPASS: $DBPASS
       DBNAME: $DBNAME
+      MAILUSER: $MAILUSER
+      MAILPASS: $MAILPASS
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_DB: 1

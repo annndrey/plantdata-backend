@@ -28,6 +28,8 @@ deploy_live:
     DBUSER: $ENV_DBUSER_LIVE
     DBPASS: $ENV_DBPASS_LIVE
     DBNAME: $ENV_DBNAME_LIVE
+    MAILUSER: $ENV_MAIL_LOGIN
+    MAILPASS: $ENV_MAIL_PASS
   only:
     - master
 
@@ -47,5 +49,7 @@ deploy_beta:
     DBUSER: $ENV_DBUSER_DEV
     DBPASS: $ENV_DBPASS_DEV
     DBNAME: $ENV_DBNAME_DEV
+    MAILUSER: $ENV_MAIL_LOGIN
+    MAILPASS: $ENV_MAIL_PASS
   only:
     - develop

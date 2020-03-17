@@ -5,8 +5,8 @@ DBPASS = os.environ.get('DBPASS', '')
 DBNAME = os.environ.get('DBNAME', '')
 HOST = os.environ.get('HOST_ADDR', '')
 
-MAILUSER = os.environ.get('ENV_MAIL_LOGIN', '')
-MAILPASS = os.environ.get('ENV_MAIL_PASS', '')
+MAILUSER = os.environ.get('MAILUSER', '')
+MAILPASS = os.environ.get('MAILPASS', '')
 
 DEBUG = True
 DEVELOPMENT = True
