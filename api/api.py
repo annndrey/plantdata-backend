@@ -384,6 +384,7 @@ def send_email_notification(email, pict_status_list):
     s = smtplib.SMTP('smtp.yandex.ru', 587)
     s.ehlo()
     s.starttls()
+    print([MAILUSER, MAILPASS])
     s.login(MAILUSER, MAILPASS)
     s.sendmail(sender, email, msg.as_string())
     s.quit()
