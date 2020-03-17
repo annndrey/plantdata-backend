@@ -78,6 +78,7 @@ gunicorn_logger = logging.getLogger('gunicorn.error')
 app.logger.handlers = gunicorn_logger.handlers
 app.logger.setLevel(gunicorn_logger.level)
 
+HOST = app.config.get('HOST', 'localhost')
 
 REDIS_HOST = app.config.get('REDIS_HOST', 'localhost')
 REDIS_PORT = app.config.get('REDIS_PORT', 6379)
@@ -376,7 +377,7 @@ def send_email_notification(email, pict_status_list):
         msg.attach(img)
 
 
-    s = smtplib.SMTP('localhost')
+    s = smtplib.SMTP(HOST)
     s.sendmail(sender, email, msg.as_string())
     s.quit()
 
