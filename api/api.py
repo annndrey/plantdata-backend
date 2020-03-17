@@ -321,7 +321,7 @@ def check_pending_notifications():
 def send_email_notification(email, pict_status_list):
     print("Sending email")
 
-    sender = "noreply@plantdata.fermata.tech"
+    sender = MAILUSER#"noreply@plantdata.fermata.tech"
     msg = MIMEMultipart('related')
     msg['Subject'] = 'Plantdata Service Notification'
     msg['From'] = sender
