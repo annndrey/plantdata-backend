@@ -285,7 +285,7 @@ def get_zones():
 
 @celery.on_after_configure.connect
 def setup_periodic_tasks(sender, **kwargs):
-    sender.add_periodic_task(3600.0, check_pending_notifications.s())
+    sender.add_periodic_task(5.0, check_pending_notifications.s())
     #sender.add_periodic_task(
     #    crontab(minute='1'),
     #    check_pending_notifications.s(),
@@ -314,6 +314,8 @@ def check_pending_notifications():
 
 @celery.task
 def send_email_notification(email, pict_status_list):
+    print("Sending email")
+
     sender = "noreply@plantdata.fermata.tech"
     msg = MIMEMultipart('related')
     msg['Subject'] = 'Plantdata Service Notification'
