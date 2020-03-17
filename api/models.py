@@ -203,7 +203,7 @@ class Camera(db.Model):
     data = relationship("Data", backref=backref("cameras", uselist=True))
     camlabel = db.Column(db.Text())
     url = db.Column(db.Text())
-    # descr = db.Column(db.Text())
+    descr = db.Column(db.Text())
 
 
 class CameraPosition(db.Model):
