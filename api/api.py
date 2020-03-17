@@ -376,10 +376,11 @@ def send_email_notification(email, pict_status_list):
     for img in email_images:
         msg.attach(img)
 
-
+    print("mail ready to be sent")
     s = smtplib.SMTP("172.16.0.1")
     s.sendmail(sender, email, msg.as_string())
     s.quit()
+    print("mail sent")
 
 
 
