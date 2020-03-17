@@ -1,5 +1,6 @@
 #!/bin/bash
 
+
 # Wait for database
 # chmod +x wait-for-it && ./wait-for-it database:3306
 # Prepare and start webserver
