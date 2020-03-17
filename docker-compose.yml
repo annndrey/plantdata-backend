@@ -38,6 +38,7 @@ services:
       - ./api:/app
       - ./.data/fonts:/data/fonts
       - /etc/localtime:/etc/localtime
+      - $PICT_DIR:/data/picts
     environment:
       PYTHONDONTWRITEBYTECODE: 1
       APPSETTINGS: config_docker.py
@@ -60,6 +61,7 @@ services:
       - ./api:/app
       - ./.data/fonts:/data/fonts
       - /etc/localtime:/etc/localtime
+      - $PICT_DIR:/data/picts
     environment:
       PYTHONDONTWRITEBYTECODE: 1
       APPSETTINGS: config_docker.py
