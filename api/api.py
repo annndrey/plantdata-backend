@@ -86,6 +86,10 @@ REDIS_DB = app.config.get('REDIS_DB', 0)
 CACHE_DB = app.config.get('CACHE_DB', 1)
 FILE_PATH = app.config.get('FILE_PATH', 1)
 
+MAILUSER = app.config.get('MAILUSER')
+MAILPASS = app.config.get('MAILPASS')
+
+
 cache = Cache(app, config={
     'CACHE_TYPE': 'redis',
     'CACHE_KEY_PREFIX': 'fcache',
@@ -377,7 +381,10 @@ def send_email_notification(email, pict_status_list):
         msg.attach(img)
 
     print("mail ready to be sent")
-    s = smtplib.SMTP("172.16.0.1")
+    s = smtplib.SMTP('smtp.yandex.ru', 587)
+    server.ehlo()
+    server.starttls()
+    server.login(MAILUSER, MAILPASS)
     s.sendmail(sender, email, msg.as_string())
     s.quit()
     print("mail sent")
