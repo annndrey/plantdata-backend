@@ -5,7 +5,7 @@
 # Prepare and start webserver
 rm -r migrations
 export PYTHONDONTWRITEBYTECODE=1
-mysql -u $DBUSER -p$DBPASS -e "DROP TABLE alembic_version" $DBNAME
+mysql -u $DBUSER -h $HOST_ADDR -p$DBPASS -e "DROP TABLE alembic_version" $DBNAME
 flask db init
 flask db migrate
 #export PYTHONPYCACHEPREFIX="/tmp/.cache/cpython/"
