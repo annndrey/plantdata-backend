@@ -33,7 +33,7 @@ services:
 
   celery:
     build: ./api
-    command: celery worker -E -A api.celery --loglevel=info
+    command: celery worker -E -A api.celery --loglevel=info --logfile celery.worker.log
     volumes:
       - ./api:/app
       - ./.data/fonts:/data/fonts
@@ -55,7 +55,7 @@ services:
 
   celery-beat:
     build: ./api
-    command: celery beat -A api.celery
+    command: celery beat -A api.celery --logfile celery.beat.log
     volumes:
       - ./api:/app
       - ./.data/fonts:/data/fonts
