@@ -382,9 +382,9 @@ def send_email_notification(email, pict_status_list):
 
     print("mail ready to be sent")
     s = smtplib.SMTP('smtp.yandex.ru', 587)
-    server.ehlo()
-    server.starttls()
-    server.login(MAILUSER, MAILPASS)
+    s.ehlo()
+    s.starttls()
+    s.login(MAILUSER, MAILPASS)
     s.sendmail(sender, email, msg.as_string())
     s.quit()
     print("mail sent")
