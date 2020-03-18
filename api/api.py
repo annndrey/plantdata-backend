@@ -564,11 +564,12 @@ def process_single_file(uplname, pict):
 
 
 def process_result(result):
-    if 'unhealthy' in result:
-        return result
-    else:
-        return '_'.join(result.split('_')[:-1])
-
+    res = result
+    
+    if '_healthy' in result:
+        res = '_'.join(result.split('_')[:-1])
+        
+    return res
 
 # TODO: async
 # process_single_picture
