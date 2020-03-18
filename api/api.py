@@ -564,8 +564,10 @@ def process_single_file(uplname, pict):
 
 
 def process_result(result):
-    if 'healthy' in result: return '_'.join(result.split('_')[:-1])
-    else: return result
+    if 'unhealthy' in result:
+        return '_'.join(result.split('_')[:-1])
+    else:
+        return result
 
 
 # TODO: async
@@ -635,7 +637,7 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
                     if zones_ids:
                         newzones = db.session.query(PictureZone).filter(PictureZone.id.in_(zones_ids)).all()
                         app.logger.debug(["NEWZONES", [(n.id, n.results) for n in newzones]])
-                        classification_results = "ZONES Results: {}".format(", ".join(["{}: {}".format(z.zone, process_result(z.results)) for z in sorted(newzones, key=lambda x: x.zone[-1])]))
+                        classification_results = "ZONES Results: {}".format(", ".join(["{}: {}".format(z.zone, process_result(z.results)) for z in sorted(newzones, key=lambda x: int(x.zone[4:]))]))
                     else:
                         app.logger.debug(["NO ZONES", newzones])
                         newzones = None
