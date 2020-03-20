@@ -107,3 +107,4 @@ config_dev.py
 ngrok
 *~
 migrations/
+sensor.dat
