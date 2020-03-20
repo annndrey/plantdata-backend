@@ -285,7 +285,7 @@ def get_zones():
 
 @celery.on_after_configure.connect
 def setup_periodic_tasks(sender, **kwargs):
-    sender.add_periodic_task(3600, check_pending_notifications.s())
+    sender.add_periodic_task(5, check_pending_notifications.s())
     #sender.add_periodic_task(
     #    crontab(minute='1'),
     #    check_pending_notifications.s(),
@@ -1330,7 +1330,7 @@ class ProbeDataAPI(Resource):
 
     @token_required
     @cross_origin()
-    @cache.cached(timeout=300, key_prefix=cache_key)
+    #@cache.cached(timeout=300, key_prefix=cache_key)
     def get(self):
         """
         GET Get probe data [TODO: Fix description]
@@ -1431,7 +1431,7 @@ class DataAPI(Resource):
     
     @token_required
     @cross_origin()
-    @cache.cached(timeout=60, key_prefix=cache_key)
+    #@cache.cached(timeout=60, key_prefix=cache_key)
     def get(self):
         """
         Get sensors data
@@ -1756,7 +1756,7 @@ class DataAPI(Resource):
                            'maxdate': last_rec_day,
                            'data': data
                     }
-                    #app.logger.debug(["RESPONSE", res])
+                    # app.logger.debug(["RESPONSE", res])
                     return jsonify(res), 200
 
         else:
@@ -1903,7 +1903,6 @@ class DataAPI(Resource):
         suuid = request.json.get('uuid')
         sensor = db.session.query(Sensor).filter(Sensor.uuid == suuid).first()
         probes = request.json.get('probes')
-        # app.logger.debug(["PROBES", probes])
         if sensor:
             if sensor.user != user:
                 abort(403)
@@ -1923,7 +1922,6 @@ class DataAPI(Resource):
                 newdata.probes.append(probe)    
                 #probe.data.append(newdata)
                 for pd in pr['data']:
-                    app.logger.debug(pd)
                     prtype = db.session.query(SensorType).filter(SensorType.ptype==pd['ptype']).first()
                     newprobedata = ProbeData(probe=probe, value=pd['value'], label=pd['label'], ptype=pd['ptype'])
                     if prtype:
