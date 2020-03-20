@@ -106,3 +106,4 @@ venv.bak/
 config_dev.py
 ngrok
 *~
+migrations/
