@@ -776,16 +776,23 @@ class DataSchema(ma.ModelSchema):
 
     @pre_dump(pass_many=True)
     def filter_outliers(self, data, many, **kwargs):
-        app.logger.debug(["PRE DUMP"])
-        for d in data:
-            for p in d.records:
-                if p.value:
-                    if p.value < p.prtype.minvalue:
-                        p.value = p.prtype.minvalue
-                    if p.value > p.prtype.maxvalue:
-                        p.value = p.prtype.maxvalue
+        if many:
+            for d in data:
+                for p in d.records:
+                    if p.value:
+                        if p.value < p.prtype.minvalue:
+                            p.value = p.prtype.minvalue
+                        if p.value > p.prtype.maxvalue:
+                            p.value = p.prtype.maxvalue
+#        else:
+#            for p in data.records:
+##                if p.value:
+#                    if p.value < p.prtype.minvalue:
+#                        p.value = p.prtype.minvalue
+#                    if p.value > p.prtype.maxvalue:
+#                        p.value = p.prtype.maxvalue
+
                         
-                    
     @post_dump(pass_many=True)
     def filter_fields(self, data, many, **kwargs):
         if many:
