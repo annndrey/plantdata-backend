@@ -579,7 +579,6 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
                     zones_ids = p.starmap(send_zones, argslist)
                     p.close()
                     app.logger.debug(["SAVED ZONES", [zones_ids]])
-
                     db.session.commit()
 
                     if zones_ids:
@@ -591,7 +590,6 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
                         newzones = None
                         classification_results = ""
                 original.save(fullpath)
-
                 imglabel = imglabel + " " + classification_results
         # Thumbnails
         original.thumbnail((300, 300), Image.ANTIALIAS)
@@ -841,7 +839,6 @@ class ProbeSchema(ma.ModelSchema):
     class Meta:
         model = Probe
         exclude = ['values', 'id']
-    #values = ma.Nested("ProbeDataSchema", many=True, exclude=['probe'])
 
     
 class ProbeShortSchema(ma.ModelSchema):
@@ -1861,10 +1858,6 @@ class DataAPI(Resource):
             if sensor.user != user:
                 abort(403)
             ts = request.form.get("ts")
-<<<<<<< HEAD
-=======
-            
->>>>>>> Updated Uwsgi config with new values, increased buffer-size, increased socket-timeout to avoid NGINX + uWSGI Connection Reset by Peer errors
             newdata = Data(sensor_id=sensor.id,
                            ts = ts
             )

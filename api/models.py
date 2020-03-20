@@ -103,7 +103,7 @@ class Probe(db.Model):
     #data_id = db.Column(db.Integer, ForeignKey('data.id'))
     #data = relationship("Data", backref=backref("probes", uselist=True))
 
-
+    
 # Notifications
 class Notification(db.Model):
     id = db.Column(db.Integer, primary_key=True)
