@@ -19,7 +19,7 @@ from flask_restful.utils import cors
 from marshmallow import fields, pre_dump, post_dump
 from marshmallow_enum import EnumField
 from itertools import groupby
-from models import db, User, Sensor, Location, Data, DataPicture, Camera, CameraPosition, Probe, ProbeData, PictureZone, SensorType, data_probes
+from models import db, User, Sensor, Location, Data, DataPicture, Camera, CameraPosition, Probe, ProbeData, PictureZone, SensorType, data_probes, Notification
 import logging
 import os
 import copy
@@ -36,6 +36,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from celery import Celery
+from celery.schedules import crontab
 
 # caching
 from flask_caching import Cache
@@ -81,14 +82,15 @@ gunicorn_logger = logging.getLogger('gunicorn.error')
 app.logger.handlers = gunicorn_logger.handlers
 app.logger.setLevel(gunicorn_logger.level)
 
-
+HOST = app.config.get('HOST', 'localhost')
 REDIS_HOST = app.config.get('REDIS_HOST', 'localhost')
 REDIS_PORT = app.config.get('REDIS_PORT', 6379)
 REDIS_DB = app.config.get('REDIS_DB', 0)
 CACHE_DB = app.config.get('CACHE_DB', 1)
 
 BASEDIR = app.config.get('FILE_PATH')
-
+MAILUSER = app.config.get('MAILUSER')
+MAILPASS = app.config.get('MAILPASS')
 
 cache = Cache(app, config={
     'CACHE_TYPE': 'redis',
@@ -192,8 +194,8 @@ def send_zones(zone, zonelabel, fuuid, file_format, fpath, user_login, sensor_uu
     # Modify the image lzbel with zones results
     # send CF request
     #original.save(fullpath)
-    
-    response = requests.post(CF_HOST.format("loadimage"), headers=cf_headers, files = {'croppedfile': img_io}, data={'index':0, 'filename': ''})
+    #response = requests.post(CF_HOST.format("loadimage"), headers=cf_headers, files = {'croppedfile': img_io}, data={'index':0, 'filename': ''})
+    response = requests.post(CF_HOST.format("loadimage"), auth=(CF_LOGIN, CF_PASSWORD), files = {'imagefile': img_io}, data={'index':0, 'filename': fuuid})    
     if response.status_code == 200:
         cf_result = response.json().get('objtype')
         #responses.append("{}: {}".format(z, cf_result))
@@ -281,16 +283,46 @@ def get_zones():
     return res
 
 
+@celery.on_after_configure.connect
+def setup_periodic_tasks(sender, **kwargs):
+    sender.add_periodic_task(3600, check_pending_notifications.s())
+    #sender.add_periodic_task(
+    #    crontab(minute='1'),
+    #    check_pending_notifications.s(),
+    #)
+
+
+@celery.task
+def check_pending_notifications():
+    with app.app_context():
+        print("Checking pending notifications")
+        dbusers = db.session.query(User).filter(User.additional_email != None).filter(User.notifications.any(Notification.sent.is_(False))).all()
+        if dbusers:
+            for dbuser in dbusers:
+                notifications = []
+                for n in dbuser.notifications:
+                    if not n.sent:
+                        notifications.append(n.text)
+                        n.sent = True
+                        db.session.add(n)
+                        db.session.commit()
+                app.logger.debug(f"Sending user notifications {dbuser.additional_email}")
+                # TODO Check email status before setting notification status to "Sent"
+                send_email_notification.delay(dbuser.additional_email, notifications)
+
+
 @celery.task
 def send_email_notification(email, pict_status_list):
-    sender = "noreply@plantdata.fermata.tech"
+    print("Sending email")
+
+    sender = MAILUSER#"noreply@plantdata.fermata.tech"
     msg = MIMEMultipart('related')
     msg['Subject'] = 'Plantdata Service Notification'
     msg['From'] = sender
     msg['To'] = email
 
     # form message body here
-    
+
     email_body = """\
 <html>
     <head></head>
@@ -301,17 +333,18 @@ def send_email_notification(email, pict_status_list):
     {}
     </ul>
        </body>
-</html>    
+</html>
     """
 
     status_text = []
-    
-    for i, p in enumerate(pict_status_list):
+    email_images = []
+    for i, obj in enumerate(pict_status_list):
+        p = json.loads(obj)
         figure_template = """
         <p>
         <figure>
         <img src='cid:image{}_{}' alt='missing'/>
-        <figcaption></figcaption>
+        <figcaption>{}</figcaption>
         </figure>
         </p>
         """
@@ -319,28 +352,37 @@ def send_email_notification(email, pict_status_list):
         for j, z in enumerate(p['zones']):
             fig_html = figure_template.format(i, j, z['results'])
             fig_list.append(fig_html)
-            with open(os.path.join(BASEDIR, z['fpath']), 'rb') as img_file:
+            with open(os.path.join(FILE_PATH, z['fpath']), 'rb') as img_file:
                 msgImage = MIMEImage(img_file.read())
                 msgImage.add_header('Content-ID', '<image{}_{}>'.format(i, j))
-                msg.attach(msgImage)
-                
+                email_images.append(msgImage)
+
         figs = "\n".join(fig_list)
-        
+
         r = """<li>
         {} {} {} {} {}
         {}
         </li>
         """.format(p['ts'], p['location'], p['sensor_uuid'], p['camname'], p['position'], figs)
         status_text.append(r)
-        
+
     status_text = "\n".join(status_text)
     email_body = email_body.format(status_text)
     message_text = MIMEText(email_body, 'html')
     msg.attach(message_text)
 
-    s = smtplib.SMTP('localhost')
+    for img in email_images:
+        msg.attach(img)
+
+    print("mail ready to be sent")
+    s = smtplib.SMTP('smtp.yandex.ru', 587)
+    s.ehlo()
+    s.starttls()
+    print([MAILUSER, MAILPASS])
+    s.login(MAILUSER, MAILPASS)
     s.sendmail(sender, email, msg.as_string())
     s.quit()
+    print("mail sent")
 
 
 
@@ -517,6 +559,14 @@ def access_picture(path):
 
 def process_single_file(uplname, pict):
     app.logger.debug("SAVE FILE")
+
+def process_result(result):
+    res = result
+    
+    if '_healthy' in result:
+        res = '_'.join(result.split('_')[:-1])
+        
+    return res
     
 # TODO: async
 # process_single_picture
@@ -558,7 +608,7 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
         newzones = []
 
         if recognize:
-            if CLASSIFY_ZONES and CF_TOKEN:
+            if CLASSIFY_ZONES:# and CF_TOKEN:
                 # zones = CROP_SETTINGS.get(uplname, None)
                 zones = get_zones()
                 cf_headers = None #= {'Authorization': 'Bearer ' + CF_TOKEN}
@@ -2060,6 +2110,8 @@ class DataAPI(Resource):
             # to aviod "uwsgi-body-read Error reading Connection reset by peer" errors
             request_data = request.data
             app.logger.debug(["Consuming request data", len(request_data)])
+            #if data.lux < 30:
+            #    recognize = False
             picts = parse_request_pictures(request.files, camera, camera_position, user.login, sensor.uuid, recognize)
             if picts:
                 for p in picts:
