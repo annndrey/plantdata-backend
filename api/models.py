@@ -104,6 +104,14 @@ class Probe(db.Model):
     #data = relationship("Data", backref=backref("probes", uselist=True))
 
 
+# Notifications
+class Notification(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    text = db.Column(db.Text(), nullable=False)
+    user_id = db.Column(db.Integer, ForeignKey('user.id'))
+    user = relationship("User", backref=backref("notifications"))
+    sent = db.Column(db.Boolean, default=False)
+    
     
 # Sensors
 class Sensor(db.Model):
