@@ -142,7 +142,7 @@ async def async_read_sensor_data(session, url, dbsession, bsid):
             dbsession.commit()
                 
             for pdata in data:
-                logging.debug([pdata['ptype'], pdata['value']])
+                {'ptype': 'temp', 'label': 'T0', 'value': 18.43}
                 newpdata = ProbeData(probe=dbprobe, value=pdata['value'], ptype=pdata['ptype'], label=pdata['label'])
                 dbsession.add(newpdata)
                 dbsession.commit()
@@ -219,7 +219,6 @@ def get_base_station_uuid():
 
     if not os.path.exists('bs.dat'):
         open('bs.dat', 'w').close()
-        # os.mknod("sensor.dat")
         
     with open('bs.dat', 'rb') as f:
         try:
@@ -416,16 +415,13 @@ def post_data(token, bsuuid, take_photos):
                     probe = {"puuid": pr.uuid, "data": []}
                     for pd in pr.values:
                         if pd.value is not None:
-                            pdvalue = float(pd.value)
-                        else:
-                            pdvalue = None
-                        probe_data  = {"ptype":pd.ptype, "value": pdvalue, "label": pd.label}
-                        logging.debug(["PROBE DATA", pd.ptype, pdvalue])
-                        probe['data'].append(probe_data)
+                            probe_data  = {"ptype":pd.ptype, "value":float(pd.value), "label": pd.label}
+                            probe['data'].append(probe_data)
                     postdata['probes'].append(probe)
-                logging.debug(json.dumps(postdata, indent=4))
+                print(json.dumps(postdata, indent=4))
                 resp = requests.post(SERVER_HOST.format("data"), json=postdata, headers=head)
                 if resp.status_code == 201:
+            
                     resp_data = json.loads(resp.text)
                     cd.remote_data_id = resp_data['id']
                     cd.uploaded = True
@@ -477,8 +473,8 @@ if __name__ == '__main__':
     scheduler.every(5).minutes.do(post_data, token, base_station_uuid, False)
     scheduler.every(60).minutes.do(post_data, token, base_station_uuid, True)
     logging.debug(base_station_uuid)
-    post_data(token, base_station_uuid, False)
-    sys.exit(1)
+    #post_data(token, base_station_uuid, False)
+    #sys.exit(1)
     while 1:
         scheduler.run_pending()
         sleep(1)
