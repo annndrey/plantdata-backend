@@ -352,7 +352,7 @@ def send_email_notification(email, pict_status_list):
         for j, z in enumerate(p['zones']):
             fig_html = figure_template.format(i, j, z['results'])
             fig_list.append(fig_html)
-            with open(os.path.join(FILE_PATH, z['fpath']), 'rb') as img_file:
+            with open(os.path.join(BASEDIR, z['fpath']), 'rb') as img_file:
                 msgImage = MIMEImage(img_file.read())
                 msgImage.add_header('Content-ID', '<image{}_{}>'.format(i, j))
                 email_images.append(msgImage)
@@ -2088,7 +2088,8 @@ class DataAPI(Resource):
             sensor = data.sensor
             if sensor.user != user:
                 abort(403)
-            # Surely there's no camera for data.id. We should replace data.id with a sensor id.  
+            # Surely there's no camera for data.id. We should replace data.id with a sensor id.
+            # TODO: >>> Fix
             camera = db.session.query(Camera).join(Data).filter(Data.id == data.id).filter(Camera.camlabel == camname).first()
             if not camera:
                 camera = Camera(data=data, camlabel=camname)
@@ -2110,6 +2111,9 @@ class DataAPI(Resource):
             app.logger.debug(["Consuming request data", len(request_data)])
             #if data.lux < 30:
             #    recognize = False
+            lowlight = [d.value < 30 for d in data.records if d.ptype == 'light']
+            if any(lowlight):
+                recognize = False
             picts = parse_request_pictures(request.files, camera, camera_position, user.login, sensor.uuid, recognize)
             if picts:
                 for p in picts:
