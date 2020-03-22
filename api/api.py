@@ -285,9 +285,8 @@ def get_zones():
 
 @celery.on_after_configure.connect
 def setup_periodic_tasks(sender, **kwargs):
-    #sender.add_periodic_task(5, check_pending_notifications.s())
     sender.add_periodic_task(
-        crontab(minute=0, hour='7,16'),
+        crontab(hour='*'),
         check_pending_notifications.s(),
     )
 
@@ -311,6 +310,7 @@ def check_pending_notifications():
                 send_email_notification.delay(dbuser.additional_email, notifications)
 
 
+                
 @celery.task
 def send_email_notification(email, pict_status_list):
     print("Sending email")
