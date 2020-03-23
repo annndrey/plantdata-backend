@@ -286,7 +286,7 @@ def get_zones():
 @celery.on_after_configure.connect
 def setup_periodic_tasks(sender, **kwargs):
     sender.add_periodic_task(
-        crontab(hour='*'),
+        crontab(minute=0, hour='*/1'),
         check_pending_notifications.s(),
     )
 
