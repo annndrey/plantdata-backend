@@ -203,7 +203,18 @@ class Camera(db.Model):
     camlabel = db.Column(db.Text())
     url = db.Column(db.Text())
 
-
+    @hybrid_property
+    def warnings(self):
+        warning = ""
+        for pos in self.positions:
+            for pict in pos.pictures:
+                for zone in pict.zones:
+                    if "unhealthy" in zone.results:
+                        # Here is the exclamation sign (triangle)
+                        warning = "⚠️"
+        return warning
+    
+            
 class CameraPosition(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     camera_id = db.Column(db.Integer, ForeignKey('camera.id'))

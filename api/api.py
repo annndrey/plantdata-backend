@@ -760,11 +760,14 @@ class CameraOnlySchema(ma.ModelSchema):
     class Meta:
         model = Camera
         exclude = ['positions', ]
+    warnings = ma.Function(lambda obj: obj.warnings)
+        
     # positions = ma.Nested("CameraPositionSchema", many=True, exclude=["camera", "url"])#, exclude=['camera',])
 
 class CameraSchema(ma.ModelSchema):
     class Meta:
         model = Camera
+    warnings = ma.Function(lambda obj: obj.warnings)
     positions = ma.Nested("CameraPositionSchema", many=True, exclude=["camera", "url"])#, exclude=['camera',])
     
         
