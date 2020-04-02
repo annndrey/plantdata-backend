@@ -565,7 +565,7 @@ def process_result(result):
     
     if '_healthy' in result:
         res = '_'.join(result.split('_')[:-1])
-        
+
     return res
     
 # TODO: async
@@ -634,6 +634,11 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
                     if zones_ids:
                         newzones = db.session.query(PictureZone).filter(PictureZone.id.in_(zones_ids)).all()
                         app.logger.debug(["NEWZONES", [(n.id, n.results) for n in newzones]])
+                        # Draw a red rectangle around the unhealthy zone
+                        for nzone in newzones:
+                            if "unhealthy" in nzone.results:
+                                dr.rectangle((zones[nzone.zone]['left'], zones[nzone.zone]['top'], zones[nzone.zone]['right'], zones[nzone.zone]['bottom']), outline = '#fb4040', width=3)
+                                
                         classification_results = "ZONES Results: {}".format(", ".join(["{}: {}".format(z.zone, process_result(z.results)) for z in sorted(newzones, key=lambda x: int(x.zone[4:]))]))
                     else:
                         app.logger.debug(["NO ZONES", newzones])
