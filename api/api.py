@@ -198,8 +198,37 @@ def send_zones(zone, zonelabel, fuuid, file_format, fpath, user_login, sensor_uu
     response = requests.post(CF_HOST.format("loadimage"), auth=(CF_LOGIN, CF_PASSWORD), files = {'imagefile': img_io}, data={'index':0, 'filename': fuuid})    
     if response.status_code == 200:
         cf_result = response.json().get('objtype')
-        #responses.append("{}: {}".format(z, cf_result))
+        is_truly_unhealthy = False
+        if 'unhealthy' in cf_result:
+            app.logger.debug("CHECKING SUBZONES")
+            subzones = get_zones(cropped, 2, 2)
+            sz_argslist = []
+            for sz in subzones.keys():
+                sz_argslist.append(subzones[sz], z, file_format, cropped)
+            sz_pool = Pool(processes=2)
+            sz_results = p.starmap(send_subzones, sz_argslist)
+            sz_pool.close()
+            
+            app.logger.debug(f"CF SUBZONE RESULTS {sz_results}")
+            
+            sz_results = set(sz_results)
+            sz_results = {elem for elem in sz_results if not 'rassada' in elem}
+            sz_results = {elem for elem in sz_results if not 'infrastructure' in elem}
+            
+            res_plant_type = cf_result.split('_')[0]
+            if all([res_plant_type in sz_res for sz_res in sz_results]) and any(['unhealthy' in sz_res for sz_res in sz_results]):
+                is_truly_unhealthy = True
+                
+            
+        #if not is_truly_unhealthy:
+        #    cf_result = cf_result.replace("_unhealthy", "")
+            
         newzone.results = cf_result
+        if is_truly_unhealthy:
+            newzone.revisedresults = "unhealthy"
+        else:
+            newzone.revisedresults = "healthy"
+            
         app.logger.debug(f"CF RESULTS {cf_result}")
                             
     db.session.add(newzone)
@@ -207,6 +236,19 @@ def send_zones(zone, zonelabel, fuuid, file_format, fpath, user_login, sensor_uu
     return newzone.id
 
 
+def send_subzones(zone, zonelabel, file_format, pict):
+    cf_result = False
+    cropped = pict.crop((zone['left'], zone['top'], zone['right'], zone['bottom']))
+    img_io = io.BytesIO()
+    cropped.save(img_io, file_format, quality=100)
+    img_io.seek(0)
+    response = requests.post(CF_HOST.format("loadimage"), auth=(CF_LOGIN, CF_PASSWORD), files = {'imagefile': img_io}, data={'index':0, 'filename': "filename"})
+    if response.status_code == 200:
+        cf_result = response.json().get('objtype')
+        
+    app.logger.debug(f"SUBZONE RESULTS {cf_result}")
+    return cf_result
+    
 def check_unhealthy_zones(pict, suuid):
     # return Location, SensorUUID, Camname, Position, Zones
     app.logger.debug("CHECKING PICTURE ZONES")
@@ -228,8 +270,9 @@ def check_unhealthy_zones(pict, suuid):
             if 'unhealthy' in zone.results:
                 prev_three_zones = db.session.query(PictureZone).join(DataPicture).join(CameraPosition).join(Camera).join(Data).join(Sensor).order_by(PictureZone.id.desc()).filter(PictureZone.zone==zone.zone).filter(CameraPosition.poslabel==res['position']).filter(Camera.camlabel==res['camname']).filter(Sensor.uuid==suuid).limit(3).offset(1).all()
                 app.logger.debug(["PREV THEE ZONES", zone.id, [(z.results, z.id) for z in prev_three_zones]])
-            
-                if all(['unhealthy' in z.results for z in prev_three_zones]):
+                # Changed results to revisedresults
+                
+                if all(['unhealthy' in z.revisedresults for z in prev_three_zones]):
                     res['zones'].append({"results": "{} {}".format(zone.zone, zone.results), "fpath": zone.fpath})
     if res['zones']:
         return res
@@ -260,27 +303,45 @@ def make_celery(app):
 celery = make_celery(app)
 
 
-def get_zones():
-    #2592х1944 224
-    #for a in range(1,12) :
-    #    print (224*a)
-    p = 2592/4
-    q = 1944/3
-    #p==q
-    n = 0
+def get_zones(pict, n, m):
+    width, height = pict.size
+    left = [width/m*i for i in range(m)]
+    right = [width/m*i for i in range(1, m+1)]
+    top = [height/n*i for i in range(n)]
+    bottom = [height/n*i for i in range(1, n+1)]
     res = {}
-    for a in range(0,4) :
-        #    print (int (p*a) )
-        for b in range(0,3) :
-            #        print (int (q*b) )
-            n += 1
-            zone = {'left': int(a*p),
-                    'top': int(b*q),
-                    'right': int((a+1)*p),
-                    'bottom': int((b+1)*q)
-            }
+    n = 1
+    for l,r in zip(left, right):
+        for t,b in zip(top, bottom):
+            zone = {'left': int(l),
+                    'top': int(t),
+                    'right': int(r),
+                    'bottom': int(b)}
             res[f'zone{n}'] = zone
+            n += 1
     return res
+
+#def get_zones():
+#    #2592х1944 224
+#    #for a in range(1,12) :
+#    #    print (224*a)
+#    p = 2592/4
+#    q = 1944/3
+#    #p==q
+#    n = 0
+#    res = {}
+#    for a in range(0,4) :
+#        #    print (int (p*a) )
+#        for b in range(0,3) :
+#            #        print (int (q*b) )
+#            n += 1
+#            zone = {'left': int(a*p),
+#                    'top': int(b*q),
+#                    'right': int((a+1)*p),
+#                    'bottom': int((b+1)*q)
+#            }
+#            res[f'zone{n}'] = zone
+#    return res
 
 
 @celery.on_after_configure.connect
@@ -610,7 +671,7 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
         if recognize:
             if CLASSIFY_ZONES:# and CF_TOKEN:
                 # zones = CROP_SETTINGS.get(uplname, None)
-                zones = get_zones()
+                zones = get_zones(original, 3, 4)
                 cf_headers = None #= {'Authorization': 'Bearer ' + CF_TOKEN}
                 # 2592x1944
                 app.logger.debug(["ZONES", zones])
@@ -637,7 +698,11 @@ def parse_request_pictures(req_files, camname, camposition, user_login, sensor_u
                         # Draw a red rectangle around the unhealthy zone
                         for nzone in newzones:
                             if "unhealthy" in nzone.results:
-                                dr.rectangle((zones[nzone.zone]['left'], zones[nzone.zone]['top'], zones[nzone.zone]['right'], zones[nzone.zone]['bottom']), outline = '#fb4040', width=3)
+                                # split zone into 4 subzones & check it again.
+                                # if any subzone is reported as unhealthy,
+                                # the zone result is confirmed
+                                
+                                dr.rectangle((zones[nzone.zone]['left'], zones[nzone.zone]['top'], zones[nzone.zone]['right'], zones[nzone.zone]['bottom']), outline = '#ff0000', width=6)
                         class_results = ["{}: {}".format(z.zone, process_result(z.results)) for z in sorted(newzones, key=lambda x: int(x.zone[4:]))]
                         classification_results = "Results: {}".format(", ".join(class_results))
                     else:
