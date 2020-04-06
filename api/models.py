@@ -191,6 +191,7 @@ class PictureZone(db.Model):
     picture_id = db.Column(db.Integer, ForeignKey('data_picture.id'))
     picture = relationship("DataPicture", backref=backref("zones", uselist=True))
     fpath = db.Column(db.Text())
+    origresults = db.Column(db.Text())
     results = db.Column(db.Text())
     revisedresults = db.Column(db.Text())
     zone = db.Column(db.Text())

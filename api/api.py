@@ -208,34 +208,36 @@ def send_zones(zone, zonelabel, fuuid, file_format, fpath, user_login, sensor_uu
             sz_pool = Pool(processes=2)
             sz_results = p.starmap(send_subzones, sz_argslist)
             sz_pool.close()
-            
             app.logger.debug(f"CF SUBZONE RESULTS {sz_results}")
-            
             sz_results = set(sz_results)
             sz_results = {elem for elem in sz_results if not 'rassada' in elem}
             sz_results = {elem for elem in sz_results if not 'infrastructure' in elem}
             
             res_plant_type = cf_result.split('_')[0]
-            if all([res_plant_type in sz_res for sz_res in sz_results]) and any(['unhealthy' in sz_res for sz_res in sz_results]):
+            #if any([res_plant_type in sz_res for sz_res in sz_results]) and any(['unhealthy' in sz_res for sz_res in sz_results]):
+            newzone.revisedresults = ",".join(sz_results)
+            if cf_result in [sz_res for sz_res in sz_results]:
                 is_truly_unhealthy = True
                 
-            
-        #if not is_truly_unhealthy:
-        #    cf_result = cf_result.replace("_unhealthy", "")
+        newzone.origresults = cf_result
+        
+        if not is_truly_unhealthy:
+            cf_result = cf_result.replace("_unhealthy", "")
             
         newzone.results = cf_result
-        if is_truly_unhealthy:
-            newzone.revisedresults = "unhealthy"
-        else:
-            newzone.revisedresults = "healthy"
+        
+        #if is_truly_unhealthy:
+        #    newzone.revisedresults = "unhealthy"
+        #else:
+        #    newzone.revisedresults = "healthy"
             
         app.logger.debug(f"CF RESULTS {cf_result}")
                             
     db.session.add(newzone)
     db.session.commit()
     
-    if newzone.revisedresults == unhealthy:
-        return newzone.id
+    #if newzone.revisedresults == unhealthy:
+    return newzone.id
 
 
 def send_subzones(zone, zonelabel, file_format, pict):
@@ -274,7 +276,7 @@ def check_unhealthy_zones(pict, suuid):
                 app.logger.debug(["PREV THEE ZONES", zone.id, [(z.results, z.id) for z in prev_three_zones]])
                 # Changed results to revisedresults
                 
-                if all(['unhealthy' in z.revisedresults for z in prev_three_zones]):
+                if all(['unhealthy' in z.results for z in prev_three_zones]):
                     res['zones'].append({"results": "{} {}".format(zone.zone, zone.results), "fpath": zone.fpath})
     if res['zones']:
         return res
