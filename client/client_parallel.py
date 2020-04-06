@@ -120,7 +120,7 @@ def create_session(db_file):
 
 async def async_read_sensor_data(session, url, dbsession, bsid):
     resp_json = []
-    async with session.get(url, timeout=0) as response:
+    async with session.get(url, timeout=10) as response:
         if response.status == 200:
             logging.debug(["SENSOR {} RESPONSE".format(url)])
             resp = await response.text()
