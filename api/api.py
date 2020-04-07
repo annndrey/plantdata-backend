@@ -204,7 +204,7 @@ def send_zones(zone, zonelabel, fuuid, file_format, fpath, user_login, sensor_uu
             subzones = get_zones(cropped, 2, 2)
             sz_argslist = []
             for sz in subzones.keys():
-                sz_argslist.append(subzones[sz], z, file_format, cropped)
+                sz_argslist.append(subzones[sz], sz, file_format, cropped)
             sz_pool = Pool(processes=2)
             sz_results = p.starmap(send_subzones, sz_argslist)
             sz_pool.close()
@@ -214,9 +214,10 @@ def send_zones(zone, zonelabel, fuuid, file_format, fpath, user_login, sensor_uu
             sz_results = {elem for elem in sz_results if not 'infrastructure' in elem}
             
             res_plant_type = cf_result.split('_')[0]
-            #if any([res_plant_type in sz_res for sz_res in sz_results]) and any(['unhealthy' in sz_res for sz_res in sz_results]):
+            
             newzone.revisedresults = ",".join(sz_results)
-            if cf_result in [sz_res for sz_res in sz_results]:
+            #if cf_result in [sz_res for sz_res in sz_results]:
+            if all([res_plant_type in sz_res for sz_res in sz_results]) and any(['unhealthy' in sz_res for sz_res in sz_results]):                
                 is_truly_unhealthy = True
                 
         newzone.origresults = cf_result
