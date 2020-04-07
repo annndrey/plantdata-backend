@@ -61,7 +61,7 @@ from collections import OrderedDict
 
 
 
-from multiprocessing import Pool
+from multiprocessing.pool import ThreadPool as Pool
 
 logging.basicConfig(format='%(levelname)s: %(asctime)s - %(message)s',
                     level=logging.DEBUG, datefmt='%d.%m.%Y %I:%M:%S %p')
@@ -204,7 +204,7 @@ def send_zones(zone, zonelabel, fuuid, file_format, fpath, user_login, sensor_uu
             subzones = get_zones(cropped, 2, 2)
             sz_argslist = []
             for sz in subzones.keys():
-                sz_argslist.append(subzones[sz], sz, file_format, cropped)
+                sz_argslist.append([subzones[sz], sz, file_format, cropped])
             sz_pool = Pool(processes=2)
             sz_results = p.starmap(send_subzones, sz_argslist)
             sz_pool.close()
