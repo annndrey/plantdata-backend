@@ -32,7 +32,9 @@ deploy_live:
     MAILPASS: $ENV_MAIL_PASS
   only:
     - master
-
+  tags:
+    master_runner
+    
 deploy_beta:
   stage: deploy
   script:
@@ -53,3 +55,5 @@ deploy_beta:
     MAILPASS: $ENV_MAIL_PASS
   only:
     - develop
+  tags:
+    - develop_runner
