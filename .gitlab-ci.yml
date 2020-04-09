@@ -41,7 +41,7 @@ deploy_live:
 deploy_beta:
   stage: deploy
   script:
-    - echo "Deploying beta..."
+    - echo "Deploying beta...."
     - echo "Starting docker..."
     - docker-compose stop api_dev redis_dev celery_dev celery-beat_dev
     - docker-compose up -d --build redis_dev celery_dev celery-beat_dev api_dev 
