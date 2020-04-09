@@ -15,7 +15,7 @@ test:
 deploy_live:
   stage: deploy
   script:
-    - echo "Deploying live..."
+    - echo "Deploying live...."
     - echo "Starting docker..."
     - docker-compose stop api redis celery celery-beat
     - docker-compose up -d --build redis celery celery-beat api 
