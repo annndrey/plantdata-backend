@@ -1,0 +1,83 @@
+version: '3'
+
+services:
+  
+  api:
+    build: ./api
+    volumes:
+      - ./api:/app
+      - ./.data/pip-cache:/root/.cache/pip
+      - ./.data/fonts:/data/fonts
+      - ./.socket:/socket
+      - $PICT_DIR:/data/picts
+      - /etc/localtime:/etc/localtime
+    environment:
+      APPSETTINGS: config_docker.py
+      TEXT_FONT: /data/fonts/truetype/liberation/LiberationSans-Regular.ttf
+      HOST_ADDR: $ENV_HOST_ADDR
+      DBUSER: $DBUSER
+      DBPASS: $DBPASS
+      DBNAME: $DBNAME
+      MAILUSER: $MAILUSER
+      MAILPASS: $MAILPASS
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+    depends_on:
+      - redis
+    ports:
+      - "$APP_PORT:8000"
+
+
+  redis:
+    image: redis:alpine
+
+
+  celery:
+    build: ./api
+    command: celery worker -E -A api.celery --loglevel=info --logfile celery.worker.log
+    volumes:
+      - ./api:/app
+      - ./.data/fonts:/data/fonts
+      - /etc/localtime:/etc/localtime
+      - $PICT_DIR:/data/picts
+    environment:
+      PYTHONDONTWRITEBYTECODE: 1
+      APPSETTINGS: config_docker.py
+      TEXT_FONT: /data/fonts/truetype/liberation/LiberationSans-Regular.ttf
+      HOST_ADDR: $ENV_HOST_ADDR
+      DBUSER: $DBUSER
+      DBPASS: $DBPASS
+      DBNAME: $DBNAME
+      MAILUSER: $MAILUSER
+      MAILPASS: $MAILPASS
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 1
+    depends_on:
+      - redis
+
+
+  celery-beat:
+    build: ./api
+    command: celery beat -A api.celery --logfile celery.beat.log
+    volumes:
+      - ./api:/app
+      - ./.data/fonts:/data/fonts
+      - /etc/localtime:/etc/localtime
+      - $PICT_DIR:/data/picts
+    environment:
+      PYTHONDONTWRITEBYTECODE: 1
+      APPSETTINGS: config_docker.py
+      TEXT_FONT: /data/fonts/truetype/liberation/LiberationSans-Regular.ttf
+      HOST_ADDR: $ENV_HOST_ADDR
+      DBUSER: $DBUSER
+      DBPASS: $DBPASS
+      DBNAME: $DBNAME
+      MAILUSER: $MAILUSER
+      MAILPASS: $MAILPASS
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 1
+    depends_on:
+      - redis  
