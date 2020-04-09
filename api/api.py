@@ -61,7 +61,7 @@ from collections import OrderedDict
 
 
 
-from multiprocessing.pool import ThreadPool as Pool
+from multiprocessing import Pool
 
 logging.basicConfig(format='%(levelname)s: %(asctime)s - %(message)s',
                     level=logging.DEBUG, datefmt='%d.%m.%Y %I:%M:%S %p')
@@ -198,33 +198,43 @@ def send_zones(zone, zonelabel, fuuid, file_format, fpath, user_login, sensor_uu
     response = requests.post(CF_HOST.format("loadimage"), auth=(CF_LOGIN, CF_PASSWORD), files = {'imagefile': img_io}, data={'index':0, 'filename': fuuid})    
     if response.status_code == 200:
         cf_result = response.json().get('objtype')
-        is_truly_unhealthy = False
-        if 'unhealthy' in cf_result:
-            app.logger.debug("CHECKING SUBZONES")
-            subzones = get_zones(cropped, 2, 2)
-            sz_argslist = []
-            for sz in subzones.keys():
-                sz_argslist.append([subzones[sz], sz, file_format, cropped])
-            sz_pool = Pool(processes=2)
-            sz_results = p.starmap(send_subzones, sz_argslist)
-            sz_pool.close()
-            app.logger.debug(f"CF SUBZONE RESULTS {sz_results}")
-            sz_results = set(sz_results)
-            sz_results = {elem for elem in sz_results if not 'rassada' in elem}
-            sz_results = {elem for elem in sz_results if not 'infrastructure' in elem}
-            
-            res_plant_type = cf_result.split('_')[0]
-            
-            newzone.revisedresults = ",".join(sz_results)
-            #if cf_result in [sz_res for sz_res in sz_results]:
-            if all([res_plant_type in sz_res for sz_res in sz_results]) and any(['unhealthy' in sz_res for sz_res in sz_results]):                
-                is_truly_unhealthy = True
+
+        ## >>> New logic, with subzones.
+        ## 
+        #is_truly_unhealthy = False
+        
+        #if 'unhealthy' in cf_result:
+        #    app.logger.debug("CHECKING SUBZONES")
+        #    subzones = get_zones(cropped, 2, 2)
+        #    sz_argslist = []
+        #    sz_results = []
+        #    # Todo: parallelize
+        #    # aiohttp? 
+        #    for sz in subzones.keys():
+        #        sz_res = send_subzones(subzones[sz], sz, file_format, cropped)
+        #        sz_results.append(sz_res)
+        #    #sz_pool = Pool(processes=2)
+        #    #sz_results = p.starmap(send_subzones, sz_argslist)
+        #    #sz_pool.close()
+        #    app.logger.debug(f"CF SUBZONE RESULTS {sz_results}, ZONE {cf_result}")
+        #    sz_results = set(sz_results)
+        #    sz_results = {elem for elem in sz_results if not 'rassada' in elem}
+        #    sz_results = {elem for elem in sz_results if not 'infrastructure' in elem}
+        #    
+        #    res_plant_type = cf_result.split('_')[0]
+        #    
+        #    newzone.revisedresults = ",".join(sz_results)
+        #    #if cf_result in [sz_res for sz_res in sz_results]:
+        #    if all([res_plant_type in sz_res for sz_res in sz_results]) and any(['unhealthy' in sz_res for sz_res in sz_results]):                
+        #        is_truly_unhealthy = True
                 
         newzone.origresults = cf_result
         
-        if not is_truly_unhealthy:
-            cf_result = cf_result.replace("_unhealthy", "")
-            
+        #if not is_truly_unhealthy:
+        #    cf_result = cf_result.replace("_unhealthy", "_healthy_rev")
+        ## >>> New logic, with subzones.
+
+        
         newzone.results = cf_result
         
         #if is_truly_unhealthy:
