@@ -11,6 +11,9 @@ test:
     - echo "Testing..."
     - python3 --version
     - echo $CI_PROJECT_DIR
+  tags:
+    - master_runner, develop_runner
+    
 
 deploy_live:
   stage: deploy
