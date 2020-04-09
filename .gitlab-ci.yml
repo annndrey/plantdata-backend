@@ -33,7 +33,7 @@ deploy_live:
   only:
     - master
   tags:
-    master_runner
+    - master_runner
     
 deploy_beta:
   stage: deploy
