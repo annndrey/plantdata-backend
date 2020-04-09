@@ -38,8 +38,8 @@ deploy_beta:
   script:
     - echo "Deploying beta..."
     - echo "Starting docker..."
-    - docker-compose stop api redis celery celery-beat
-    - docker-compose up -d --build redis celery celery-beat api 
+    - docker-compose stop api_dev redis_dev celery_dev celery-beat_dev
+    - docker-compose up -d --build redis_dev celery_dev celery-beat_dev api_dev 
     - echo $CI_BUILDs_DIR/$CI_CONCURRENT_ID/$CI_PROJECT_NAMESPACE/$CI_PROJECT_ID
   environment:
     name: beta

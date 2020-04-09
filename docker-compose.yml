@@ -2,7 +2,7 @@ version: '3'
 
 services:
   
-  api:
+  api_dev:
     build: ./api
     volumes:
       - ./api:/app
@@ -24,16 +24,16 @@ services:
       REDIS_PORT: 6379
       REDIS_DB: 0
     depends_on:
-      - redis
+      - redis_dev
     ports:
       - "$APP_PORT:8000"
 
 
-  redis:
+  redis_dev:
     image: redis:alpine
 
 
-  celery:
+  celery_dev:
     build: ./api
     command: celery worker -E -A api.celery --loglevel=info --logfile celery.worker.log
     volumes:
@@ -55,10 +55,10 @@ services:
       REDIS_PORT: 6379
       REDIS_DB: 1
     depends_on:
-      - redis
+      - redis_dev
 
 
-  celery-beat:
+  celery-beat_dev:
     build: ./api
     command: celery beat -A api.celery --logfile celery.beat.log
     volumes:
@@ -80,4 +80,4 @@ services:
       REDIS_PORT: 6379
       REDIS_DB: 1
     depends_on:
-      - redis  
+      - redis_dev  
