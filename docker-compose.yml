@@ -20,7 +20,7 @@ services:
       DBNAME: $DBNAME
       MAILUSER: $MAILUSER
       MAILPASS: $MAILPASS
-      REDIS_HOST: redis
+      REDIS_HOST: redis_dev
       REDIS_PORT: 6379
       REDIS_DB: 0
     depends_on:
@@ -51,7 +51,7 @@ services:
       DBNAME: $DBNAME
       MAILUSER: $MAILUSER
       MAILPASS: $MAILPASS
-      REDIS_HOST: redis
+      REDIS_HOST: redis_dev
       REDIS_PORT: 6379
       REDIS_DB: 1
     depends_on:
@@ -76,7 +76,7 @@ services:
       DBNAME: $DBNAME
       MAILUSER: $MAILUSER
       MAILPASS: $MAILPASS
-      REDIS_HOST: redis
+      REDIS_HOST: redis_dev
       REDIS_PORT: 6379
       REDIS_DB: 1
     depends_on:
