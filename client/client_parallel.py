@@ -118,6 +118,18 @@ def create_session(db_file):
     session.execute('pragma foreign_keys=on')
     return session
 
+
+#async def async_push_photo(session, url, dbsession, fname, flabel, fcamname, fcamposition, data_id, photo_id, header):
+#    resp_json = []
+#    files = {}
+#    files['{}'.format(flabel)] = open(fname, 'rb')
+#    url_str = "data/{}".format(data_id)
+#    logging.debug("SENDING PATCH REQUEST FOR {} {}".format(data_id, flabel))
+#    # send camera_name, camera position
+#    data = {"camname": fcamname, "camposition": fcamposition, "recognize": CONFIG_FILE['RECOGNIZE']}
+#    async with session.patch(url_str, timeout=10) as response:
+
+
 async def async_read_sensor_data(session, url, dbsession, bsid):
     resp_json = []
     async with session.get(url, timeout=10) as response:
@@ -158,6 +170,12 @@ async def fetch_all_sensors_data(urls, loop, dbsession, bsid):
         results = await asyncio.gather(*[async_read_sensor_data(session, url, dbsession, bsid) for url in urls], return_exceptions=True)
         return results
 
+
+async def push_all_photos(fargs, loop, dbsession):
+    async with aiohttp.ClientSession(loop=loop) as session:
+        results = await asyncio.gather(*[async_send_patch_request(session, dbsession, farg[0], farg[1], farg[2], farg[3], farg[4], farg[5], farg[6]) for farg in fargs], return_exceptions=True)
+        return results
+    
     
 def send_patch_request(fname, flabel, fcamname, fcamposition, data_id, photo_id, header):
     files = {}
@@ -165,7 +183,7 @@ def send_patch_request(fname, flabel, fcamname, fcamposition, data_id, photo_id,
     url_str = "data/{}".format(data_id)
     logging.debug("SENDING PATCH REQUEST FOR {} {}".format(data_id, flabel))
     # send camera_name, camera position
-    resp = requests.patch(SERVER_HOST.format(url_str), data={"camname": fcamname, "camposition": fcamposition}, headers=header, files=files)
+    resp = requests.patch(SERVER_HOST.format(url_str), data={"camname": fcamname, "camposition": fcamposition, "recognize": CONFIG_FILE['RECOGNIZE']}, headers=header, files=files)
     logging.debug("PATCH RESPONSE STATUS CODE {}".format(resp.status_code))
     if resp.status_code == 200:
         os.unlink(os.path.join("/home/pi", fname))
@@ -181,6 +199,40 @@ def send_patch_request(fname, flabel, fcamname, fcamposition, data_id, photo_id,
         #print(resp.json())
         return resp.status_code
 
+async def async_send_patch_request(session, dbsession, fname, flabel, fcamname, fcamposition, data_id, photo_id, header):
+    #files = {}
+    #files['{}'.format(flabel)] = open(fname, 'rb')
+    url_str = "data/{}".format(data_id)
+    url = SERVER_HOST.format(url_str)
+    logging.debug("SENDING PATCH REQUEST {} FOR {} {}".format(url, data_id, flabel))
+    # send camera_name, camera position
+    fkey = "files_{}".format(flabel)
+    with open(fname, 'rb') as rf: 
+        data={"camname": fcamname, "camposition": fcamposition, "recognize": CONFIG_FILE['RECOGNIZE'], "flabel": flabel} #, "key": rf }
+        #with aiohttp.MultipartWriter("mixed") as mp:
+        #    #mpwriter.append_json(data)
+        #        
+        #    #mp.append(rf)
+        form_data = aiohttp.FormData()
+        for key, value in data.items():
+            form_data.add_field(key, str(value))
+        form_data.add_field(flabel, rf, filename=flabel)#, content_type='application/octet-stream')
+
+        async with session.patch(url, headers=header, data=form_data) as response:
+            logging.debug(["PATCH DATA", data, form_data])
+            logging.debug("PATCH RESPONSE STATUS CODE {}".format(response.status))
+    
+            if response.status == 200:
+                os.unlink(os.path.join("/home/pi", fname))
+                dbphoto = dbsession.query(Photo).filter(Photo.photo_id == photo_id).first()
+                if dbphoto:
+                    dbphoto.uploaded = True
+                    dbsession.delete(dbphoto)
+                    dbsession.commit()
+                    logging.debug("LOCAL PHOTO REMOVED {} {}".format(fname, flabel))
+            return response.status
+
+    
 def get_token():
     data_sent = False
     login_data = {"username": SERVER_LOGIN,
@@ -431,7 +483,7 @@ def post_data(token, bsuuid, take_photos):
                     # Send all cached photos
                     if take_photos:
                         cachedphotos = session.query(Photo).filter(Photo.uploaded.is_(False)).all()
-                        p = Pool(processes=10)
+                        # p = Pool(processes=10)
                         argslist = []
                         for i, f in enumerate(cachedphotos):
                             if f.bs:
@@ -439,9 +491,16 @@ def post_data(token, bsuuid, take_photos):
                                     argslist.append([f.photo_filename, f.label, f.camname, f.camposition, f.bs.remote_data_id, f.photo_id, head])
                             
                         logging.debug("START LOOP")
-                        loopdata = p.starmap(send_patch_request, argslist)
-                        p.close()
-                        totalcount = loopdata.count(200)
+                        loop = asyncio.get_event_loop()
+                        async_session = create_session(db_file)
+                        responses = loop.run_until_complete(push_all_photos(argslist, loop, async_session))
+                        logging.debug(responses)
+                        async_session.close()
+
+                        #loopdata = p.starmap(send_patch_request, argslist)
+                        #p.close()
+                        totalcount = len(responses)
+                        #loopdata.count(200)
                         # Обрабатывать неотправленные фото, не удалять их
                         # и не удалять отправленные данные
                         # помечать данные как sent
@@ -473,8 +532,8 @@ if __name__ == '__main__':
     scheduler.every(5).minutes.do(post_data, token, base_station_uuid, False)
     scheduler.every(60).minutes.do(post_data, token, base_station_uuid, True)
     logging.debug(base_station_uuid)
-    #post_data(token, base_station_uuid, False)
-    #sys.exit(1)
+    post_data(token, base_station_uuid, True)
+    sys.exit(1)
     while 1:
         scheduler.run_pending()
         sleep(1)
