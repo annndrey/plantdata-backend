@@ -2167,7 +2167,7 @@ class DataAPI(Resource):
         # If there's no registered CAMNAME & CAMPOSITION for a given data.uuid
         # add new camera & position
         # >>>
-        app.logger.debug(["Request Data", request.data])
+        app.logger.debug(["Request Data", request.values])
         camname = request.form.get("camname")
         camposition = request.form.get("camposition")
         recognize = request.form.get("recognize", False)
