@@ -2154,9 +2154,12 @@ class DataAPI(Resource):
             description: URL not found
         """
         
+        app.logger.debug("Patch Data")
+        
         if not id:
             abort(400)
-        app.logger.debug("Patch Data")
+
+
         auth_headers = request.headers.get('Authorization', '').split()
         token = auth_headers[1]
         udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
