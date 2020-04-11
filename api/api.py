@@ -654,7 +654,6 @@ def parse_request_pictures(req_files, flabel, camname, camposition, user_login, 
     picts_unhealthy_status = []
     app.logger.debug("PARSING REQUEST PICTURES")
     for uplname in sorted(request.files):
-        uplname = flabel
         pict = request.files.get(uplname)
         fpath = os.path.join(current_app.config['FILE_PATH'], user_login, sensor_uuid)
         app.logger.debug(fpath)
@@ -679,8 +678,8 @@ def parse_request_pictures(req_files, flabel, camname, camposition, user_login, 
             
         original.save(origpath)
         
-        imglabel = uplname
-        app.logger.debug(["UPLNAME", uplname])
+        imglabel = flabel
+        app.logger.debug(["UPLNAME", flabel])
         classification_results = ""
         app.logger.debug("FILE SAVED")
         newzones = []
