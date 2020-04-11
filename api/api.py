@@ -649,11 +649,12 @@ def process_result(result):
 # process_single_picture
 # process_single_zone
 
-def parse_request_pictures(req_files, camname, camposition, user_login, sensor_uuid, recognize):
+def parse_request_pictures(req_files, flabel, camname, camposition, user_login, sensor_uuid, recognize):
     picts = []
     picts_unhealthy_status = []
     app.logger.debug("PARSING REQUEST PICTURES")
     for uplname in sorted(request.files):
+        uplname = flabel
         pict = request.files.get(uplname)
         fpath = os.path.join(current_app.config['FILE_PATH'], user_login, sensor_uuid)
         app.logger.debug(fpath)
@@ -2170,6 +2171,7 @@ class DataAPI(Resource):
         app.logger.debug(["Request Data", request.values, request.files, request.json])
         camname = request.form.get("camname")
         camposition = request.form.get("camposition")
+        flabel = request.form.get("flabel")
         recognize = request.form.get("recognize", False)
         camera_position = None
         app.logger.debug(["CAMERA DB:", camname, camposition, recognize])
@@ -2207,7 +2209,7 @@ class DataAPI(Resource):
             lowlight = [d.value < 30 for d in data.records if d.ptype == 'light']
             if any(lowlight):
                 recognize = False
-            picts = parse_request_pictures(request.files, camera, camera_position, user.login, sensor.uuid, recognize)
+            picts = parse_request_pictures(request.files, flabel, camera, camera_position, user.login, sensor.uuid, recognize)
             if picts:
                 for p in picts:
                     data.pictures.append(p)
