@@ -718,7 +718,7 @@ def parse_request_pictures(req_files, flabel, camname, camposition, user_login, 
                                 # if any subzone is reported as unhealthy,
                                 # the zone result is confirmed
                                 
-                                dr.rectangle((zones[nzone.zone]['left'], zones[nzone.zone]['top'], zones[nzone.zone]['right'], zones[nzone.zone]['bottom']), outline = '#ff0000', width=6)
+                                dr.rectangle((zones[nzone.zone]['left'], zones[nzone.zone]['top'], zones[nzone.zone]['right'], zones[nzone.zone]['bottom']), outline = '#ff0000', width=10)
                         class_results = ["{}: {}".format(z.zone, process_result(z.results)) for z in sorted(newzones, key=lambda x: int(x.zone[4:]))]
                         classification_results = "Results: {}".format(", ".join(class_results))
                     else:
