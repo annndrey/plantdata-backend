@@ -42,6 +42,8 @@ from celery.schedules import crontab
 from flask_caching import Cache
 import urllib.parse
 
+import threading
+
 import click
 import datetime
 import calendar
@@ -649,129 +651,138 @@ def process_result(result):
 # process_single_picture
 # process_single_zone
 
-def parse_request_pictures(req_files, flabel, camname, camposition, user_login, sensor_uuid, recognize):
-    picts = []
-    picts_unhealthy_status = []
-    app.logger.debug("PARSING REQUEST PICTURES")
-    for uplname in sorted(request.files):
-        pict = request.files.get(uplname)
-        fpath = os.path.join(current_app.config['FILE_PATH'], user_login, sensor_uuid)
-        app.logger.debug(fpath)
-        if not os.path.exists(fpath):
-            os.makedirs(fpath)
-        fdata = pict.read()
-        original = Image.open(io.BytesIO(fdata))
-        FORMAT = original.format
-        fuuid = str(uuid.uuid4())
-        fname = fuuid + "." + FORMAT.lower()
-        thumbname = fuuid + "_thumb." + FORMAT.lower()
-        origname = fuuid + "_orig." + FORMAT.lower()
-        fullpath = os.path.join(fpath, fname)
-        thumbpath = os.path.join(fpath, thumbname)
-        origpath = os.path.join(fpath, origname)
-        partpath = os.path.join(user_login, sensor_uuid, fname)
-        partthumbpath = os.path.join(user_login, sensor_uuid, thumbname)
-        partorigpath = os.path.join(user_login, sensor_uuid, origname)
+def parse_request_pictures(parent_data, req_files, flabel, camname, camposition, user_login, sensor_uuid, recognize):
+    with app.app_context():
+        data = db.session.query(Data).filter(Data.id == id).first()
+        if not data:
+            abort(404)
+
+        picts = []
+        picts_unhealthy_status = []
+        app.logger.debug("PARSING REQUEST PICTURES")
+        for uplname in sorted(request.files):
+            pict = request.files.get(uplname)
+            fpath = os.path.join(current_app.config['FILE_PATH'], user_login, sensor_uuid)
+            app.logger.debug(fpath)
+            if not os.path.exists(fpath):
+                os.makedirs(fpath)
+            fdata = pict.read()
+            original = Image.open(io.BytesIO(fdata))
+            FORMAT = original.format
+            fuuid = str(uuid.uuid4())
+            fname = fuuid + "." + FORMAT.lower()
+            thumbname = fuuid + "_thumb." + FORMAT.lower()
+            origname = fuuid + "_orig." + FORMAT.lower()
+            fullpath = os.path.join(fpath, fname)
+            thumbpath = os.path.join(fpath, thumbname)
+            origpath = os.path.join(fpath, origname)
+            partpath = os.path.join(user_login, sensor_uuid, fname)
+            partthumbpath = os.path.join(user_login, sensor_uuid, thumbname)
+            partorigpath = os.path.join(user_login, sensor_uuid, origname)
         
-        with open(fullpath, 'wb') as outf:
-            outf.write(fdata)
+            with open(fullpath, 'wb') as outf:
+                outf.write(fdata)
             
-        original.save(origpath)
+            original.save(origpath)
         
-        imglabel = flabel
-        app.logger.debug(["UPLNAME", flabel])
-        classification_results = ""
-        app.logger.debug("FILE SAVED")
-        newzones = []
+            imglabel = flabel
+            app.logger.debug(["UPLNAME", flabel])
+            classification_results = ""
+            app.logger.debug("FILE SAVED")
+            newzones = []
 
-        if recognize:
-            if CLASSIFY_ZONES:# and CF_TOKEN:
-                # zones = CROP_SETTINGS.get(uplname, None)
-                zones = get_zones(original, 3, 4)
-                cf_headers = None #= {'Authorization': 'Bearer ' + CF_TOKEN}
-                # 2592x1944
-                app.logger.debug(["ZONES", zones])
-                if zones:
-                    responses = []
-                    newzones = []
-                    argslist = []
-                    dr = ImageDraw.Draw(original)
-                    for z in zones.keys():
-                        argslist.append([zones[z], z, fuuid, FORMAT, fpath, user_login, sensor_uuid, cf_headers, original])
-                        dr.rectangle((zones[z]['left'], zones[z]['top'], zones[z]['right'], zones[z]['bottom']), outline = '#fbb040', width=3)
-                        dr.text((zones[z]['left']+2, zones[z]['top']+2), z, font=zonefont)
+            if recognize:
+                if CLASSIFY_ZONES:# and CF_TOKEN:
+                    # zones = CROP_SETTINGS.get(uplname, None)
+                    zones = get_zones(original, 3, 4)
+                    cf_headers = None #= {'Authorization': 'Bearer ' + CF_TOKEN}
+                    # 2592x1944
+                    app.logger.debug(["ZONES", zones])
+                    if zones:
+                        responses = []
+                        newzones = []
+                        argslist = []
+                        dr = ImageDraw.Draw(original)
+                        for z in zones.keys():
+                            argslist.append([zones[z], z, fuuid, FORMAT, fpath, user_login, sensor_uuid, cf_headers, original])
+                            dr.rectangle((zones[z]['left'], zones[z]['top'], zones[z]['right'], zones[z]['bottom']), outline = '#fbb040', width=3)
+                            dr.text((zones[z]['left']+2, zones[z]['top']+2), z, font=zonefont)
 
-                    # Paralleled requests
-                    p = Pool(processes=2)
-                    zones_ids = p.starmap(send_zones, argslist)
-                    p.close()
-                    app.logger.debug(["SAVED ZONES", [zones_ids]])
-                    db.session.commit()
-
-                    if zones_ids:
-                        newzones = db.session.query(PictureZone).filter(PictureZone.id.in_(zones_ids)).all()
-                        app.logger.debug(["NEWZONES", [(n.id, n.results) for n in newzones]])
-                        # Draw a red rectangle around the unhealthy zone
-                        for nzone in newzones:
-                            if "unhealthy" in nzone.results:
-                                # split zone into 4 subzones & check it again.
-                                # if any subzone is reported as unhealthy,
-                                # the zone result is confirmed
-                                
-                                dr.rectangle((zones[nzone.zone]['left'], zones[nzone.zone]['top'], zones[nzone.zone]['right'], zones[nzone.zone]['bottom']), outline = '#ff0000', width=10)
-                        class_results = ["{}: {}".format(z.zone, process_result(z.results)) for z in sorted(newzones, key=lambda x: int(x.zone[4:]))]
-                        classification_results = "Results: {}".format(", ".join(class_results))
-                    else:
-                        app.logger.debug(["NO ZONES", newzones])
-                        newzones = None
-                        classification_results = ""
-                original.save(fullpath)
-                imglabel = imglabel + " " + classification_results
-        # Thumbnails
-        original.thumbnail((300, 300), Image.ANTIALIAS)
-        original.save(thumbpath, FORMAT, quality=90)
-        app.logger.debug(["CAMERA TO PICT", camposition.camera.camlabel, camposition.poslabel, imglabel])
-        newpicture = DataPicture(fpath=partpath,
-                                 label=imglabel,
-                                 thumbnail=partthumbpath,
-                                 original=partorigpath,
-                                 results=classification_results,
-        )
-        if newzones:
-            newpicture.zones = newzones
-        db.session.add(newpicture)
-        camposition.pictures.append(newpicture)
-        db.session.commit()
-        picts.append(newpicture)
-        # Here we have linked the picture with zones,
-        # and can check now for the unhealthy results
-        # and send emails
-        pict_zones_info = check_unhealthy_zones(newpicture, sensor_uuid)
-        if pict_zones_info:
-            picts_unhealthy_status.append(pict_zones_info)
-        app.logger.debug("NEW PICTURE ADDED")
-
-    if picts_unhealthy_status:
-        # send email to user's additional email
-        sensor = db.session.query(Sensor).filter(Sensor.uuid == sensor_uuid).first()
-        if sensor:
-            if sensor.user.login == user_login:
-                user_email = sensor.user.additional_email
-                if user_email:
-                    # update results list:
-                    for pict_res in picts_unhealthy_status:
-                        pict_res['location'] = sensor.location.address
-                        pict_res['sensor_uuid'] = sensor.uuid
-                    for p in picts_unhealthy_status:
-                        # email_text = create_email_text(p)
-                        # Now we only add a pending notification to be send
-                        app.logger.debug(["CREATING NOTIFICATION", p])
-                        p['ts'] = p['ts'].strftime("%d-%m-%Y %H:%M:%S")
-                        newnotification = Notification(user=sensor.user, text=json.dumps(p))
-                        db.session.add(newnotification)
+                        # Paralleled requests
+                        p = Pool(processes=2)
+                        zones_ids = p.starmap(send_zones, argslist)
+                        p.close()
+                        app.logger.debug(["SAVED ZONES", [zones_ids]])
                         db.session.commit()
 
-    return picts
+                        if zones_ids:
+                            newzones = db.session.query(PictureZone).filter(PictureZone.id.in_(zones_ids)).all()
+                            app.logger.debug(["NEWZONES", [(n.id, n.results) for n in newzones]])
+                            # Draw a red rectangle around the unhealthy zone
+                            for nzone in newzones:
+                                if "unhealthy" in nzone.results:
+                                    # split zone into 4 subzones & check it again.
+                                    # if any subzone is reported as unhealthy,
+                                    # the zone result is confirmed
+                                
+                                    dr.rectangle((zones[nzone.zone]['left'], zones[nzone.zone]['top'], zones[nzone.zone]['right'], zones[nzone.zone]['bottom']), outline = '#ff0000', width=10)
+                            class_results = ["{}: {}".format(z.zone, process_result(z.results)) for z in sorted(newzones, key=lambda x: int(x.zone[4:]))]
+                            classification_results = "Results: {}".format(", ".join(class_results))
+                        else:
+                            app.logger.debug(["NO ZONES", newzones])
+                            newzones = None
+                            classification_results = ""
+                    original.save(fullpath)
+                    imglabel = imglabel + " " + classification_results
+            # Thumbnails
+            original.thumbnail((300, 300), Image.ANTIALIAS)
+            original.save(thumbpath, FORMAT, quality=90)
+            app.logger.debug(["CAMERA TO PICT", camposition.camera.camlabel, camposition.poslabel, imglabel])
+            newpicture = DataPicture(fpath=partpath,
+                                     label=imglabel,
+                                     thumbnail=partthumbpath,
+                                     original=partorigpath,
+                                     results=classification_results,
+            )
+            if newzones:
+                newpicture.zones = newzones
+            db.session.add(newpicture)
+            camposition.pictures.append(newpicture)
+            db.session.commit()
+            picts.append(newpicture)
+            data.pictures.append(newpicture)
+            db.session.add(data)
+            db.session.commit()
+        
+            # Here we have linked the picture with zones,
+            # and can check now for the unhealthy results
+            # and send emails
+            pict_zones_info = check_unhealthy_zones(newpicture, sensor_uuid)
+            if pict_zones_info:
+                picts_unhealthy_status.append(pict_zones_info)
+            app.logger.debug("NEW PICTURE ADDED")
+
+        if picts_unhealthy_status:
+            # add notification
+            sensor = db.session.query(Sensor).filter(Sensor.uuid == sensor_uuid).first()
+            if sensor:
+                if sensor.user.login == user_login:
+                    user_email = sensor.user.additional_email
+                    if user_email:
+                        # update results list:
+                        for pict_res in picts_unhealthy_status:
+                            pict_res['location'] = sensor.location.address
+                            pict_res['sensor_uuid'] = sensor.uuid
+                        for p in picts_unhealthy_status:
+                            # email_text = create_email_text(p)
+                            # Now we only add a pending notification to be send
+                            app.logger.debug(["CREATING NOTIFICATION", p])
+                            p['ts'] = p['ts'].strftime("%d-%m-%Y %H:%M:%S")
+                            newnotification = Notification(user=sensor.user, text=json.dumps(p))
+                            db.session.add(newnotification)
+                            db.session.commit()
+
+    #return picts
 
 
 @app.route(f'/api/v{API_VERSION}/token', methods=['POST'])
@@ -2208,13 +2219,18 @@ class DataAPI(Resource):
             lowlight = [d.value < 30 for d in data.records if d.ptype == 'light']
             if any(lowlight):
                 recognize = False
-            picts = parse_request_pictures(request.files, flabel, camera, camera_position, user.login, sensor.uuid, recognize)
-            if picts:
-                for p in picts:
-                    data.pictures.append(p)
             db.session.add(data)
             db.session.commit()
-            return jsonify(self.schema.dump(data).data)
+            # Running parse_request_pictures in the background
+            st = threading.Thread(target=parse_request_pictures, args=[data.id, request.files, flabel, camera, camera_position, user.login, sensor.uuid, recognize])
+            st.start()
+            #parse_request_pictures()
+            # db.session.commit()
+            #if picts:
+            #    for p in picts:
+            #        data.pictures.append(p)
+            return "Data added", 201
+        #jsonify(self.schema.dump(data).data)
         abort(404)
     
 
