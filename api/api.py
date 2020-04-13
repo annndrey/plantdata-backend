@@ -661,7 +661,7 @@ def parse_request_pictures(parent_data, req_file, flabel, camname, camposition, 
         picts_unhealthy_status = []
         app.logger.debug("PARSING REQUEST PICTURES")
         #for uplname in sorted(req_files):
-        pict = req_file#s.get(uplname)
+        pict = req_files[0]#s.get(uplname)
         fpath = os.path.join(current_app.config['FILE_PATH'], user_login, sensor_uuid)
         app.logger.debug(fpath)
         if not os.path.exists(fpath):
@@ -2222,8 +2222,9 @@ class DataAPI(Resource):
             db.session.add(data)
             db.session.commit()
             # Running parse_request_pictures in the background
-            req_file = io.BytesIO(request.files[0].read())
-            st = threading.Thread(target=parse_request_pictures, args=[data.id, req_file, flabel, camera, camera_position, user.login, sensor.uuid, recognize])
+            req_files = [io.BytesIO(request.files.get(f).read()) for f in request.files]
+            app.logger.debug(["FILES", req_files])
+            st = threading.Thread(target=parse_request_pictures, args=[data.id, req_files, flabel, camera, camera_position, user.login, sensor.uuid, recognize])
             st.start()
             res = st.join()
             app.logger.debug(res)
