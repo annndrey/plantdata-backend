@@ -2229,7 +2229,7 @@ class DataAPI(Resource):
             #if picts:
             #    for p in picts:
             #        data.pictures.append(p)
-            return "Data added", 201
+            return "Data added", 200
         #jsonify(self.schema.dump(data).data)
         abort(404)
     
