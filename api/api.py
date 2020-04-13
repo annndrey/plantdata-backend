@@ -651,12 +651,16 @@ def process_result(result):
 # process_single_picture
 # process_single_zone
 
-def parse_request_pictures(parent_data, req_files, flabel, camname, camposition, user_login, sensor_uuid, recognize):
+def parse_request_pictures(parent_data, camposition_id, req_files, flabel, camname, camposition, user_login, sensor_uuid, recognize):
     with app.app_context():
         data = db.session.query(Data).filter(Data.id == parent_data).first()
         if not data:
             abort(404)
 
+        camposition = db.session.query(CameraPosition).filter(CameraPosition.id == camposition_id).first()
+        if not camposition:
+            abort(404)
+            
         picts = []
         picts_unhealthy_status = []
         app.logger.debug("PARSING REQUEST PICTURES")
@@ -2224,7 +2228,7 @@ class DataAPI(Resource):
             # Running parse_request_pictures in the background
             req_files = [io.BytesIO(request.files.get(f).read()) for f in request.files]
             app.logger.debug(["FILES", req_files])
-            st = threading.Thread(target=parse_request_pictures, args=[data.id, req_files, flabel, camera, camera_position, user.login, sensor.uuid, recognize])
+            st = threading.Thread(target=parse_request_pictures, args=[data.id, camposition.id, req_files, flabel, camera, camera_position, user.login, sensor.uuid, recognize])
             st.start()
             res = st.join()
             app.logger.debug(res)
