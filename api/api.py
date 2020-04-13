@@ -653,7 +653,7 @@ def process_result(result):
 
 def parse_request_pictures(parent_data, req_files, flabel, camname, camposition, user_login, sensor_uuid, recognize):
     with app.app_context():
-        data = db.session.query(Data).filter(Data.id == id).first()
+        data = db.session.query(Data).filter(Data.id == parent_data).first()
         if not data:
             abort(404)
 
