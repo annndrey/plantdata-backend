@@ -2230,8 +2230,9 @@ class DataAPI(Resource):
             app.logger.debug(["FILES", req_files])
             st = threading.Thread(target=parse_request_pictures, args=[data.id, camera_position.id, req_files, flabel, camera, user.login, sensor.uuid, recognize])
             st.start()
-            res = st.join()
-            app.logger.debug(res)
+
+            #res = st.join()
+            #app.logger.debug(res)
             #parse_request_pictures()
             # db.session.commit()
             #if picts:
