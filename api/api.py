@@ -651,7 +651,7 @@ def process_result(result):
 # process_single_picture
 # process_single_zone
 
-def parse_request_pictures(parent_data, req_file, flabel, camname, camposition, user_login, sensor_uuid, recognize):
+def parse_request_pictures(parent_data, req_files, flabel, camname, camposition, user_login, sensor_uuid, recognize):
     with app.app_context():
         data = db.session.query(Data).filter(Data.id == parent_data).first()
         if not data:
