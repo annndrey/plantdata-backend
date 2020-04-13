@@ -660,7 +660,7 @@ def parse_request_pictures(parent_data, req_files, flabel, camname, camposition,
         picts = []
         picts_unhealthy_status = []
         app.logger.debug("PARSING REQUEST PICTURES")
-        for uplname in sorted(request.files):
+        for uplname in sorted(req_files):
             pict = request.files.get(uplname)
             fpath = os.path.join(current_app.config['FILE_PATH'], user_login, sensor_uuid)
             app.logger.debug(fpath)
