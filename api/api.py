@@ -2225,6 +2225,8 @@ class DataAPI(Resource):
             req_file = io.BytesIO(request.files[0].read())
             st = threading.Thread(target=parse_request_pictures, args=[data.id, req_file, flabel, camera, camera_position, user.login, sensor.uuid, recognize])
             st.start()
+            res = st.join()
+            app.logger.debug(res)
             #parse_request_pictures()
             # db.session.commit()
             #if picts:
