@@ -125,7 +125,7 @@ swagger_config = {
         {
             "endpoint": 'apidescr',
             "route": '/apidescr.json',
-            "rule_filter": lambda rule: True, 
+            "rule_filter": lambda rule: True,
             "model_filter": lambda tag: True,
         }
     ],
@@ -140,9 +140,9 @@ swagger = Swagger(app, config=swagger_config, template=swtemplate)
 
 CF_LOGIN = app.config['CF_LOGIN']
 CF_PASSWORD = app.config['CF_PASSWORD']
-CF_HOST = app.config['CF_HOST'] 
+CF_HOST = app.config['CF_HOST']
 CF_TOKEN = None
-FONT = app.config['FONT'] 
+FONT = app.config['FONT']
 FONTSIZE = app.config['FONTSIZE']
 
 zonefont = ImageFont.truetype(FONT, size=FONTSIZE)
@@ -170,8 +170,8 @@ class SQLAlchemyNoPool(SQLAlchemy):
             'poolclass': NullPool
         })
         super(SQLAlchemy, self).apply_driver_hacks(app, info, options)
-        
-            
+
+
 def send_zones(zone, zonelabel, fuuid, file_format, fpath, user_login, sensor_uuid, cf_headers, original):
     db = SQLAlchemyNoPool()
     cropped = original.crop((zone['left'], zone['top'], zone['right'], zone['bottom']))
@@ -181,7 +181,7 @@ def send_zones(zone, zonelabel, fuuid, file_format, fpath, user_login, sensor_uu
     #dr = ImageDraw.Draw(original)
     #dr.rectangle((zone['left'], zone['top'], zone['right'], zone['bottom']), outline = '#fbb040', width=3)
     #dr.text((zone['left']+2, zone['top']+2), zonelabel, font=zonefont)
-                        
+
     zuuid = f"{fuuid}_{zonelabel}"
     zname = zuuid + "." + file_format.lower()
     z_full_path = os.path.join(fpath, zname)
@@ -189,7 +189,7 @@ def send_zones(zone, zonelabel, fuuid, file_format, fpath, user_login, sensor_uu
     app.logger.debug(["ZONE", zonelabel, z_full_path, partzpath])
     cropped.save(z_full_path, file_format, quality=100)
     newzone = PictureZone(fpath=partzpath, zone=zonelabel)
-    
+
     # Now take an original image, crop the zones, send it to the
     # CF server and get back the response for each
     # Draw rectangle zones on the original image & save it
@@ -197,21 +197,65 @@ def send_zones(zone, zonelabel, fuuid, file_format, fpath, user_login, sensor_uu
     # send CF request
     #original.save(fullpath)
     #response = requests.post(CF_HOST.format("loadimage"), headers=cf_headers, files = {'croppedfile': img_io}, data={'index':0, 'filename': ''})
-    response = requests.post(CF_HOST.format("loadimage"), auth=(CF_LOGIN, CF_PASSWORD), files = {'imagefile': img_io}, data={'index':0, 'filename': fuuid})    
+    response = requests.post(CF_HOST.format("loadimage"), auth=(CF_LOGIN, CF_PASSWORD), files = {'imagefile': img_io}, data={'index':0, 'filename': fuuid})
     if response.status_code == 200:
         cf_result = response.json().get('objtype')
 
         ## >>> New logic, with subzones.
-        ## 
+        subzones = get_zones(cropped, 2, 2)
+        sz_results = []
+        for sz in subzones.keys():
+            sz_res = send_subzones(subzones[sz], sz, file_format, cropped)
+            sz_results.append(sz_res)
+
+        unhealthy_results = ['_'.join(res.split('_')[:-1]) for res in sz_results if 'unhealthy' in res]
+        healthy_results = [res for res in sz_results if 'unhealthy' not in res]
+
+        if unhealthy_results and 'unhealthy' in cf_result:
+            res_plant_type = '_'.join(cf_result.split('_')[:-1])
+            if res_plant_type in unhealthy_results:
+                precise_res = cf_result
+            elif len(unhealthy_results) > 1 and len(set(unhealthy_results)) < len(unhealthy_results):
+                unhealthy_results = [(res, unhealthy_results.count(res)) for res in set(unhealthy_results)]
+                unhealthy_results = sorted(unhealthy_results, key=lambda x: x[1], reverse=True)
+                precise_res = unhealthy_results[0][0] + '_unhealthy'
+            elif len(unhealthy_results) > 1:
+                for res in healthy_results:
+                    if res in unhealthy_results:
+                        precise_res = res + '_unhealthy'
+                        break
+                    precise_res = unhealthy_results[0] + '_unhealthy'
+            else:
+                precise_res = cf_result
+
+        elif unhealthy_results and 'unhealthy' not in cf_result:
+            if len(unhealthy_results) > 1 and len(set(unhealthy_results)) < len(unhealthy_results):
+                unhealthy_results = [(res, unhealthy_results.count(res)) for res in set(unhealthy_results)]
+                unhealthy_results = sorted(unhealthy_results, key=lambda x: x[1], reverse=True)
+                precise_res = unhealthy_results[0][0] + '_unhealthy'
+            else:
+                precise_res = cf_result
+
+        elif cf_result in sz_results:
+            precise_res = cf_result
+
+        else:
+            precise_results = [(res, sz_results.count(res)) for res in set(sz_results)]
+            precise_results = sorted(precise_results, key=lambda x: x[1], reverse=True)
+            precise_res = precise_results[0][0]
+
+        ## >>> New logic, with subzones.
+
+
         #is_truly_unhealthy = False
-        
+
         #if 'unhealthy' in cf_result:
         #    app.logger.debug("CHECKING SUBZONES")
         #    subzones = get_zones(cropped, 2, 2)
         #    sz_argslist = []
         #    sz_results = []
         #    # Todo: parallelize
-        #    # aiohttp? 
+        #    # aiohttp?
         #    for sz in subzones.keys():
         #        sz_res = send_subzones(subzones[sz], sz, file_format, cropped)
         #        sz_results.append(sz_res)
@@ -222,33 +266,33 @@ def send_zones(zone, zonelabel, fuuid, file_format, fpath, user_login, sensor_uu
         #    sz_results = set(sz_results)
         #    sz_results = {elem for elem in sz_results if not 'rassada' in elem}
         #    sz_results = {elem for elem in sz_results if not 'infrastructure' in elem}
-        #    
+        #
         #    res_plant_type = cf_result.split('_')[0]
-        #    
+        #
         #    newzone.revisedresults = ",".join(sz_results)
         #    #if cf_result in [sz_res for sz_res in sz_results]:
-        #    if all([res_plant_type in sz_res for sz_res in sz_results]) and any(['unhealthy' in sz_res for sz_res in sz_results]):                
+        #    if all([res_plant_type in sz_res for sz_res in sz_results]) and any(['unhealthy' in sz_res for sz_res in sz_results]):
         #        is_truly_unhealthy = True
-                
+
         newzone.origresults = cf_result
-        
+
         #if not is_truly_unhealthy:
         #    cf_result = cf_result.replace("_unhealthy", "_healthy_rev")
         ## >>> New logic, with subzones.
 
-        
-        newzone.results = cf_result
-        
+
+        newzone.results = precise_res
+
         #if is_truly_unhealthy:
         #    newzone.revisedresults = "unhealthy"
         #else:
         #    newzone.revisedresults = "healthy"
-            
+
         app.logger.debug(f"CF RESULTS {cf_result}")
-                            
+
     db.session.add(newzone)
     db.session.commit()
-    
+
     #if newzone.revisedresults == unhealthy:
     return newzone.id
 
@@ -262,10 +306,10 @@ def send_subzones(zone, zonelabel, file_format, pict):
     response = requests.post(CF_HOST.format("loadimage"), auth=(CF_LOGIN, CF_PASSWORD), files = {'imagefile': img_io}, data={'index':0, 'filename': "filename"})
     if response.status_code == 200:
         cf_result = response.json().get('objtype')
-        
+
     app.logger.debug(f"SUBZONE RESULTS {cf_result}")
     return cf_result
-    
+
 def check_unhealthy_zones(pict, suuid):
     # return Location, SensorUUID, Camname, Position, Zones
     app.logger.debug("CHECKING PICTURE ZONES")
@@ -288,13 +332,13 @@ def check_unhealthy_zones(pict, suuid):
                 prev_three_zones = db.session.query(PictureZone).join(DataPicture).join(CameraPosition).join(Camera).join(Data).join(Sensor).order_by(PictureZone.id.desc()).filter(PictureZone.zone==zone.zone).filter(CameraPosition.poslabel==res['position']).filter(Camera.camlabel==res['camname']).filter(Sensor.uuid==suuid).limit(3).offset(1).all()
                 app.logger.debug(["PREV THEE ZONES", zone.id, [(z.results, z.id) for z in prev_three_zones]])
                 # Changed results to revisedresults
-                
+
                 if all(['unhealthy' in z.results for z in prev_three_zones]):
                     res['zones'].append({"results": "{} {}".format(zone.zone, zone.results), "fpath": zone.fpath})
     if res['zones']:
         return res
-    
-        
+
+
 def cache_key():
    args = request.args
    key = request.path + '?' + urllib.parse.urlencode([
@@ -302,7 +346,7 @@ def cache_key():
    ])
    return key
 
-            
+
 
 def make_celery(app):
     celery = Celery(app.import_name, broker=app.config['CELERY_BROKER_URL'])
@@ -389,7 +433,7 @@ def check_pending_notifications():
                 send_email_notification.delay(dbuser.additional_email, notifications)
 
 
-                
+
 @celery.task
 def send_email_notification(email, pict_status_list):
     print("Sending email")
@@ -484,7 +528,7 @@ def crop_zones(results, cam_names, cam_positions, cam_zones, cam_numsamples, cam
                 cam_skipsamples = int(cam_skipsamples)
             if cam_numsamples:
                 cam_numsamples = int(cam_numsamples)
-            
+
             prev_date = None
             sample = 0
             for d in results:
@@ -529,7 +573,7 @@ def crop_zones(results, cam_names, cam_positions, cam_zones, cam_numsamples, cam
                                                         cropped.save(cropped_path, 'JPEG', quality=100)
                                                         app.logger.debug(f"Saving file {cropped_path}")
                     prev_date = sdate
-                                    
+
         zfname = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-") + '-cropped_zones.zip'
         zipname = os.path.join(temp_dir, zfname)
         zipf = zipfile.ZipFile(zipname, 'w', zipfile.ZIP_DEFLATED)
@@ -539,7 +583,7 @@ def crop_zones(results, cam_names, cam_positions, cam_zones, cam_numsamples, cam
                     zipf.write(os.path.join(root, file))
         zipf.close()
         shutil.move(zipname, os.path.join('/home/annndrey/Dropbox/plantdata', zfname))
-        
+
 
 #@app.before_first_request
 def login_to_classifier():
@@ -547,7 +591,7 @@ def login_to_classifier():
     login_data = {"username": CF_LOGIN,
                   "password": CF_PASSWORD
                   }
-    
+
     global CF_TOKEN
     try:
         res = requests.post(CF_HOST.format("token"), json=login_data)
@@ -556,8 +600,8 @@ def login_to_classifier():
     except:
         CF_TOKEN = None
 
-        
-def token_required(f):  
+
+def token_required(f):
     @wraps(f)
     def _verify(*args, **kwargs):
         auth_headers = request.headers.get('Authorization', '').split()
@@ -579,7 +623,7 @@ def token_required(f):
             data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         except:
             return abort(403)
-        
+
         user = User.query.filter_by(login=data['sub']).first()
 
         if not user:
@@ -641,12 +685,12 @@ def process_single_file(uplname, pict):
 
 def process_result(result):
     res = result
-    
+
     if '_healthy' in result:
         res = '_'.join(result.split('_')[:-1])
 
     return res
-    
+
 # TODO: async
 # process_single_picture
 # process_single_zone
@@ -660,7 +704,7 @@ def parse_request_pictures(parent_data, camposition_id, req_files, flabel, camna
         camposition = db.session.query(CameraPosition).filter(CameraPosition.id == camposition_id).first()
         if not camposition:
             abort(404)
-            
+
         picts = []
         picts_unhealthy_status = []
         app.logger.debug("PARSING REQUEST PICTURES")
@@ -683,12 +727,12 @@ def parse_request_pictures(parent_data, camposition_id, req_files, flabel, camna
         partpath = os.path.join(user_login, sensor_uuid, fname)
         partthumbpath = os.path.join(user_login, sensor_uuid, thumbname)
         partorigpath = os.path.join(user_login, sensor_uuid, origname)
-        
+
         with open(fullpath, 'wb') as outf:
             outf.write(fdata)
-            
+
         original.save(origpath)
-        
+
         imglabel = flabel
         app.logger.debug(["UPLNAME", flabel])
         classification_results = ""
@@ -728,7 +772,7 @@ def parse_request_pictures(parent_data, camposition_id, req_files, flabel, camna
                                 # split zone into 4 subzones & check it again.
                                 # if any subzone is reported as unhealthy,
                                 # the zone result is confirmed
-                                
+
                                 dr.rectangle((zones[nzone.zone]['left'], zones[nzone.zone]['top'], zones[nzone.zone]['right'], zones[nzone.zone]['bottom']), outline = '#ff0000', width=10)
                         class_results = ["{}: {}".format(z.zone, process_result(z.results)) for z in sorted(newzones, key=lambda x: int(x.zone[4:]))]
                         classification_results = "Results: {}".format(", ".join(class_results))
@@ -757,7 +801,7 @@ def parse_request_pictures(parent_data, camposition_id, req_files, flabel, camna
         data.pictures.append(newpicture)
         db.session.add(data)
         db.session.commit()
-        
+
         # Here we have linked the picture with zones,
         # and can check now for the unhealthy results
         # and send emails
@@ -822,7 +866,7 @@ def get_auth_token_post():
       401:
         description: UNAUTHORIZED
     """
-    
+
     username = request.json.get('username')
     password = request.json.get('password')
     user = User.query.filter_by(login = username).first()
@@ -841,7 +885,7 @@ def get_auth_token():
     return jsonify({ 'token': "%s" % token })
 
 
-# SCHEMAS 
+# SCHEMAS
 class UserSchema(ma.ModelSchema):
     class Meta:
         model = User
@@ -851,13 +895,13 @@ class SensorTypeSchema(ma.ModelSchema):
     class Meta:
         model = SensorType
 
-        
+
 class CameraOnlySchema(ma.ModelSchema):
     class Meta:
         model = Camera
         exclude = ['positions', ]
     warnings = ma.Function(lambda obj: obj.warnings)
-        
+
     # positions = ma.Nested("CameraPositionSchema", many=True, exclude=["camera", "url"])#, exclude=['camera',])
 
 class CameraSchema(ma.ModelSchema):
@@ -865,14 +909,14 @@ class CameraSchema(ma.ModelSchema):
         model = Camera
     warnings = ma.Function(lambda obj: obj.warnings)
     positions = ma.Nested("CameraPositionSchema", many=True, exclude=["camera", "url"])#, exclude=['camera',])
-    
-        
+
+
 class CameraPositionSchema(ma.ModelSchema):
     class Meta:
         model = CameraPosition
     pictures = ma.Nested("DataPictureSchema", many=True, exclude=["camera_position", "data", "thumbnail"])#, many=False, exclude=['thumbnail', 'camera', 'camera_position', 'data'])
     #image = ma.Function(lambda obj: obj.image)
-    
+
 class SensorSchema(ma.ModelSchema):
     class Meta:
         model = Sensor
@@ -892,14 +936,14 @@ class SensorShortSchema(ma.ModelSchema):
 class PictureZoneSchema(ma.ModelSchema):
     class Meta:
         model = PictureZone
-        
+
     fpath = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.fpath, _external=True, _scheme='https')))
 
-    
+
 class DataPictureSchema(ma.ModelSchema):
     class Meta:
         model = DataPicture
-        
+
     preview = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.thumbnail, _external=True, _scheme='https')))
     fpath = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.fpath, _external=True, _scheme='https')))
     original = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.original, _external=True, _scheme='https')))
@@ -913,15 +957,15 @@ class ImageSchema(ma.ModelSchema):
     #preview = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.thumbnail, _external=True, _scheme='https')))
     fpath = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.fpath, _external=True, _scheme='https')))
     original = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.original, _external=True, _scheme='https')))
-        
+
     #zones = ma.Nested("PictureZoneSchema", many=True, exclude=["data",])
 
-    
-    
+
+
 class LocationSchema(ma.ModelSchema):
     class Meta:
         model = Location
-        
+
 
 class DataSchema(ma.ModelSchema):
     class Meta:
@@ -948,7 +992,7 @@ class DataSchema(ma.ModelSchema):
 #                    if p.value > p.prtype.maxvalue:
 #                        p.value = p.prtype.maxvalue
 
-                        
+
     @post_dump(pass_many=True)
     def filter_fields(self, data, many, **kwargs):
         if many:
@@ -961,7 +1005,7 @@ class DataSchema(ma.ModelSchema):
                     # logging.debug(pr)
                     if pr['uuid'] not in pr_labels:
                         pr_labels[pr['uuid']] = []
-                        
+
                 for k, v in groupby(d['records'], key=lambda x:x['probe']['uuid']):
                     #logging.debug(list(v))
                     for pr in d['probes']:
@@ -981,26 +1025,26 @@ class DataSchema(ma.ModelSchema):
                 del d['records']
         return data
 
-    
+
 class FullDataSchema(ma.ModelSchema):
     class Meta:
         model = Data
         exclude = ['pictures', ]
     cameras = ma.Nested("CameraSchema", many=True, exclude=["data",])
 
-    
+
 class ProbeSchema(ma.ModelSchema):
     class Meta:
         model = Probe
         exclude = ['values', 'id']
 
-    
+
 class ProbeShortSchema(ma.ModelSchema):
     class Meta:
         model = Probe
         exclude = ['values', 'id', 'data', 'sensor']
 
-    
+
 class ProbeDataSchema(ma.ModelSchema):
     class Meta:
         model = ProbeData
@@ -1008,13 +1052,13 @@ class ProbeDataSchema(ma.ModelSchema):
     ptype = ma.Function(lambda obj: obj.prtype.ptype)
     probe = ma.Nested("ProbeSchema", many=False, exclude=["data", 'sensor'])
 
-    
+
 class PictAPI(Resource):
     def __init__(self):
         self.schema = DataPictureSchema()
         self.m_schema = DataPictureSchema(many=True)
         self.method_decorators = []
-        
+
     def options(self, *args, **kwargs):
         return jsonify([])
 
@@ -1036,7 +1080,7 @@ class PictAPI(Resource):
           Picture:
             type: string
             description: Picture URL
-            
+
         responses:
           200:
             description: Picture URL
@@ -1047,7 +1091,7 @@ class PictAPI(Resource):
           404:
             description: URL not found
         """
-        
+
         auth_cookie = request.cookies.get("auth", "")
         auth_headers = request.headers.get('Authorization', '').split()
         if len(auth_headers) > 0:
@@ -1056,14 +1100,14 @@ class PictAPI(Resource):
             token = auth_cookie
         else:
             abort(401)
-            
+
         data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         user = User.query.filter_by(login=data['sub']).first()
         if not user:
             abort(401)
         if not path:
             abort(404)
-        
+
         realpath = path
         redirect_path = "/pictures/" + realpath
         response = make_response("")
@@ -1072,12 +1116,12 @@ class PictAPI(Resource):
         response.headers['Content-Type'] = 'image/jpeg'
         return response
 
-    
+
 class CameraAPI(Resource):
     def __init__(self):
         self.schema = CameraSchema()
         self.method_decorators = []
-    
+
     def options(self, *args, **kwargs):
         return jsonify([])
 
@@ -1113,15 +1157,15 @@ class CameraAPI(Resource):
                   type: object
                   description: Camera position
                   properties:
-                    id: 
+                    id:
                       type: integer
                       description: Camera Position ID
-                    poslabel: 
+                    poslabel:
                       type: string
                       description: Camera Position Label
-                    pictures: 
+                    pictures:
                       type: array
-                      items: 
+                      items:
                         type: object
                         description: Picture
                         properties:
@@ -1157,7 +1201,7 @@ class CameraAPI(Resource):
           404:
             description: URL not found
         """
-        
+
         camera = db.session.query(Camera).filter(Camera.id==id).first()
         if camera:
             return jsonify(self.schema.dump(camera).data), 200
@@ -1170,7 +1214,7 @@ class ImagesAPI(Resource):
         self.images_schema = ImageSchema(many=True)
         self.image_zones_schema = PictureZoneSchema(many=True)
         self.method_decorators = []
-        
+
     def options(self, *args, **kwargs):
         return jsonify([])
 
@@ -1245,10 +1289,10 @@ class ImagesAPI(Resource):
                   type: object
                   description: A single Picture/PictureZone record
                   properties:
-                    id: 
+                    id:
                       type: integer
                       description: Picture/PictureZone ID
-                    ts: 
+                    ts:
                       type: string
                       format: date-time
                       description: Timestamp
@@ -1291,7 +1335,7 @@ class ImagesAPI(Resource):
 
         data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         daystart = dayend = None
-        
+
         user = User.query.filter_by(login=data['sub']).first()
         if not user:
             abort(401)
@@ -1301,9 +1345,9 @@ class ImagesAPI(Resource):
 
         first_rec_day = db.session.query(sql_func.min(Data.ts)).filter(Data.sensor.has(Sensor.uuid == suuid)).first()[0]
         last_rec_day = db.session.query(sql_func.max(Data.ts)).filter(Data.sensor.has(Sensor.uuid == suuid)).first()[0]
-            
+
         if not all([ts_from, ts_to]):
-            
+
             if all([first_rec_day, last_rec_day]):
                 day_st = last_rec_day.replace(hour=0, minute=0)
                 day_end = last_rec_day.replace(hour=23, minute=59, second=59)
@@ -1320,7 +1364,7 @@ class ImagesAPI(Resource):
             image_query = db.session.query(PictureZone).join(DataPicture).join(CameraPosition).join(Camera).join(Data).order_by(DataPicture.ts).filter(DataPicture.ts >= day_st).filter(DataPicture.ts <= day_end)
         else:
             image_query = db.session.query(DataPicture).join(Data).join(CameraPosition).join(Camera).join(PictureZone).order_by(DataPicture.ts).filter(DataPicture.ts >= day_st).filter(DataPicture.ts <= day_end)
-        
+
         if ignore_night_photos:
             image_query = image_query.filter(Data.lux > 30)
         if suuid:
@@ -1341,14 +1385,14 @@ class ImagesAPI(Resource):
             res_json = self.image_zones_schema.dump(res_data).data
         else:
             res_json = self.images_schema.dump(res_data).data
-            
+
         if res_data:
             res = {"numrecords": len(res_data),
                    'data': res_json
             }
-            
+
             return jsonify(res), 200
-        
+
         abort(404)
 
 
@@ -1357,7 +1401,7 @@ class ProbeAPI(Resource):
         self.schema = ProbeSchema()
         self.m_schema = ProbeShortSchema(many=True)
         self.method_decorators = []
-        
+
     def options(self, *args, **kwargs):
         return jsonify([])
 
@@ -1374,7 +1418,7 @@ class ProbeAPI(Resource):
         user = User.query.filter_by(login=udata['sub']).first()
         puuid = request.args.get('puuid', None)
         suuid = request.args.get('suuid', None)
-        
+
         sensor = db.session.query(Sensor).filter(Sensor.uuid == suuid).first()
         app.logger.debug(["SENSOR", suuid, sensor])
         if sensor:
@@ -1389,7 +1433,7 @@ class ProbeAPI(Resource):
             return jsonify(self.m_schema.dump(probes).data), 200
         abort(404)
 
-    
+
     @token_required
     @cross_origin()
     def post(self):
@@ -1406,11 +1450,11 @@ class ProbeAPI(Resource):
         datarecord = db.session.query(Data).filter(Data.id == did).first()
         suuid  = request.form.get('suuid', None)
         sensor = db.session.query(Sensor).filter(Sensor.uuid == suuid).first()
-        
+
         if sensor:
             if sensor.user != user:
                 abort(403)
-        
+
         probe = db.session.query(Probe).filter(Probe.uuid == puuid).first()
         if not probe:
             newprobe = Probe(sensor=sensor, uuid=puuid, data=datarecord)
@@ -1428,7 +1472,7 @@ class ProbeDataAPI(Resource):
         self.schema = ProbeDataSchema()
         self.m_schema = ProbeDataSchema(many=True)
         self.method_decorators = []
-        
+
     def options(self, *args, **kwargs):
         return jsonify([])
 
@@ -1448,10 +1492,10 @@ class ProbeDataAPI(Resource):
         suuid = request.form.get('suuid', None)
         did = request.form.get('did', None)
         sensor = db.session.query().filter(Sensor.uuid == suuid).first()
-        
+
         abort(404)
 
-    
+
     @token_required
     @cross_origin()
     def post(self):
@@ -1466,17 +1510,17 @@ class ProbeDataAPI(Resource):
         pid = request.form.get('pid', None)
         suuid = request.form.get('suuid', None)
         did = request.form.get('did', None)
-        
+
         sensor = db.session.query(Sensor).filter(Sensor.uuid == suuid).first()
         value = request.form.get('value', None)
         ptype = request.form.get('ptype', None)
         label = request.form.get('label', None)
 
         app.logger.debug(["PDATA", value, ptype, label])
-        
+
         if not value:
             return make_response(jsonify({'error': 'No value provided'}), 400)
-        
+
         if not ptype:
             return make_response(jsonify({'error': 'No ptype provided'}), 400)
 
@@ -1496,17 +1540,17 @@ class ProbeDataAPI(Resource):
             db.session.add(newprobedata)
             db.session.commit()
             return jsonify(self.schema.dump(newprobedata).data), 201
-        
+
         abort(404)
 
-        
+
 class DataAPI(Resource):
     def __init__(self):
         self.schema = DataSchema()
         self.m_schema = DataSchema(many=True)
         self.f_schema = FullDataSchema(many=True)
         self.method_decorators = []
-        
+
     def options(self, *args, **kwargs):
         return jsonify([])
 
@@ -1530,9 +1574,9 @@ class DataAPI(Resource):
                 d['pictures'] = []
             else:
                 d['pictures'] = pictures[int(d['id'])]
-            
+
         return res
-    
+
     @token_required
     @cross_origin()
     #@cache.cached(timeout=60, key_prefix=cache_key)
@@ -1582,11 +1626,11 @@ class DataAPI(Resource):
               mindate:
                 type: string
                 format: date-time
-                description: The earliest record date 
+                description: The earliest record date
               maxdate:
                 type: string
                 format: date-time
-                description: The latest record date 
+                description: The latest record date
               data:
                 type: array
                 description: Data records for the specified sensor
@@ -1594,16 +1638,16 @@ class DataAPI(Resource):
                   type: object
                   description: A single data record
                   properties:
-                    id: 
+                    id:
                       type: integer
                       description: Data ID
-                    ts: 
+                    ts:
                       type: string
                       format: date-time
                       description: Data record timestamp
                     probes:
-                      type: array   
-                      items: 
+                      type: array
+                      items:
                         type: object
                         description: Probe data
                         properties:
@@ -1620,7 +1664,7 @@ class DataAPI(Resource):
                              type: object
                              description: Probe data value
                              properties:
-                               id: 
+                               id:
                                  type: integer
                                  description: Probe Data ID
                                value:
@@ -1633,9 +1677,9 @@ class DataAPI(Resource):
                                ptype:
                                  type: string
                                  description: Probe Data type
-                    cameras: 
+                    cameras:
                       type: array
-                      items: 
+                      items:
                         type: object
                         description: Camera data
                         properties:
@@ -1652,15 +1696,15 @@ class DataAPI(Resource):
                              type: object
                              description: Camera position
                              properties:
-                               id: 
+                               id:
                                  type: integer
                                  description: Camera Position ID
-                               poslabel: 
+                               poslabel:
                                  type: string
                                  description: Camera Position Label
-                               pictures: 
+                               pictures:
                                  type: array
-                                 items: 
+                                 items:
                                    type: object
                                    description: Picture
                                    properties:
@@ -1720,7 +1764,7 @@ class DataAPI(Resource):
           404:
             description: URL not found
         """
-        app.logger.debug("GET DATA")        
+        app.logger.debug("GET DATA")
         # here the data should be scaled or not
         suuid = request.args.get('suuid', None)
         puuid = request.args.get('puuid', None)
@@ -1744,7 +1788,7 @@ class DataAPI(Resource):
         data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         daystart = dayend = None
         # By default show data for the last recorded day
-        # 
+        #
         user = User.query.filter_by(login=data['sub']).first()
         sensor = db.session.query(Sensor).filter(Sensor.uuid == suuid).first()
         if user != sensor.user:
@@ -1764,7 +1808,7 @@ class DataAPI(Resource):
                 if all([first_rec_day, last_rec_day]):
                     # IF NO DATES SPECIFIED,
                     # SHOW ONLY LAST DAY RECORDS!!
-                    
+
                     day_st = last_rec_day.replace(hour=0, minute=0)
                     day_end = last_rec_day.replace(hour=23, minute=59, second=59)
                 else:
@@ -1772,17 +1816,17 @@ class DataAPI(Resource):
             else:
                 day_st = datetime.datetime.strptime(ts_from, '%d-%m-%Y %H:%M')
                 day_end = datetime.datetime.strptime(ts_to, '%d-%m-%Y %H:%M')
-            
+
             sensordata_query = db.session.query(Data).filter(Data.sensor.has(Sensor.uuid == suuid))
             if puuid:
                 sensordata_query = sensordata_query.join(Data.records).options(contains_eager(Data.records)).filter(ProbeData.probe.has(Probe.uuid==puuid))
-                
+
             #app.logger.debug(["DATES", day_st, day_end])
             #app.logger.debug(["DATES", first_rec_day, last_rec_day])
             sensordata_query = sensordata_query.order_by(Data.ts).filter(Data.ts >= day_st).filter(Data.ts <= day_end)
-            
+
             sensordata = sensordata_query.all()
-            
+
             if sensordata:
                 if fill_date:
                     pass
@@ -1832,18 +1876,18 @@ class DataAPI(Resource):
                 #    app.logger.debug(f"EXPORT ZONES, {export_zones}")
                 #    if ignore_night_photos:
                 #        sensordata_query = sensordata_query.filter(Data.lux > 30)
-                #        
+                #
                 #    res_data = sensordata_query.filter(Data.pictures.any()).all()
                 #    app.logger.debug(len(res_data))
                 #    crop_zones.delay(self.f_schema.dump(res_data).data, cam_names, cam_positions, cam_zones, cam_numsamples, cam_skipsamples, label_text)
-                #    
+                #
                 #    res = {"numrecords": len(res_data),
                 #           'mindate': first_rec_day,
                 #           'maxdate': last_rec_day,
                 #           'data': self.m_schema.dump(res_data).data
                 #    }
                 #    return jsonify(res), 200
-                    
+
                 else:
                     if full_data:
                         data = self.f_schema.dump(sensordata).data
@@ -1854,7 +1898,7 @@ class DataAPI(Resource):
                     #        for ind, pr in enumerate(d['probes']):
                     #            if pr['uuid'] != puuid:
                     #                d['probes'].pop(ind)
-                    
+
                     res = {"numrecords": len(sensordata),
                            'mindate': first_rec_day,
                            'maxdate': last_rec_day,
@@ -1896,16 +1940,16 @@ class DataAPI(Resource):
                   type: object
                   description: A single data record
                   properties:
-                    id: 
+                    id:
                       type: integer
                       description: Data ID
-                    ts: 
+                    ts:
                       type: string
                       format: date-time
                       description: Data record timestamp
                     probes:
-                      type: array   
-                      items: 
+                      type: array
+                      items:
                         type: object
                         description: Probe data
                         properties:
@@ -1922,10 +1966,10 @@ class DataAPI(Resource):
                              type: object
                              description: Probe data value
                              properties:
-                               id: 
+                               id:
                                  type: integer
                                  description: Probe Data ID
-                               value: 
+                               value:
                                  type: number
                                  format: double
                                  description: Probe Data value
@@ -1935,9 +1979,9 @@ class DataAPI(Resource):
                                ptype:
                                  type: string
                                  description: Probe type
-                    cameras: 
+                    cameras:
                       type: array
-                      items: 
+                      items:
                         type: object
                         description: Camera data
                         properties:
@@ -1954,15 +1998,15 @@ class DataAPI(Resource):
                              type: object
                              description: Camera position
                              properties:
-                               id: 
+                               id:
                                  type: integer
                                  description: Camera Position ID
-                               poslabel: 
+                               poslabel:
                                  type: string
                                  description: Camera Position Label
-                               pictures: 
+                               pictures:
                                  type: array
-                                 items: 
+                                 items:
                                    type: object
                                    description: Picture
                                    properties:
@@ -1998,7 +2042,7 @@ class DataAPI(Resource):
           404:
             description: URL not found
         """
-        
+
         auth_headers = request.headers.get('Authorization', '').split()
         token = auth_headers[1]
         udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
@@ -2023,22 +2067,22 @@ class DataAPI(Resource):
                     probe = Probe(sensor=sensor, uuid=pr['puuid'])#, data=newdata)
                     db.session.add(probe)
                     db.session.commit()
-                newdata.probes.append(probe)    
+                newdata.probes.append(probe)
                 #probe.data.append(newdata)
                 for pd in pr['data']:
                     prtype = db.session.query(SensorType).filter(SensorType.ptype==pd['ptype']).first()
                     newprobedata = ProbeData(probe=probe, value=pd['value'], label=pd['label'], ptype=pd['ptype'])
                     if prtype:
                         newprobedata.prtype = prtype
-                        
+
                     db.session.add(newprobedata)
                     db.session.commit()
                     newdata.records.append(newprobedata)
                     db.session.add(newdata)
                     db.session.commit()
-            
+
             app.logger.debug(["New data saved", newdata.id])
-            
+
         return jsonify(self.schema.dump(newdata).data), 201
 
     @token_required
@@ -2066,16 +2110,16 @@ class DataAPI(Resource):
                   type: object
                   description: A single data record
                   properties:
-                    id: 
+                    id:
                       type: integer
                       description: Data ID
-                    ts: 
+                    ts:
                       type: string
                       format: date-time
                       description: Data record timestamp
                     probes:
-                      type: array   
-                      items: 
+                      type: array
+                      items:
                         type: object
                         description: Probe data
                         properties:
@@ -2092,10 +2136,10 @@ class DataAPI(Resource):
                              type: object
                              description: Probe data value
                              properties:
-                               id: 
+                               id:
                                  type: integer
                                  description: Probe Data ID
-                               value: 
+                               value:
                                  type: number
                                  format: double
                                  description: Probe Data value
@@ -2105,9 +2149,9 @@ class DataAPI(Resource):
                                ptype:
                                  type: string
                                  description: Probe type
-                    cameras: 
+                    cameras:
                       type: array
-                      items: 
+                      items:
                         type: object
                         description: Camera data
                         properties:
@@ -2124,15 +2168,15 @@ class DataAPI(Resource):
                              type: object
                              description: Camera position
                              properties:
-                               id: 
+                               id:
                                  type: integer
                                  description: Camera Position ID
-                               poslabel: 
+                               poslabel:
                                  type: string
                                  description: Camera Position Label
-                               pictures: 
+                               pictures:
                                  type: array
-                                 items: 
+                                 items:
                                    type: object
                                    description: Picture
                                    properties:
@@ -2168,9 +2212,9 @@ class DataAPI(Resource):
           404:
             description: URL not found
         """
-        
+
         app.logger.debug("Patch Data")
-        
+
         if not id:
             abort(400)
 
@@ -2191,7 +2235,7 @@ class DataAPI(Resource):
         app.logger.debug(["CAMERA DB:", camname, camposition, recognize])
         if not user:
             abort(403)
-            
+
         data = db.session.query(Data).filter(Data.id == id).first()
         if data:
             sensor = data.sensor
@@ -2204,7 +2248,7 @@ class DataAPI(Resource):
                 camera = Camera(data=data, camlabel=camname)
                 db.session.add(camera)
                 db.session.commit()
-                
+
             camera_position = db.session.query(CameraPosition).join(Camera).filter(Camera.id == camera.id).filter(CameraPosition.poslabel == camposition).first()
             if not camera_position:
                 camera_position = CameraPosition(camera=camera, poslabel=camposition)
@@ -2241,7 +2285,7 @@ class DataAPI(Resource):
             return "Data added", 200
         #jsonify(self.schema.dump(data).data)
         abort(404)
-    
+
 
 class SensorAPI(Resource):
     def __init__(self):
@@ -2280,11 +2324,11 @@ class SensorAPI(Resource):
               maxdate:
                 type: string
                 format: date-time
-                description: The latest record date 
+                description: The latest record date
               mindate:
                 type: string
                 format: date-time
-                description: The earliest record date 
+                description: The earliest record date
               numrecords:
                 type: integer
                 description: Number of records for a particular sensor
@@ -2367,13 +2411,13 @@ class SensorAPI(Resource):
             description: URL not found
 
         """
-        
+
         print("REQUEST", request.json)
         auth_headers = request.headers.get('Authorization', '').split()
         token = auth_headers[1]
         udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         user = User.query.filter_by(login=udata['sub']).first()
-        
+
         lat = request.json.get('lat')
         lon = request.json.get('lon')
         address = request.json.get('address')
@@ -2382,14 +2426,14 @@ class SensorAPI(Resource):
             location = Location(lat=lat, lon=lon, address=address)
             db.session.add(location)
             db.session.commit()
-        
-        
+
+
         newsensor = Sensor(location=location, user=user)
         newuuid = str(uuid.uuid4())
         newsensor.uuid=newuuid
         db.session.add(newsensor)
         db.session.commit()
-        
+
         return jsonify(self.schema.dump(newsensor).data), 201
 
     @token_required
@@ -2403,7 +2447,7 @@ class SensorAPI(Resource):
         user = User.query.filter_by(login=udata['sub']).first()
         if not user:
             abort(403)
-            
+
         return jsonify("OK {}".format(datetime.datetime.now()))
 
     @token_required
@@ -2435,7 +2479,7 @@ class SensorAPI(Resource):
         user = User.query.filter_by(login=udata['sub']).first()
         return jsonify("OK {}".format(datetime.datetime.now()))
 
-    
+
 
 class UserAPI(Resource):
     def __init__(self):
@@ -2444,10 +2488,10 @@ class UserAPI(Resource):
         self.m_schema = UserSchema(many=True, exclude=['password_hash',])
         self.method_decorators = []
 
-        
+
     def options(self, *args, **kwargs):
         return jsonify([])
-        
+
     @token_required
     @cross_origin()
     #@cache.cached(timeout=300, key_prefix=cache_key)
@@ -2511,7 +2555,7 @@ class UserAPI(Resource):
           404:
             description: URL not found
         """
-        
+
         if not id:
             users = db.session.query(User).all()
             return jsonify(self.m_schema.dump(users).data)
@@ -2589,28 +2633,28 @@ class UserAPI(Resource):
           404:
             description: URL not found
         """
-        
+
         if not request.json:
             abort(400, message="No data provided")
-            
+
         user = db.session.query(User).filter(User.id==id).first()
         if user:
             for attr in ['login', 'phone', 'name', 'note', 'is_confirmed', 'confirmed_on', 'password']:
                 val = request.json.get(attr)
                 if attr == 'password' and val:
                     user.hash_password(val)
-                    
+
                 elif attr == 'confirmed_on':
                     val = datetime.datetime.now()
 
-                        
+
                 if val:
                     setattr(user, attr, val)
-                
+
             db.session.add(user)
             db.session.commit()
             return jsonify(self.schema.dump(user).data), 201
-        
+
         abort(404, message="Not found")
 
     @token_required
@@ -2658,17 +2702,17 @@ class UserAPI(Resource):
           404:
             description: URL not found
         """
-        
+
         if not request.json:
             abort(400, message="No data provided")
         login = request.json.get('login')
         phone = request.json.get('phone')
         name = request.json.get('name')
         password = request.json.get('password')
-        
+
         if not(any([login, phone, name])):
             return abort(400, 'Provide required fields for phone, name or login')
-        
+
         prevuser = db.session.query(User).filter(User.login==login).first()
         if prevuser:
             abort(409, message='User exists')
@@ -2680,13 +2724,13 @@ class UserAPI(Resource):
             confirmed_on = datetime.datetime.today()
 
         newuser = User(login=login, is_confirmed=is_confirmed, confirmed_on=confirmed_on, phone=phone, name=name, note=note)
-        
+
         newuser.hash_password(password)
         db.session.add(newuser)
         db.session.commit()
-        
+
         return jsonify(self.schema.dump(newuser).data), 201
-    
+
     def delete(self, id):
         """
         Delete User
@@ -2717,7 +2761,7 @@ class UserAPI(Resource):
             return make_response("User deleted", 204)
         abort(404, message="Not found")
 
-        
+
 api.add_resource(UserAPI, '/users', '/users/<int:id>', endpoint='users')
 api.add_resource(ImagesAPI, '/images', endpoint='images')
 api.add_resource(CameraAPI, '/cameras/<int:id>', endpoint='cameras')
@@ -2751,7 +2795,7 @@ def fix_path():
             db.session.add(nimage)
             db.session.commit()
 
-                
+
 if __name__ == '__main__':
     app.debug = True
     app.run(host='0.0.0.0')
