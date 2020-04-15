@@ -64,7 +64,7 @@ from collections import OrderedDict
 
 
 #from multiprocessing import Pool
-import multiprocessing.pool.ThreadPool as Pool
+from multiprocessing.dummy import Pool 
 
 logging.basicConfig(format='%(levelname)s: %(asctime)s - %(message)s',
                     level=logging.DEBUG, datefmt='%d.%m.%Y %I:%M:%S %p')
