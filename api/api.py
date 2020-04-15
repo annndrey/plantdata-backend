@@ -63,7 +63,8 @@ from collections import OrderedDict
 
 
 
-from multiprocessing import Pool
+#from multiprocessing import Pool
+from multiprocessing.pool.ThreadPool import as Pool
 
 logging.basicConfig(format='%(levelname)s: %(asctime)s - %(message)s',
                     level=logging.DEBUG, datefmt='%d.%m.%Y %I:%M:%S %p')
@@ -292,7 +293,7 @@ def send_zones(zone, zonelabel, fuuid, file_format, fpath, user_login, sensor_uu
 
     db.session.add(newzone)
     db.session.commit()
-    db.session.close()
+    #db.session.close()
     #if newzone.revisedresults == unhealthy:
     return newzone.id
 
@@ -757,7 +758,8 @@ def parse_request_pictures(parent_data, camposition_id, req_files, flabel, camna
                         dr.text((zones[z]['left']+2, zones[z]['top']+2), z, font=zonefont)
 
                     # Paralleled requests
-                    p = Pool(processes=2)
+                    # now using threads
+                    p = Pool(4)
                     zones_ids = p.starmap(send_zones, argslist)
                     p.close()
                     app.logger.debug(["SAVED ZONES", [zones_ids]])
