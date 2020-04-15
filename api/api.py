@@ -292,7 +292,7 @@ def send_zones(zone, zonelabel, fuuid, file_format, fpath, user_login, sensor_uu
 
     db.session.add(newzone)
     db.session.commit()
-
+    db.session.close()
     #if newzone.revisedresults == unhealthy:
     return newzone.id
 
@@ -781,6 +781,7 @@ def parse_request_pictures(parent_data, camposition_id, req_files, flabel, camna
                         newzones = None
                         classification_results = ""
                 original.save(fullpath)
+                app.logger.debug(["IMGLABEL", imglabel, classification_results])
                 imglabel = imglabel + " " + classification_results
         # Thumbnails
         original.thumbnail((300, 300), Image.ANTIALIAS)
@@ -810,25 +811,26 @@ def parse_request_pictures(parent_data, camposition_id, req_files, flabel, camna
             picts_unhealthy_status.append(pict_zones_info)
         app.logger.debug("NEW PICTURE ADDED")
 
-    if picts_unhealthy_status:
-        # add notification
-        sensor = db.session.query(Sensor).filter(Sensor.uuid == sensor_uuid).first()
-        if sensor:
-            if sensor.user.login == user_login:
-                user_email = sensor.user.additional_email
-                if user_email:
-                    # update results list:
-                    for pict_res in picts_unhealthy_status:
-                        pict_res['location'] = sensor.location.address
-                        pict_res['sensor_uuid'] = sensor.uuid
-                    for p in picts_unhealthy_status:
-                        # email_text = create_email_text(p)
-                        # Now we only add a pending notification to be send
-                        app.logger.debug(["CREATING NOTIFICATION", p])
-                        p['ts'] = p['ts'].strftime("%d-%m-%Y %H:%M:%S")
-                        newnotification = Notification(user=sensor.user, text=json.dumps(p))
-                        db.session.add(newnotification)
-                        db.session.commit()
+        if picts_unhealthy_status:
+            # add notification
+            sensor = db.session.query(Sensor).filter(Sensor.uuid == sensor_uuid).first()
+            if sensor:
+                if sensor.user.login == user_login:
+                    user_email = sensor.user.additional_email
+                    if user_email:
+                        # update results list:
+                        for pict_res in picts_unhealthy_status:
+                            pict_res['location'] = sensor.location.address
+                            pict_res['sensor_uuid'] = sensor.uuid
+                        for p in picts_unhealthy_status:
+                            # email_text = create_email_text(p)
+                            # Now we only add a pending notification to be send
+                            app.logger.debug(["CREATING NOTIFICATION", p])
+                            p['ts'] = p['ts'].strftime("%d-%m-%Y %H:%M:%S")
+                            newnotification = Notification(user=sensor.user, text=json.dumps(p))
+                            db.session.add(newnotification)
+                            db.session.commit()
+        db.session.close()
 
     #return picts
 
