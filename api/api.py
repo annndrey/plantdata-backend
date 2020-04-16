@@ -33,6 +33,8 @@ import shutil
 import zipfile
 import urllib.parse
 
+
+
 # for emails
 import smtplib
 from email.message import EmailMessage
@@ -65,8 +67,10 @@ from PIL import Image, ImageDraw, ImageFont
 import glob
 from collections import OrderedDict
 
+
 from multiprocessing import Pool
 #from multiprocessing.dummy import Pool 
+from concurrent.futures import ThreadPoolExecutor as pool
 
 logging.basicConfig(format='%(levelname)s: %(asctime)s - %(message)s',
                     level=logging.DEBUG, datefmt='%d.%m.%Y %I:%M:%S %p')
@@ -101,8 +105,9 @@ MAILPASS = app.config.get('MAILPASS')
 DB_CONNECT = app.config.get('SQLALCHEMY_DATABASE_URI')
 
 mysql_engine = create_engine(DB_CONNECT, poolclass=NullPool)
-session_factory = sessionmaker(bind=mysql_engine)
+session_factory = sessionmaker(bind=mysql_engine, autocommit=True)
 Session = scoped_session(session_factory)
+executor = ThreadPoolExecutor(3)
 
 
 cache = Cache(app, config={
@@ -670,9 +675,9 @@ def process_result(result):
 # process_single_picture
 # process_single_zone
 
+@celery.task
 def parse_request_pictures(parent_data, camposition_id, req_files, flabel, user_login, sensor_uuid, recognize):
     with app.app_context():
-        
         data = db.session.query(Data).filter(Data.id == parent_data).first()
         if not data:
             abort(404)
@@ -2325,7 +2330,9 @@ class DataAPI(Resource):
             #process_thread = threading.Thread(target=parse_request_pictures, args=[data.id, camera_position.id, req_files, flabel, user.login, sensor.uuid, recognize])
             #app.logger.debug("Start background thread")
             #process_thread.start()
-            parse_request_pictures(data.id, camera_position.id, req_files, flabel, user.login, sensor.uuid, recognize)
+            
+            # Running as celery task
+            parse_request_pictures.delay(data.id, camera_position.id, req_files, flabel, user.login, sensor.uuid, recognize)
             #st.start()
 
             #res = st.join()
