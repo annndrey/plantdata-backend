@@ -695,7 +695,7 @@ def parse_request_pictures(parent_data, camposition_id, req_files, flabel, user_
         app.logger.debug(fpath)
         if not os.path.exists(fpath):
             os.makedirs(fpath)
-        fdata = pict.read()
+        fdata = pict#.read()
         original = Image.open(io.BytesIO(fdata))
         FORMAT = original.format
         fuuid = str(uuid.uuid4())
@@ -2326,7 +2326,7 @@ class DataAPI(Resource):
             db.session.commit()
 
             # Running parse_request_pictures in the background
-            req_files = [io.BytesIO(request.files.get(f).read()) for f in request.files]
+            req_files = [request.files.get(f).read() for f in request.files]
             #process_thread = threading.Thread(target=parse_request_pictures, args=[data.id, camera_position.id, req_files, flabel, user.login, sensor.uuid, recognize])
             #app.logger.debug("Start background thread")
             #process_thread.start()
