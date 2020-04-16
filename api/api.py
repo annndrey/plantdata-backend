@@ -61,10 +61,8 @@ from PIL import Image, ImageDraw, ImageFont
 import glob
 from collections import OrderedDict
 
-
-
-#from multiprocessing import Pool
-from multiprocessing.dummy import Pool 
+from multiprocessing import Pool
+#from multiprocessing.dummy import Pool 
 
 logging.basicConfig(format='%(levelname)s: %(asctime)s - %(message)s',
                     level=logging.DEBUG, datefmt='%d.%m.%Y %I:%M:%S %p')
