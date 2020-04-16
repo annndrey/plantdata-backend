@@ -676,7 +676,7 @@ def process_result(result):
 # process_single_zone
 
 @celery.task
-def parse_request_pictures(parent_data, camposition_id, req_files, flabel, user_login, sensor_uuid, recognize):
+def parse_request_pictures(parent_data, camposition_id, req_file, flabel, user_login, sensor_uuid, recognize):
     with app.app_context():
         data = db.session.query(Data).filter(Data.id == parent_data).first()
         if not data:
@@ -690,12 +690,12 @@ def parse_request_pictures(parent_data, camposition_id, req_files, flabel, user_
         picts_unhealthy_status = []
         app.logger.debug("PARSING REQUEST PICTURES")
         #for uplname in sorted(req_files):
-        pict = req_files[0]#s.get(uplname)
+        pict = req_file#s.get(uplname)
         fpath = os.path.join(current_app.config['FILE_PATH'], user_login, sensor_uuid)
         app.logger.debug(fpath)
         if not os.path.exists(fpath):
             os.makedirs(fpath)
-        fdata = pict.decode('ascii')#.read()
+        fdata = open(pict, 'rb').read()
         original = Image.open(io.BytesIO(fdata))
         FORMAT = original.format
         fuuid = str(uuid.uuid4())
@@ -816,6 +816,7 @@ def parse_request_pictures(parent_data, camposition_id, req_files, flabel, user_
                             newnotification = Notification(user=sensor.user, text=json.dumps(p))
                             db.session.add(newnotification)
                             db.session.commit()
+        os.onlink(req_file)
         #db.session.close()
         # Session.remove()
         #return picts
@@ -2325,14 +2326,17 @@ class DataAPI(Resource):
             db.session.add(data)
             db.session.commit()
 
-            # Running parse_request_pictures in the background
-            req_files = [base64.b64encode(request.files.get(f).read()) for f in request.files]
+            with with tempfile.NamedTemporaryFile(delete=False) as f:
+                fl = [request.files.get(f) for f in request.files][0]
+                f.write(fl.read())
+                # Running parse_request_pictures in the background
+                #req_files = [base64.b64encode(request.files.get(f).read()) for f in request.files]
             #process_thread = threading.Thread(target=parse_request_pictures, args=[data.id, camera_position.id, req_files, flabel, user.login, sensor.uuid, recognize])
             #app.logger.debug("Start background thread")
             #process_thread.start()
             
             # Running as celery task
-            parse_request_pictures.delay(data.id, camera_position.id, req_files, flabel, user.login, sensor.uuid, recognize)
+            parse_request_pictures.delay(data.id, camera_position.id, f.name, flabel, user.login, sensor.uuid, recognize)
             #st.start()
 
             #res = st.join()
