@@ -816,7 +816,7 @@ def parse_request_pictures(parent_data, camposition_id, req_file, flabel, user_l
                             newnotification = Notification(user=sensor.user, text=json.dumps(p))
                             db.session.add(newnotification)
                             db.session.commit()
-        os.onlink(req_file)
+        os.unlink(req_file)
         #db.session.close()
         # Session.remove()
         #return picts
