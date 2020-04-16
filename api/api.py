@@ -70,7 +70,7 @@ from collections import OrderedDict
 
 from multiprocessing import Pool
 #from multiprocessing.dummy import Pool 
-from concurrent.futures import ThreadPoolExecutor as pool
+#from concurrent.futures import ThreadPoolExecutor as pool
 
 logging.basicConfig(format='%(levelname)s: %(asctime)s - %(message)s',
                     level=logging.DEBUG, datefmt='%d.%m.%Y %I:%M:%S %p')
@@ -107,7 +107,7 @@ DB_CONNECT = app.config.get('SQLALCHEMY_DATABASE_URI')
 mysql_engine = create_engine(DB_CONNECT, poolclass=NullPool)
 session_factory = sessionmaker(bind=mysql_engine, autocommit=True)
 Session = scoped_session(session_factory)
-executor = ThreadPoolExecutor(3)
+#executor = ThreadPoolExecutor(3)
 
 
 cache = Cache(app, config={
