@@ -673,8 +673,9 @@ def process_result(result):
 def parse_request_pictures(parent_data, camposition_id, req_files, flabel, user_login, sensor_uuid, recognize):
     with app.app_context():
         #db = SQLAlchemyNoPool()
-        session = Session()
-    
+        #session = Session()
+        session = db.session
+        
         data = session.query(Data).filter(Data.id == parent_data).first()
         if not data:
             abort(404)
@@ -814,7 +815,7 @@ def parse_request_pictures(parent_data, camposition_id, req_files, flabel, user_
                             session.add(newnotification)
                             session.commit()
         #db.session.close()
-        Session.remove()
+        # Session.remove()
         #return picts
 
 
