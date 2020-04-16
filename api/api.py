@@ -2326,7 +2326,7 @@ class DataAPI(Resource):
             db.session.add(data)
             db.session.commit()
 
-            with with tempfile.NamedTemporaryFile(delete=False) as f:
+            with tempfile.NamedTemporaryFile(delete=False) as f:
                 fl = [request.files.get(f) for f in request.files][0]
                 f.write(fl.read())
                 # Running parse_request_pictures in the background
