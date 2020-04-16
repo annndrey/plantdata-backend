@@ -672,15 +672,12 @@ def process_result(result):
 
 def parse_request_pictures(parent_data, camposition_id, req_files, flabel, user_login, sensor_uuid, recognize):
     with app.app_context():
-        #db = SQLAlchemyNoPool()
-        #session = Session()
-        session = db.session
         
-        data = session.query(Data).filter(Data.id == parent_data).first()
+        data = db.session.query(Data).filter(Data.id == parent_data).first()
         if not data:
             abort(404)
 
-        camposition = session.query(CameraPosition).filter(CameraPosition.id == camposition_id).first()
+        camposition = db.session.query(CameraPosition).filter(CameraPosition.id == camposition_id).first()
         if not camposition:
             abort(404)
 
@@ -745,10 +742,10 @@ def parse_request_pictures(parent_data, camposition_id, req_files, flabel, user_
                         #zones_ids = p.starmap(send_zones, argslist)
                         #p.close()
                     app.logger.debug(["SAVED ZONES", [zones_ids]])
-                    session.commit()
+                    db.session.commit()
 
                     if zones_ids:
-                        newzones = session.query(PictureZone).filter(PictureZone.id.in_(zones_ids)).all()
+                        newzones = db.session.query(PictureZone).filter(PictureZone.id.in_(zones_ids)).all()
                         app.logger.debug(["NEWZONES", [(n.id, n.results) for n in newzones]])
                         # Draw a red rectangle around the unhealthy zone
                         for nzone in newzones:
@@ -779,13 +776,13 @@ def parse_request_pictures(parent_data, camposition_id, req_files, flabel, user_
         )
         if newzones:
             newpicture.zones = newzones
-        session.add(newpicture)
+        db.session.add(newpicture)
         camposition.pictures.append(newpicture)
-        session.commit()
+        db.session.commit()
         picts.append(newpicture)
         data.pictures.append(newpicture)
-        session.add(data)
-        session.commit()
+        db.session.add(data)
+        db.session.commit()
         
         # Here we have linked the picture with zones,
         # and can check now for the unhealthy results
@@ -797,7 +794,7 @@ def parse_request_pictures(parent_data, camposition_id, req_files, flabel, user_
 
         if picts_unhealthy_status:
             # add notification
-            sensor = session.query(Sensor).filter(Sensor.uuid == sensor_uuid).first()
+            sensor = db.session.query(Sensor).filter(Sensor.uuid == sensor_uuid).first()
             if sensor:
                 if sensor.user.login == user_login:
                     user_email = sensor.user.additional_email
@@ -812,8 +809,8 @@ def parse_request_pictures(parent_data, camposition_id, req_files, flabel, user_
                             app.logger.debug(["CREATING NOTIFICATION", p])
                             p['ts'] = p['ts'].strftime("%d-%m-%Y %H:%M:%S")
                             newnotification = Notification(user=sensor.user, text=json.dumps(p))
-                            session.add(newnotification)
-                            session.commit()
+                            db.session.add(newnotification)
+                            db.session.commit()
         #db.session.close()
         # Session.remove()
         #return picts
@@ -2325,10 +2322,10 @@ class DataAPI(Resource):
 
             # Running parse_request_pictures in the background
             req_files = [io.BytesIO(request.files.get(f).read()) for f in request.files]
-            process_thread = threading.Thread(target=parse_request_pictures, args=[data.id, camera_position.id, req_files, flabel, user.login, sensor.uuid, recognize])
-            app.logger.debug("Start background thread")
-            process_thread.start()
-            #parse_request_pictures(data.id, camera_position.id, req_files, flabel, user.login, sensor.uuid, recognize)
+            #process_thread = threading.Thread(target=parse_request_pictures, args=[data.id, camera_position.id, req_files, flabel, user.login, sensor.uuid, recognize])
+            #app.logger.debug("Start background thread")
+            #process_thread.start()
+            parse_request_pictures(data.id, camera_position.id, req_files, flabel, user.login, sensor.uuid, recognize)
             #st.start()
 
             #res = st.join()
