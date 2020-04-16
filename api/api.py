@@ -720,7 +720,7 @@ def parse_request_pictures(parent_data, camposition_id, req_files, flabel, camna
                         
                         dr.rectangle((zones[z]['left'], zones[z]['top'], zones[z]['right'], zones[z]['bottom']), outline = '#fbb040', width=3)
                         dr.text((zones[z]['left']+2, zones[z]['top']+2), z, font=zonefont)
-                        zone_id = send_zones([zones[z], z, fuuid, FORMAT, fpath, user_login, sensor_uuid, cf_headers, original])
+                        zone_id = send_zones(zones[z], z, fuuid, FORMAT, fpath, user_login, sensor_uuid, cf_headers, original)
                         zones_ids.append(zone_id)
                         #send_zones(*)
                     # Paralleled requests
