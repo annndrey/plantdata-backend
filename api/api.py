@@ -32,7 +32,7 @@ import tempfile
 import shutil
 import zipfile
 import urllib.parse
-
+import base64
 
 
 # for emails
