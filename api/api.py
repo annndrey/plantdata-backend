@@ -2325,18 +2325,18 @@ class DataAPI(Resource):
                 
             db.session.add(data)
             db.session.commit()
-            tmpfname = os.path.join("/tmp", str(uuid.uuid4()))
-            with open(tmpfname, 'wb') as f:
-                fl = [request.files.get(f) for f in request.files][0]
-                f.write(fl.read())
-                # Running parse_request_pictures in the background
-                #req_files = [base64.b64encode(request.files.get(f).read()) for f in request.files]
-                #process_thread = threading.Thread(target=parse_request_pictures, args=[data.id, camera_position.id, req_files, flabel, user.login, sensor.uuid, recognize])
-                #app.logger.debug("Start background thread")
-                #process_thread.start()
+            tmpfname = os.path.join("tmp", str(uuid.uuid4()))
+            tmpf = open(tmpfname, 'wb'):
+            fl = [request.files.get(f) for f in request.files][0]
+            tmpff.write(fl.read())
+            # Running parse_request_pictures in the background
+            #req_files = [base64.b64encode(request.files.get(f).read()) for f in request.files]
+            #process_thread = threading.Thread(target=parse_request_pictures, args=[data.id, camera_position.id, req_files, flabel, user.login, sensor.uuid, recognize])
+            #app.logger.debug("Start background thread")
+            #process_thread.start()
             
-                # Running as celery task
-                parse_request_pictures.delay(data.id, camera_position.id, f.name, flabel, user.login, sensor.uuid, recognize)
+            # Running as celery task
+            parse_request_pictures.delay(data.id, camera_position.id, tmpf.name, flabel, user.login, sensor.uuid, recognize)
             #st.start()
 
             #res = st.join()
