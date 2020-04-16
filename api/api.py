@@ -2326,7 +2326,7 @@ class DataAPI(Resource):
             db.session.add(data)
             db.session.commit()
             tmpfname = os.path.join("/tmp", str(uuid.uuid4()))
-            with open(tmpfname, 'w') as f:
+            with open(tmpfname, 'wb') as f:
                 fl = [request.files.get(f) for f in request.files][0]
                 f.write(fl.read())
                 # Running parse_request_pictures in the background
