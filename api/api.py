@@ -2328,7 +2328,7 @@ class DataAPI(Resource):
             tmpfname = str(uuid.uuid4())
             tmpf = open(tmpfname, 'wb')
             fl = [request.files.get(f) for f in request.files][0]
-            tmpff.write(fl.read())
+            tmpf.write(fl.read())
             # Running parse_request_pictures in the background
             #req_files = [base64.b64encode(request.files.get(f).read()) for f in request.files]
             #process_thread = threading.Thread(target=parse_request_pictures, args=[data.id, camera_position.id, req_files, flabel, user.login, sensor.uuid, recognize])
