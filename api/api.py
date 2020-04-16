@@ -2331,12 +2331,12 @@ class DataAPI(Resource):
                 f.write(fl.read())
                 # Running parse_request_pictures in the background
                 #req_files = [base64.b64encode(request.files.get(f).read()) for f in request.files]
-            #process_thread = threading.Thread(target=parse_request_pictures, args=[data.id, camera_position.id, req_files, flabel, user.login, sensor.uuid, recognize])
-            #app.logger.debug("Start background thread")
-            #process_thread.start()
+                #process_thread = threading.Thread(target=parse_request_pictures, args=[data.id, camera_position.id, req_files, flabel, user.login, sensor.uuid, recognize])
+                #app.logger.debug("Start background thread")
+                #process_thread.start()
             
-            # Running as celery task
-            parse_request_pictures.delay(data.id, camera_position.id, f.name, flabel, user.login, sensor.uuid, recognize)
+                # Running as celery task
+                parse_request_pictures.delay(data.id, camera_position.id, f.name, flabel, user.login, sensor.uuid, recognize)
             #st.start()
 
             #res = st.join()
