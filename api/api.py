@@ -1178,6 +1178,68 @@ class CameraAPI(Resource):
         return abort(404)
 
 
+    @token_required
+    @cross_origin()
+    #@cache.cached(timeout=300, key_prefix=cache_key)
+    def post(self):
+        """
+        Create camera record
+        ---
+        tags: [Cameras,]
+        parameters:
+         - in: body
+           name: data
+           required: true
+           description: Camera Record Data
+           schema:
+               $ref: '#/definitions/CameraRecord'
+        definitions:
+          CameraRecord:
+            type: object
+            description: Camera Record Data
+            properties:
+              id:
+                type: integer
+                description: Camera ID
+              camlabel:
+                type: string
+                description: Camera label
+              positions:
+                type: array
+                description: A list of camera positions
+                items:
+                  type: object
+                  description: Camera position
+                  properties:
+                    id:
+                      type: integer
+                      description: Camera Position ID
+                    poslabel:
+                      type: string
+                      description: Camera Position Label
+        responses:
+          200:
+            description: Camera Record Data
+            schema:
+               $ref: '#/definitions/CameraRecord'
+          401:
+            description: Not authorized
+          404:
+            description: URL not found
+        """
+        auth_headers = request.headers.get('Authorization', '').split()
+        token = auth_headers[1]
+        udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
+        user = User.query.filter_by(login=udata['sub']).first()
+        request.get_json()
+        camname = request.json.get("camlabel")
+        camposition = request.json.get("camposition")
+        
+        
+    
+
+    
+
 class ImagesAPI(Resource):
     def __init__(self):
         self.schema = ImageSchema()
@@ -2197,14 +2259,18 @@ class DataAPI(Resource):
         # add new camera & position
         # >>>
         app.logger.debug(["Request Data", request.values, request.files, request.json])
+        
         camname = request.form.get("camname")
         camposition = request.form.get("camposition")
+        
         flabel = request.form.get("flabel")
         recognize = request.form.get("recognize", False)
         camera_position = None
         app.logger.debug(["CAMERA DB:", camname, camposition, recognize])
         if not user:
             abort(403)
+            
+        db.session.commit()
 
         data = db.session.query(Data).filter(Data.id == id).first()
         if data:
@@ -2237,12 +2303,13 @@ class DataAPI(Resource):
             lowlight = [d.value < 30 for d in data.records if d.ptype == 'light']
             if any(lowlight):
                 recognize = False
+                
             db.session.add(data)
             db.session.commit()
+
             # Running parse_request_pictures in the background
-            req_files = [io.BytesIO(request.files.get(f).read()) for f in request.files]
-            app.logger.debug(["FILES", req_files])
-            parse_request_pictures(data.id, camera_position.id, req_files, flabel, camera, user.login, sensor.uuid, recognize)
+            # req_files = [io.BytesIO(request.files.get(f).read()) for f in request.files]
+            # parse_request_pictures(data.id, camera_position.id, req_files, flabel, camera, user.login, sensor.uuid, recognize)
             #st.start()
 
             #res = st.join()
