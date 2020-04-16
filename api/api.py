@@ -173,91 +173,91 @@ class SQLAlchemyNoPool(SQLAlchemy):
 
 def send_zones(zone, zonelabel, fuuid, file_format, fpath, user_login, sensor_uuid, cf_headers, original):
     #with app.app_context():
-    with SQLAlchemyNoPool() as db:
-        cropped = original.crop((zone['left'], zone['top'], zone['right'], zone['bottom']))
-        img_io = io.BytesIO()
-        cropped.save(img_io, file_format, quality=100)
-        img_io.seek(0)
-        #dr = ImageDraw.Draw(original)
-        #dr.rectangle((zone['left'], zone['top'], zone['right'], zone['bottom']), outline = '#fbb040', width=3)
-        #dr.text((zone['left']+2, zone['top']+2), zonelabel, font=zonefont)
+    db = SQLAlchemyNoPool()
+    cropped = original.crop((zone['left'], zone['top'], zone['right'], zone['bottom']))
+    img_io = io.BytesIO()
+    cropped.save(img_io, file_format, quality=100)
+    img_io.seek(0)
+    #dr = ImageDraw.Draw(original)
+    #dr.rectangle((zone['left'], zone['top'], zone['right'], zone['bottom']), outline = '#fbb040', width=3)
+    #dr.text((zone['left']+2, zone['top']+2), zonelabel, font=zonefont)
 
-        zuuid = f"{fuuid}_{zonelabel}"
-        zname = zuuid + "." + file_format.lower()
-        z_full_path = os.path.join(fpath, zname)
-        partzpath = os.path.join(user_login, sensor_uuid, zname)
-        app.logger.debug(["ZONE", zonelabel, z_full_path, partzpath])
-        cropped.save(z_full_path, file_format, quality=100)
-        newzone = PictureZone(fpath=partzpath, zone=zonelabel)
+    zuuid = f"{fuuid}_{zonelabel}"
+    zname = zuuid + "." + file_format.lower()
+    z_full_path = os.path.join(fpath, zname)
+    partzpath = os.path.join(user_login, sensor_uuid, zname)
+    app.logger.debug(["ZONE", zonelabel, z_full_path, partzpath])
+    cropped.save(z_full_path, file_format, quality=100)
+    newzone = PictureZone(fpath=partzpath, zone=zonelabel)
 
-        # Now take an original image, crop the zones, send it to the
-        # CF server and get back the response for each
-        # Draw rectangle zones on the original image & save it
-        # Modify the image lzbel with zones results
-        # send CF request
-        #original.save(fullpath)
-        #response = requests.post(CF_HOST.format("loadimage"), headers=cf_headers, files = {'croppedfile': img_io}, data={'index':0, 'filename': ''})
-        response = requests.post(CF_HOST.format("loadimage"), auth=(CF_LOGIN, CF_PASSWORD), files = {'imagefile': img_io}, data={'index':0, 'filename': fuuid})
-        if response.status_code == 200:
-            cf_result = response.json().get('objtype')
+    # Now take an original image, crop the zones, send it to the
+    # CF server and get back the response for each
+    # Draw rectangle zones on the original image & save it
+    # Modify the image lzbel with zones results
+    # send CF request
+    #original.save(fullpath)
+    #response = requests.post(CF_HOST.format("loadimage"), headers=cf_headers, files = {'croppedfile': img_io}, data={'index':0, 'filename': ''})
+    response = requests.post(CF_HOST.format("loadimage"), auth=(CF_LOGIN, CF_PASSWORD), files = {'imagefile': img_io}, data={'index':0, 'filename': fuuid})
+    if response.status_code == 200:
+        cf_result = response.json().get('objtype')
 
-            ## >>> New logic, with subzones.
-            subzones = get_zones(cropped, 2, 2)
-            sz_results = []
-            for sz in subzones.keys():
-                sz_res = send_subzones(subzones[sz], sz, file_format, cropped)
-                sz_results.append(sz_res)
+        ## >>> New logic, with subzones.
+        subzones = get_zones(cropped, 2, 2)
+        sz_results = []
+        for sz in subzones.keys():
+            sz_res = send_subzones(subzones[sz], sz, file_format, cropped)
+            sz_results.append(sz_res)
 
-            unhealthy_results = ['_'.join(res.split('_')[:-1]) for res in sz_results if 'unhealthy' in res]
-            healthy_results = [res for res in sz_results if 'unhealthy' not in res]
+        unhealthy_results = ['_'.join(res.split('_')[:-1]) for res in sz_results if 'unhealthy' in res]
+        healthy_results = [res for res in sz_results if 'unhealthy' not in res]
 
-            if unhealthy_results and 'unhealthy' in cf_result:
-                res_plant_type = '_'.join(cf_result.split('_')[:-1])
-                if res_plant_type in unhealthy_results:
-                    precise_res = cf_result
-                elif len(unhealthy_results) > 1 and len(set(unhealthy_results)) < len(unhealthy_results):
-                    unhealthy_results = [(res, unhealthy_results.count(res)) for res in set(unhealthy_results)]
-                    unhealthy_results = sorted(unhealthy_results, key=lambda x: x[1], reverse=True)
-                    precise_res = unhealthy_results[0][0] + '_unhealthy'
-                elif len(unhealthy_results) > 1:
-                    for res in healthy_results:
-                        if res in unhealthy_results:
-                            precise_res = res + '_unhealthy'
-                            break
-                        precise_res = unhealthy_results[0] + '_unhealthy'
-                else:
-                    precise_res = cf_result
-
-            elif unhealthy_results and 'unhealthy' not in cf_result:
-                if len(unhealthy_results) > 1 and len(set(unhealthy_results)) < len(unhealthy_results):
-                    unhealthy_results = [(res, unhealthy_results.count(res)) for res in set(unhealthy_results)]
-                    unhealthy_results = sorted(unhealthy_results, key=lambda x: x[1], reverse=True)
-                    precise_res = unhealthy_results[0][0] + '_unhealthy'
-                else:
-                    precise_res = cf_result
-
-            elif cf_result in sz_results:
+        if unhealthy_results and 'unhealthy' in cf_result:
+            res_plant_type = '_'.join(cf_result.split('_')[:-1])
+            if res_plant_type in unhealthy_results:
+                precise_res = cf_result
+            elif len(unhealthy_results) > 1 and len(set(unhealthy_results)) < len(unhealthy_results):
+                unhealthy_results = [(res, unhealthy_results.count(res)) for res in set(unhealthy_results)]
+                unhealthy_results = sorted(unhealthy_results, key=lambda x: x[1], reverse=True)
+                precise_res = unhealthy_results[0][0] + '_unhealthy'
+            elif len(unhealthy_results) > 1:
+                for res in healthy_results:
+                    if res in unhealthy_results:
+                        precise_res = res + '_unhealthy'
+                        break
+                    precise_res = unhealthy_results[0] + '_unhealthy'
+            else:
                 precise_res = cf_result
 
+        elif unhealthy_results and 'unhealthy' not in cf_result:
+            if len(unhealthy_results) > 1 and len(set(unhealthy_results)) < len(unhealthy_results):
+                unhealthy_results = [(res, unhealthy_results.count(res)) for res in set(unhealthy_results)]
+                unhealthy_results = sorted(unhealthy_results, key=lambda x: x[1], reverse=True)
+                precise_res = unhealthy_results[0][0] + '_unhealthy'
             else:
-                precise_results = [(res, sz_results.count(res)) for res in set(sz_results)]
-                precise_results = sorted(precise_results, key=lambda x: x[1], reverse=True)
-                precise_res = precise_results[0][0]
+                precise_res = cf_result
 
-            newzone.origresults = cf_result
+        elif cf_result in sz_results:
+            precise_res = cf_result
+
+        else:
+            precise_results = [(res, sz_results.count(res)) for res in set(sz_results)]
+            precise_results = sorted(precise_results, key=lambda x: x[1], reverse=True)
+            precise_res = precise_results[0][0]
+
+        newzone.origresults = cf_result
 
 
 
-            newzone.results = precise_res
+        newzone.results = precise_res
 
 
-            app.logger.debug(f"CF RESULTS {cf_result}")
+        app.logger.debug(f"CF RESULTS {cf_result}")
 
-        db.session.add(newzone)
-        db.session.commit()
-        #db.session.close()
-        #if newzone.revisedresults == unhealthy:
-        return newzone.id
+    db.session.add(newzone)
+    db.session.commit()
+    #db.session.close()
+    #if newzone.revisedresults == unhealthy:
+    return newzone.id
 
 
 def send_subzones(zone, zonelabel, file_format, pict):
