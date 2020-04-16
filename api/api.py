@@ -13,6 +13,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import NullPool
 from sqlalchemy import func as sql_func
 from sqlalchemy.pool import NullPool
 from flask_marshmallow import Marshmallow
@@ -99,7 +100,7 @@ MAILPASS = app.config.get('MAILPASS')
 
 DB_CONNECT = app.config.get('SQLALCHEMY_DATABASE_URI')
 
-mysql_engine = create_engine(DB_CONNECT)
+mysql_engine = create_engine(DB_CONNECT, poolclass=NullPool)
 session_factory = sessionmaker(bind=mysql_engine)
 Session = scoped_session(session_factory)
 
