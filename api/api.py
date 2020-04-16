@@ -172,8 +172,8 @@ class SQLAlchemyNoPool(SQLAlchemy):
 
 
 def send_zones(zone, zonelabel, fuuid, file_format, fpath, user_login, sensor_uuid, cf_headers, original):
-    with app.app_context():
-        #db = SQLAlchemyNoPool()
+    #with app.app_context():
+    with SQLAlchemyNoPool() as db:
         cropped = original.crop((zone['left'], zone['top'], zone['right'], zone['bottom']))
         img_io = io.BytesIO()
         cropped.save(img_io, file_format, quality=100)
@@ -713,17 +713,21 @@ def parse_request_pictures(parent_data, camposition_id, req_files, flabel, camna
                     responses = []
                     newzones = []
                     argslist = []
+                    zones_ids = []
                     dr = ImageDraw.Draw(original)
                     for z in zones.keys():
-                        argslist.append([zones[z], z, fuuid, FORMAT, fpath, user_login, sensor_uuid, cf_headers, original])
+                        #argslist.append([zones[z], z, fuuid, FORMAT, fpath, user_login, sensor_uuid, cf_headers, original])
+                        
                         dr.rectangle((zones[z]['left'], zones[z]['top'], zones[z]['right'], zones[z]['bottom']), outline = '#fbb040', width=3)
                         dr.text((zones[z]['left']+2, zones[z]['top']+2), z, font=zonefont)
-
+                        zone_id = send_zones([zones[z], z, fuuid, FORMAT, fpath, user_login, sensor_uuid, cf_headers, original])
+                        zones_ids.append(zone_id)
+                        #send_zones(*)
                     # Paralleled requests
                     # now using threads
-                    p = Pool(4)
-                    zones_ids = p.starmap(send_zones, argslist)
-                    p.close()
+                    #p = Pool(4)
+                    #zones_ids = p.starmap(send_zones, argslist)
+                    #p.close()
                     app.logger.debug(["SAVED ZONES", [zones_ids]])
                     db.session.commit()
 
@@ -2238,8 +2242,8 @@ class DataAPI(Resource):
             # Running parse_request_pictures in the background
             req_files = [io.BytesIO(request.files.get(f).read()) for f in request.files]
             app.logger.debug(["FILES", req_files])
-            st = threading.Thread(target=parse_request_pictures, args=[data.id, camera_position.id, req_files, flabel, camera, user.login, sensor.uuid, recognize])
-            st.start()
+            parse_request_pictures(data.id, camera_position.id, req_files, flabel, camera, user.login, sensor.uuid, recognize)
+            #st.start()
 
             #res = st.join()
             #app.logger.debug(res)
