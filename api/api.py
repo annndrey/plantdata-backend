@@ -273,11 +273,12 @@ def send_zones(zone, zonelabel, fuuid, file_format, fpath, user_login, sensor_uu
 
     db.session.add(newzone)
     db.session.commit()
+    newzone_id = newzone.id
     db.session.close()
 
     #db.session.close()
     #if newzone.revisedresults == unhealthy:
-    return newzone.id
+    return newzone_id
 
 
 def send_subzones(zone, zonelabel, file_format, pict):
