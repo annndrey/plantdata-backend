@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
@@ -272,6 +273,8 @@ def send_zones(zone, zonelabel, fuuid, file_format, fpath, user_login, sensor_uu
 
     db.session.add(newzone)
     db.session.commit()
+    db.session.close()
+
     #db.session.close()
     #if newzone.revisedresults == unhealthy:
     return newzone.id
@@ -734,18 +737,10 @@ def parse_request_pictures(parent_data, camposition_id, req_file, flabel, user_l
                     zones_ids = []
                     dr = ImageDraw.Draw(original)
                     for z in zones.keys():
-                        #argslist.append([zones[z], z, fuuid, FORMAT, fpath, user_login, sensor_uuid, cf_headers, original])
-                        
                         dr.rectangle((zones[z]['left'], zones[z]['top'], zones[z]['right'], zones[z]['bottom']), outline = '#fbb040', width=3)
                         dr.text((zones[z]['left']+2, zones[z]['top']+2), z, font=zonefont)
                         zone_id = send_zones(zones[z], z, fuuid, FORMAT, fpath, user_login, sensor_uuid, cf_headers, original)
                         zones_ids.append(zone_id)
-                        #send_zones(*)
-                        # Paralleled requests
-                        # now using threads
-                        #p = Pool(4)
-                        #zones_ids = p.starmap(send_zones, argslist)
-                        #p.close()
                     app.logger.debug(["SAVED ZONES", [zones_ids]])
                     db.session.commit()
 
@@ -758,7 +753,6 @@ def parse_request_pictures(parent_data, camposition_id, req_file, flabel, user_l
                                 # split zone into 4 subzones & check it again.
                                 # if any subzone is reported as unhealthy,
                                 # the zone result is confirmed
-                            
                                 dr.rectangle((zones[nzone.zone]['left'], zones[nzone.zone]['top'], zones[nzone.zone]['right'], zones[nzone.zone]['bottom']), outline = '#ff0000', width=10)
                         class_results = ["{}: {}".format(z.zone, process_result(z.results)) for z in sorted(newzones, key=lambda x: int(x.zone[4:]))]
                         classification_results = "Results: {}".format(", ".join(class_results))
@@ -809,17 +803,12 @@ def parse_request_pictures(parent_data, camposition_id, req_file, flabel, user_l
                             pict_res['location'] = sensor.location.address
                             pict_res['sensor_uuid'] = sensor.uuid
                         for p in picts_unhealthy_status:
-                            # email_text = create_email_text(p)
-                            # Now we only add a pending notification to be send
                             app.logger.debug(["CREATING NOTIFICATION", p])
                             p['ts'] = p['ts'].strftime("%d-%m-%Y %H:%M:%S")
                             newnotification = Notification(user=sensor.user, text=json.dumps(p))
                             db.session.add(newnotification)
                             db.session.commit()
         os.unlink(req_file)
-        #db.session.close()
-        # Session.remove()
-        #return picts
 
 
 @app.route(f'/api/v{API_VERSION}/token', methods=['POST'])

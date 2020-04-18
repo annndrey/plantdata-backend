@@ -14,6 +14,14 @@ import enum
 import jwt
 import calendar
 
+
+SQLALCHEMY_ENGINE_OPTIONS = {
+    'pool_recycle': 90,
+    'pool_timeout': 90,
+    'pool_size': 30,
+    'max_overflow': 10,
+}
+
 db = SQLAlchemy()
 
 class Gender(enum.Enum):
