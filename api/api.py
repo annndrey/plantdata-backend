@@ -2308,10 +2308,10 @@ class DataAPI(Resource):
             request_data = request.data
             app.logger.debug(["Consuming request data", len(request_data)])
             #if data.lux < 30:
-            #    recognize = False
-            lowlight = [d.value < 30 for d in data.records if d.ptype == 'light']
-            if any(lowlight):
-                recognize = False
+            recognize = False
+            highlight = [d.value > 30 for d in data.records if d.ptype == 'light']
+            if any(highlight):
+                recognize = True
                 
             db.session.add(data)
             db.session.commit()
