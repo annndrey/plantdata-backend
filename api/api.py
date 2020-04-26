@@ -172,6 +172,7 @@ app.config['CELERY_RESULT_BACKEND'] = 'redis://{}:{}/{}'.format(REDIS_HOST, REDI
 
 TMPDIR = app.config['TEMPDIR']
 
+COLOR_THRESHOLD = 75000
 
 if CLASSIFY_ZONES:
     with open("cropsettings.yaml", 'r') as stream:
@@ -279,6 +280,15 @@ def send_zones(zone, zonelabel, fuuid, file_format, fpath, user_login, sensor_uu
     #db.session.close()
     #if newzone.revisedresults == unhealthy:
     return newzone_id
+
+
+def check_colors(fname):
+    #greyscale_image = image.convert('L')
+    image = Img.open(fname)
+    pixels = image.getdata()
+    n = len(set(pixels))
+    return n
+
 
 
 def send_subzones(zone, zonelabel, file_format, pict):
@@ -2310,7 +2320,8 @@ class DataAPI(Resource):
             #if data.lux < 30:
             recognize = False
             highlight = [d.value > 30 for d in data.records if d.ptype == 'light']
-            if any(highlight):
+            numcolors = check_colors(tmpfname)
+            if numcolors > COLOR_THRESHOLD:
                 recognize = True
                 
             db.session.add(data)
