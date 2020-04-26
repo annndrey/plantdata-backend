@@ -284,7 +284,7 @@ def send_zones(zone, zonelabel, fuuid, file_format, fpath, user_login, sensor_uu
 
 def check_colors(imgfile):
     #greyscale_image = image.convert('L')
-    image = Img.open(imgfile)
+    image = Image.open(imgfile)
     pixels = image.getdata()
     n = len(set(pixels))
     return n
