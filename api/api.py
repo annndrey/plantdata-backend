@@ -2325,7 +2325,7 @@ class DataAPI(Resource):
             db.session.commit()
             
             tmpfname = str(uuid.uuid4())
-            tmpf = open(tmpfname, 'wb')
+            tmpf = open(tmpfname, 'w+b')
             fl = [request.files.get(f) for f in request.files][0]
             tmpf.write(fl.read())
             tmpfile.seek(0)
