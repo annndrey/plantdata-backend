@@ -2328,11 +2328,11 @@ class DataAPI(Resource):
             tmpf = open(tmpfname, 'w+b')
             fl = [request.files.get(f) for f in request.files][0]
             tmpf.write(fl.read())
-            tmpfile.seek(0)
-            numcolors = check_colors(tmpfile)
+            tmpf.seek(0)
+            numcolors = check_colors(tmpf)
             if numcolors > COLOR_THRESHOLD:
                 recognize = True
-            tmpfile.seek(0)
+            tmpf.seek(0)
             # Running parse_request_pictures in the background
             
             # Running as celery task
