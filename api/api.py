@@ -282,9 +282,9 @@ def send_zones(zone, zonelabel, fuuid, file_format, fpath, user_login, sensor_uu
     return newzone_id
 
 
-def check_colors(fname):
+def check_colors(imgfile):
     #greyscale_image = image.convert('L')
-    image = Img.open(fname)
+    image = Img.open(imgfile)
     pixels = image.getdata()
     n = len(set(pixels))
     return n
@@ -2320,9 +2320,6 @@ class DataAPI(Resource):
             #if data.lux < 30:
             recognize = False
             highlight = [d.value > 30 for d in data.records if d.ptype == 'light']
-            numcolors = check_colors(tmpfname)
-            if numcolors > COLOR_THRESHOLD:
-                recognize = True
                 
             db.session.add(data)
             db.session.commit()
@@ -2331,6 +2328,11 @@ class DataAPI(Resource):
             tmpf = open(tmpfname, 'wb')
             fl = [request.files.get(f) for f in request.files][0]
             tmpf.write(fl.read())
+            tmpfile.seek(0)
+            numcolors = check_colors(tmpfile)
+            if numcolors > COLOR_THRESHOLD:
+                recognize = True
+            tmpfile.seek(0)
             # Running parse_request_pictures in the background
             
             # Running as celery task
