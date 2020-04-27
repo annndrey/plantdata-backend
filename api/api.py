@@ -2318,8 +2318,7 @@ class DataAPI(Resource):
             request_data = request.data
             app.logger.debug(["Consuming request data", len(request_data)])
             #if data.lux < 30:
-            recognize = False
-            highlight = [d.value > 30 for d in data.records if d.ptype == 'light']
+            #highlight = [d.value > 30 for d in data.records if d.ptype == 'light']
                 
             db.session.add(data)
             db.session.commit()
@@ -2329,14 +2328,19 @@ class DataAPI(Resource):
             fl = [request.files.get(f) for f in request.files][0]
             tmpf.write(fl.read())
             tmpf.seek(0)
+            lowlight = True
+            pict_recognize = True
+
             numcolors = check_colors(tmpf)
             if numcolors > COLOR_THRESHOLD:
-                recognize = True
+                lowlight = False
             tmpf.seek(0)
             # Running parse_request_pictures in the background
-            
+            if recognize and not lowlight:
+                pict_recognize = True
+                
             # Running as celery task
-            parse_request_pictures.delay(data.id, camera_position.id, tmpf.name, flabel, user.login, sensor.uuid, recognize)
+            parse_request_pictures.delay(data.id, camera_position.id, tmpf.name, flabel, user.login, sensor.uuid, pict_recognize)
             return "Data added", 200
         abort(404)
 
