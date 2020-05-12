@@ -1501,7 +1501,10 @@ class ProbeAPI(Resource):
         datarecord = db.session.query(Data).filter(Data.id == did).first()
         suuid  = request.form.get('suuid', None)
         sensor = db.session.query(Sensor).filter(Sensor.uuid == suuid).first()
-
+        x  = request.form.get('x', None)
+        y  = request.form.get('y', None)
+        z  = request.form.get('z', None)
+        
         if sensor:
             if sensor.user != user:
                 abort(403)
@@ -1509,6 +1512,13 @@ class ProbeAPI(Resource):
         probe = db.session.query(Probe).filter(Probe.uuid == puuid).first()
         if not probe:
             newprobe = Probe(sensor=sensor, uuid=puuid, data=datarecord)
+            if x:
+                newprobe.x = x
+            if y:
+                newprobe.y = y
+            if z:
+                newprobe.z = z
+                
             db.session.add(newprobe)
             db.session.commit()
             return jsonify(self.schema.dump(newprobe).data), 201
