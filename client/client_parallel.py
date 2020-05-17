@@ -87,8 +87,9 @@ with open("config.yaml", 'r') as stream:
     except yaml.YAMLError as exc:
         logging.debug(exc)
 
-SERVER_LOGIN = "roots@fermata.tech"
-SERVER_PASSWORD = "SDesdf3g%"
+
+SERVER_LOGIN = CONFIG_FILE['AUTH']['SERVER_LOGIN']
+SERVER_PASSWORD = CONFIG_FILE['AUTH']['SERVER_PASSWORD']
 SERVER_HOST = "https://dev.plantdata.fermata.tech:5598/api/v2/{}"
 db_file = 'localdata.db'
 DATADIR = "picts"
