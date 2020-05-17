@@ -54,3 +54,5 @@ SENSORS:
   - URL: http://localhost:8000/sensor_data
   - URL: http://localhost:8001/sensor_data
   - URL: http://localhost:8002/sensor_data
+SERVER_LOGIN: "your_login_here"
+SERVER_PASSWORD: "your_password_here"
