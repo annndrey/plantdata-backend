@@ -16,6 +16,7 @@ import datetime
 import pytz
 import functools
 import yaml
+import copy
 
 import aiohttp
 import asyncio
@@ -127,7 +128,7 @@ async def async_read_sensor_data(session, url, dbsession, bsid):
             resp = await response.text()
             resp_json = json.loads(resp)
             if not os.path.exists(pkl_fname):
-                pkl_data = resp_json
+                pkl_data = copy.deepcopy(resp_json)
                 for d in pkl_data['data']:
                     d['value'] = 0
                 with open(pkl_fname, 'wb') as f:
@@ -478,7 +479,7 @@ if __name__ == '__main__':
     scheduler.every(5).minutes.do(post_data, token, base_station_uuid, False)
     scheduler.every(120).minutes.do(post_data, token, base_station_uuid, True)
     logging.debug(base_station_uuid)
-    #post_data(token, base_station_uuid, True)
+    #post_data(token, base_station_uuid, False)
     #sys.exit(1)
     while 1:
         scheduler.run_pending()
