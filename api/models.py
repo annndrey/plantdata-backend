@@ -166,7 +166,7 @@ class Location(db.Model):
     address = db.Column(db.Text(), nullable=True)
     lat = db.Column(db.Text(), nullable=True)
     lon = db.Column(db.Text(), nullable=True)
-
+    cf_values = db.Column(db.Text())
 
 class SensorType(db.Model):
     id = db.Column(db.Integer, primary_key=True)

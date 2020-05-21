@@ -190,7 +190,7 @@ class SQLAlchemyNoPool(SQLAlchemy):
         super(SQLAlchemy, self).apply_driver_hacks(app, info, options)
 
 
-def send_zones(zone, zonelabel, fuuid, file_format, fpath, user_login, sensor_uuid, cf_headers, original):
+def send_zones(zone, zonelabel, fuuid, file_format, fpath, user_login, sensor_uuid, cf_headers, original, allowed_values=False):
     #with app.app_context():
     db = SQLAlchemyNoPool()
     cropped = original.crop((zone['left'], zone['top'], zone['right'], zone['bottom']))
@@ -214,17 +214,21 @@ def send_zones(zone, zonelabel, fuuid, file_format, fpath, user_login, sensor_uu
     # Draw rectangle zones on the original image & save it
     # Modify the image lzbel with zones results
     # send CF request
-    #original.save(fullpath)
-    #response = requests.post(CF_HOST.format("loadimage"), headers=cf_headers, files = {'croppedfile': img_io}, data={'index':0, 'filename': ''})
-    response = requests.post(CF_HOST.format("loadimage"), auth=(CF_LOGIN, CF_PASSWORD), files = {'imagefile': img_io}, data={'index':0, 'filename': fuuid})
+    cf_request_data = {'index':0, 'filename': fuuid}
+    if allowed_values:
+        cf_request_data['allowed_values'] = allowed_values
+        
+    response = requests.post(CF_HOST.format("loadimage"), auth=(CF_LOGIN, CF_PASSWORD), files = {'imagefile': img_io}, data=cf_request_data)
     if response.status_code == 200:
         cf_result = response.json().get('objtype')
-
-        ## >>> New logic, with subzones.
+        
         subzones = get_zones(cropped, 2, 2)
         sz_results = []
         for sz in subzones.keys():
-            sz_res = send_subzones(subzones[sz], sz, file_format, cropped)
+            if allowed_values:
+                sz_res = send_subzones(subzones[sz], sz, file_format, cropped, allowed_values=allowed_values)
+            else:
+                sz_res = send_subzones(subzones[sz], sz, file_format, cropped)        
             sz_results.append(sz_res)
 
         unhealthy_results = ['_'.join(res.split('_')[:-1]) for res in sz_results if 'unhealthy' in res]
@@ -291,13 +295,17 @@ def check_colors(imgfile):
 
 
 
-def send_subzones(zone, zonelabel, file_format, pict):
+def send_subzones(zone, zonelabel, file_format, pict, allowed_values=False):
     cf_result = False
     cropped = pict.crop((zone['left'], zone['top'], zone['right'], zone['bottom']))
     img_io = io.BytesIO()
     cropped.save(img_io, file_format, quality=100)
     img_io.seek(0)
-    response = requests.post(CF_HOST.format("loadimage"), auth=(CF_LOGIN, CF_PASSWORD), files = {'imagefile': img_io}, data={'index':0, 'filename': "filename"})
+    cf_request_data = {'index':0, 'filename': "filename"}
+    if allowed_values:
+        cf_request_data['allowed_values'] = allowed_values
+        
+    response = requests.post(CF_HOST.format("loadimage"), auth=(CF_LOGIN, CF_PASSWORD), files = {'imagefile': img_io}, data=cf_request_data)
     if response.status_code == 200:
         cf_result = response.json().get('objtype')
 
@@ -693,6 +701,7 @@ def process_result(result):
 def parse_request_pictures(parent_data, camposition_id, req_file, flabel, user_login, sensor_uuid, recognize):
     with app.app_context():
         data = db.session.query(Data).filter(Data.id == parent_data).first()
+        
         if not data:
             abort(404)
 
@@ -750,7 +759,12 @@ def parse_request_pictures(parent_data, camposition_id, req_file, flabel, user_l
                     for z in zones.keys():
                         dr.rectangle((zones[z]['left'], zones[z]['top'], zones[z]['right'], zones[z]['bottom']), outline = '#fbb040', width=3)
                         dr.text((zones[z]['left']+2, zones[z]['top']+2), z, font=zonefont)
-                        zone_id = send_zones(zones[z], z, fuuid, FORMAT, fpath, user_login, sensor_uuid, cf_headers, original)
+                        allowed_values = data.sensor.location.cf_values
+                        if allowed_values:
+                            zone_id = send_zones(zones[z], z, fuuid, FORMAT, fpath, user_login, sensor_uuid, cf_headers, original, allowed_values=allowed_values)
+                        else:
+                            zone_id = send_zones(zones[z], z, fuuid, FORMAT, fpath, user_login, sensor_uuid, cf_headers, original)
+                            
                         zones_ids.append(zone_id)
                     app.logger.debug(["SAVED ZONES", [zones_ids]])
                     db.session.commit()
