@@ -996,7 +996,7 @@ class DataSchema(ma.ModelSchema):
 #                        p.value = p.prtype.maxvalue
 
 
-    @post_dump(pass_many=True)
+    # @post_dump(pass_many=True)
     def filter_fields(self, data, many, **kwargs):
         if many:
             pr_labels = {}
@@ -1904,7 +1904,7 @@ class DataAPI(Resource):
             sensordata = sensordata_query.all()
             app.logger.debug("GET DATA 3")
             if sensordata:
-                sensordata = list(islice(sensordata, 0, len(sensordata), 10))
+                #sensordata = list(islice(sensordata, 0, len(sensordata), 10))
                 if fill_date:
                     pass
                 #if fill_date:
