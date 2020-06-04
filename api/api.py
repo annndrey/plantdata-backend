@@ -23,7 +23,7 @@ from flask_cors import CORS, cross_origin
 from flask_restful.utils import cors
 from marshmallow import fields, pre_dump, post_dump
 from marshmallow_enum import EnumField
-from itertools import groupby
+from itertools import groupby, islice
 from models import db, User, Sensor, Location, Data, DataPicture, Camera, CameraPosition, Probe, ProbeData, PictureZone, SensorType, data_probes, Notification
 import logging
 import os
@@ -1904,6 +1904,7 @@ class DataAPI(Resource):
             sensordata = sensordata_query.all()
             app.logger.debug("GET DATA 3")
             if sensordata:
+                sensordata = list(islice(sensordata, 0, len(sensordata), int(1/5)))
                 if fill_date:
                     pass
                 #if fill_date:
