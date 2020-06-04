@@ -1879,6 +1879,7 @@ class DataAPI(Resource):
         if not dataid:
             first_rec_day = db.session.query(sql_func.min(Data.ts)).filter(Data.sensor.has(Sensor.uuid == suuid)).first()[0]
             last_rec_day = db.session.query(sql_func.max(Data.ts)).filter(Data.sensor.has(Sensor.uuid == suuid)).first()[0]
+            app.logger.debug("GET DATA 1")
             if not all([ts_from, ts_to]):
                 if all([first_rec_day, last_rec_day]):
                     # IF NO DATES SPECIFIED,
@@ -1899,9 +1900,9 @@ class DataAPI(Resource):
             #app.logger.debug(["DATES", day_st, day_end])
             #app.logger.debug(["DATES", first_rec_day, last_rec_day])
             sensordata_query = sensordata_query.order_by(Data.ts).filter(Data.ts >= day_st).filter(Data.ts <= day_end)
-
+            app.logger.debug("GET DATA 2")
             sensordata = sensordata_query.all()
-
+            app.logger.debug("GET DATA 3")
             if sensordata:
                 if fill_date:
                     pass
@@ -1964,10 +1965,12 @@ class DataAPI(Resource):
                 #    return jsonify(res), 200
 
                 else:
+                    app.logger.debug("GET DATA 4")
                     if full_data:
                         data = self.f_schema.dump(sensordata).data
                     else:
                         data = self.m_schema.dump(sensordata).data
+                    app.logger.debug("GET DATA 5")                        
                     #if puuid:
                     #    for d in data:
                     #        for ind, pr in enumerate(d['probes']):
