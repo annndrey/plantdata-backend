@@ -1904,7 +1904,7 @@ class DataAPI(Resource):
             sensordata = sensordata_query.all()
             app.logger.debug("GET DATA 3")
             if sensordata:
-                sensordata = list(islice(sensordata, 0, len(sensordata), int(1/5)))
+                sensordata = list(islice(sensordata, 0, len(sensordata), int(1/0.3)))
                 if fill_date:
                     pass
                 #if fill_date:
