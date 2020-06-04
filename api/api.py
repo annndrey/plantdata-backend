@@ -977,7 +977,7 @@ class DataSchema(ma.ModelSchema):
     cameras = ma.Nested("CameraOnlySchema", many=True, exclude=["data",])
     records = ma.Nested("ProbeDataSchema", many=True)
 
-    @pre_dump(pass_many=True)
+    #@pre_dump(pass_many=True)
     def filter_outliers(self, data, many, **kwargs):
         if many:
             for d in data:
