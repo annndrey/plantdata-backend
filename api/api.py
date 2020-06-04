@@ -1002,7 +1002,7 @@ class DataSchema(ma.ModelSchema):
         if many:
             outdata = {"labels": [], "data": {}}
             for d in data:
-                outdata['labels'].append(d.ts)
+                outdata['labels'].append(d['ts'])
 
 
             return outdata
