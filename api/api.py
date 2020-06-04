@@ -1003,7 +1003,12 @@ class DataSchema(ma.ModelSchema):
             outdata = {"labels": [], "data": {}}
             for d in data:
                 outdata['labels'].append(d['ts'])
-
+                for r in d['records']:
+                    datalabel = "{} {}".format(r['label'], r['probe']['uuid'])
+                    if datalabel not in outdata['data'].keys():
+                        outdata['data'][datalabel] = [r['value']]
+                    else:
+                        outdata['data'][datalabel].append(r['value'])
 
             return outdata
 
