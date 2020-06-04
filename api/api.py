@@ -996,7 +996,7 @@ class DataSchema(ma.ModelSchema):
 #                        p.value = p.prtype.maxvalue
 
 
-    # @post_dump(pass_many=True)
+    @post_dump(pass_many=True)
     def filter_fields(self, data, many, **kwargs):
         if many:
             pr_labels = {}
