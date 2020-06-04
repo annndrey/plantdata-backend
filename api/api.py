@@ -987,16 +987,23 @@ class DataSchema(ma.ModelSchema):
                             p.value = p.prtype.minvalue
                         if p.value > p.prtype.maxvalue:
                             p.value = p.prtype.maxvalue
-#        else:
-#            for p in data.records:
-##                if p.value:
-#                    if p.value < p.prtype.minvalue:
-#                        p.value = p.prtype.minvalue
-#                    if p.value > p.prtype.maxvalue:
-#                        p.value = p.prtype.maxvalue
+                            #        else:
+                            #            for p in data.records:
+                            ##                if p.value:
+                            #                    if p.value < p.prtype.minvalue:
+                            #                        p.value = p.prtype.minvalue
+                            #                    if p.value > p.prtype.maxvalue:
+                            #                        p.value = p.prtype.maxvalue
 
+    
 
-    @post_dump(pass_many=True)
+    #@post_dump(pass_many=True)
+    def flattern_data(self, data, many, **kwargs):
+        if many:
+            outdata = {"labels": [], "data": {}}
+            
+        
+    #@post_dump(pass_many=True)
     def filter_fields(self, data, many, **kwargs):
         if many:
             pr_labels = {}
