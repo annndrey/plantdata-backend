@@ -997,7 +997,7 @@ class DataSchema(ma.ModelSchema):
 
     
 
-    @post_dump(pass_many=True)
+    #@post_dump(pass_many=True)
     def flattern_data(self, data, many, **kwargs):
         if many:
             outdata = {"labels": [], "data": {}}
