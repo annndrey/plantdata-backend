@@ -997,11 +997,16 @@ class DataSchema(ma.ModelSchema):
 
     
 
-    #@post_dump(pass_many=True)
+    @post_dump(pass_many=True)
     def flattern_data(self, data, many, **kwargs):
         if many:
             outdata = {"labels": [], "data": {}}
-            
+            for d in data:
+                outdata['labels'].append(d.ts)
+
+
+            return outdata
+
         
     #@post_dump(pass_many=True)
     def filter_fields(self, data, many, **kwargs):
