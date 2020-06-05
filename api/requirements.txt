@@ -19,6 +19,7 @@ Flask-HTTPAuth==3.2.4
 Flask-JWT==0.3.2
 Flask-Login==0.4.1
 Flask-Mail==0.9.1
+toastedmarshmallow==2.15.2
 flask-marshmallow==0.9.0
 Flask-Migrate==2.3.0
 Flask-RESTful==0.3.6
@@ -34,7 +35,7 @@ jsonschema==2.6.0
 kombu==4.6.5
 Mako==1.0.7
 MarkupSafe==1.0
-marshmallow==2.16.1
+#marshmallow==2.16.1
 marshmallow-enum==1.4.1
 marshmallow-sqlalchemy==0.14.1
 mistune==0.8.4
@@ -63,3 +64,4 @@ Werkzeug==0.14.1
 WTForms==2.2.1
 zipp==0.6.0
 flask-caching==1.8.0
+
