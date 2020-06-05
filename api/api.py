@@ -2029,7 +2029,7 @@ class DataAPI(Resource):
                     }
                     # app.logger.debug(["RESPONSE", res])
                     #return jsonify(res), 200
-                    return orjson.dumps(res), 200
+                    return orjson.dumps(res, option=orjson.OPT_UTC_Z), 200
 
         else:
             sensordata = db.session.query(Data).filter(Data.sensor.has(uuid=suuid)).filter(Data.id == dataid).first()
