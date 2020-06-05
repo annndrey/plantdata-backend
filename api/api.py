@@ -1990,8 +1990,10 @@ class DataAPI(Resource):
                 else:
                     app.logger.debug("GET DATA 4")
                     if full_data:
+                        app.logger.debug("FULL DATA 4")
                         data = self.f_schema.dump(sensordata).data
                     else:
+                        app.logger.debug("SHORT DATA 4")
                         data = self.m_schema.dump(sensordata).data
                     app.logger.debug("GET DATA 5")                        
                     #if puuid:
