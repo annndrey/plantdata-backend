@@ -2010,8 +2010,8 @@ class DataAPI(Resource):
                         data = self.f_schema.dump(sensordata).data
                     else:
                         app.logger.debug("SHORT DATA 4")
-                        data = custom_serializer(sensordata)
-                        #data = self.m_schema.dump(sensordata).data
+                        #data = custom_serializer(sensordata)
+                        data = self.m_schema.dump(sensordata).data
                     app.logger.debug("GET DATA 5")                        
                     #if puuid:
                     #    for d in data:
