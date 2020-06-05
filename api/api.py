@@ -2015,9 +2015,10 @@ class DataAPI(Resource):
                         app.logger.debug("FULL DATA 4")
                         data = self.f_schema.dump(sensordata).data
                     else:
-                        if len(sensordata) > 2000:
-                            proportion = int(len(sensordata)/2000)
+                        if len(sensordata) > 1000:
+                            proportion = int(len(sensordata)/1000)
                             sensordata = list(islice(sensordata, 0, len(sensordata), proportion))
+                            app.logger.debug("SHORT DATA 4 RESAMPLE")
                         app.logger.debug("SHORT DATA 4")
                         data = custom_serializer(sensordata)
                         #data = self.m_schema.dump(sensordata).data
