@@ -195,6 +195,7 @@ class SQLAlchemyNoPool(SQLAlchemy):
 def custom_serializer(data):
     outdata = {"labels": [], "data": {}, "cameras": []}
     for d in data:
+        app.logger.debug("PROCESS DATA {}".format(d.id))
         outdata['labels'].append(d.ts)
         if len(d.cameras) > 0:
             outdata['cameras'].append([{"camlabel":c.camlabel, "id":c.id, "warnings":c.warnings} for c in d.cameras])
@@ -2029,7 +2030,7 @@ class DataAPI(Resource):
                     }
                     # app.logger.debug(["RESPONSE", res])
                     #return jsonify(res), 200
-                    return orjson.dumps(res, option=orjson.OPT_UTC_Z), 200
+                    return orjson.dumps(res), 200
 
         else:
             sensordata = db.session.query(Data).filter(Data.sensor.has(uuid=suuid)).filter(Data.id == dataid).first()
