@@ -945,7 +945,15 @@ class PictureZoneSchema(ma.ModelSchema):
 
     fpath = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.fpath, _external=True, _scheme='https')))
 
+    
+class ProbeDataSchema(ma.ModelSchema):
+    class Meta:
+        model = ProbeData
+        exclude = ['prtype', 'id', 'data']
+    ptype = ma.Function(lambda obj: obj.prtype.ptype)
+    probe = ma.Nested("ProbeSchema", many=False, exclude=["data", 'sensor'])
 
+    
 class DataPictureSchema(ma.ModelSchema):
     class Meta:
         model = DataPicture
@@ -977,8 +985,8 @@ class DataSchema(ma.ModelSchema):
     class Meta:
         model = Data
         exclude = ['pictures', 'sensor']
-    cameras = ma.Nested("CameraOnlySchema", many=True, exclude=["data",])
-    records = ma.Nested("ProbeDataSchema", many=True)
+    cameras = ma.Nested(CameraOnlySchema(), many=True, exclude=["data",])
+    records = ma.Nested(ProbeDataSchema(), many=True)
 
     @pre_dump(pass_many=True)
     def filter_outliers(self, data, many, **kwargs):
@@ -1069,13 +1077,6 @@ class ProbeShortSchema(ma.ModelSchema):
         model = Probe
         exclude = ['values', 'id', 'data', 'sensor']
 
-
-class ProbeDataSchema(ma.ModelSchema):
-    class Meta:
-        model = ProbeData
-        exclude = ['prtype', 'id', 'data']
-    ptype = ma.Function(lambda obj: obj.prtype.ptype)
-    probe = ma.Nested("ProbeSchema", many=False, exclude=["data", 'sensor'])
 
 
 class PictAPI(Resource):
