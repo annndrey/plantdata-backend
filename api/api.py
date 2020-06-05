@@ -2005,7 +2005,7 @@ class DataAPI(Resource):
                            'data': data
                     }
                     # app.logger.debug(["RESPONSE", res])
-                    return jsonify(res), 200
+                    return json.dumps(res), 200
 
         else:
             sensordata = db.session.query(Data).filter(Data.sensor.has(uuid=suuid)).filter(Data.id == dataid).first()
