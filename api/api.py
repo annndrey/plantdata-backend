@@ -2023,7 +2023,7 @@ class DataAPI(Resource):
                         data = self.f_schema.dump(sensordata).data
                     else:
                         if query_count > 1000:
-                            proportion = int(len(query_count)/1000)
+                            proportion = int(query_count/1000)
                             sensordata = list(islice(sensordata, 0, len(query_count), proportion))
                             app.logger.debug("SHORT DATA 4 RESAMPLE")
                         app.logger.debug("SHORT DATA 4")
