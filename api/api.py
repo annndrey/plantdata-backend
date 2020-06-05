@@ -2036,7 +2036,7 @@ class DataAPI(Resource):
                     #            if pr['uuid'] != puuid:
                     #                d['probes'].pop(ind)
 
-                    res = {"numrecords": len(sensordata),
+                    res = {"numrecords": query_count,
                            'mindate': first_rec_day,
                            'maxdate': last_rec_day,
                            'data': data
