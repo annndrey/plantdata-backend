@@ -175,6 +175,7 @@ TMPDIR = app.config['TEMPDIR']
 COLOR_THRESHOLD = 75000
 
 JSONIFY_PRETTYPRINT_REGULAR=False
+JSON_SORT_KEYS = False
 
 if CLASSIFY_ZONES:
     with open("cropsettings.yaml", 'r') as stream:
@@ -2005,7 +2006,7 @@ class DataAPI(Resource):
                            'data': data
                     }
                     # app.logger.debug(["RESPONSE", res])
-                    return json.dumps(res), 200
+                    return jsonify(res), 200
 
         else:
             sensordata = db.session.query(Data).filter(Data.sensor.has(uuid=suuid)).filter(Data.id == dataid).first()
