@@ -35,7 +35,6 @@ import zipfile
 import urllib.parse
 import base64
 
-
 # for emails
 import smtplib
 from email.message import EmailMessage
@@ -193,6 +192,23 @@ class SQLAlchemyNoPool(SQLAlchemy):
         super(SQLAlchemy, self).apply_driver_hacks(app, info, options)
 
 
+def custom_serializer(data):
+    outdata = {"labels": [], "data": {}, "cameras": []}
+    for d in data:
+        outdata['labels'].append(d.ts)
+        if len(d.cameras) > 0:
+            outdata['cameras'].append(d.cameras)
+        for r in d.records:
+            datalabel = "{} {}".format(r.label, r.probe.uuid)
+            if datalabel not in outdata['data'].keys():
+                outdata['data'][datalabel] = [r.value]
+            else:
+                outdata['data'][datalabel].append(r.value)
+
+    return outdata
+
+
+        
 def send_zones(zone, zonelabel, fuuid, file_format, fpath, user_login, sensor_uuid, cf_headers, original, allowed_values=False):
     #with app.app_context():
     db = SQLAlchemyNoPool()
@@ -945,15 +961,7 @@ class PictureZoneSchema(ma.ModelSchema):
 
     fpath = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.fpath, _external=True, _scheme='https')))
 
-    
-class ProbeDataSchema(ma.ModelSchema):
-    class Meta:
-        model = ProbeData
-        exclude = ['prtype', 'id', 'data']
-    ptype = ma.Function(lambda obj: obj.prtype.ptype)
-    probe = ma.Nested("ProbeSchema", many=False, exclude=["data", 'sensor'])
 
-    
 class DataPictureSchema(ma.ModelSchema):
     class Meta:
         model = DataPicture
@@ -985,8 +993,8 @@ class DataSchema(ma.ModelSchema):
     class Meta:
         model = Data
         exclude = ['pictures', 'sensor']
-    cameras = ma.Nested(CameraOnlySchema(), many=True, exclude=["data",])
-    records = ma.Nested(ProbeDataSchema(), many=True)
+    cameras = ma.Nested("CameraOnlySchema", many=True, exclude=["data",])
+    records = ma.Nested("ProbeDataSchema", many=True)
 
     @pre_dump(pass_many=True)
     def filter_outliers(self, data, many, **kwargs):
@@ -1077,6 +1085,13 @@ class ProbeShortSchema(ma.ModelSchema):
         model = Probe
         exclude = ['values', 'id', 'data', 'sensor']
 
+
+class ProbeDataSchema(ma.ModelSchema):
+    class Meta:
+        model = ProbeData
+        exclude = ['prtype', 'id', 'data']
+    ptype = ma.Function(lambda obj: obj.prtype.ptype)
+    probe = ma.Nested("ProbeSchema", many=False, exclude=["data", 'sensor'])
 
 
 class PictAPI(Resource):
@@ -1995,6 +2010,7 @@ class DataAPI(Resource):
                         data = self.f_schema.dump(sensordata).data
                     else:
                         app.logger.debug("SHORT DATA 4")
+                        app.logger.debug(custom_serializer(sensordata))
                         data = self.m_schema.dump(sensordata).data
                     app.logger.debug("GET DATA 5")                        
                     #if puuid:
