@@ -196,18 +196,18 @@ def custom_serializer(data):
     outdata = {"labels": [], "data": {}, "cameras": []}
     outdata['labels'] = [d.ts for d in data if d.records]
     outdata['cameras'] = [[{"camlabel":c.camlabel, "id":c.id, "warnings":c.warnings} for d in data for c in d.cameras]]
-    #for d in data:
+    for d in data:
         #app.logger.debug("PROCESS DATA {}".format(d.id))
         #if len(d.records) > 0:
         #    outdata['labels'].append(d.ts)
         #if len(d.cameras) > 0:
         #    outdata['cameras'].append([{"camlabel":c.camlabel, "id":c.id, "warnings":c.warnings} for c in d.cameras])
-    #    for r in d.records:
-    #        datalabel = "{} {}".format(r.label, r.probe.uuid)
-    #        if datalabel not in outdata['data'].keys():
-    #            outdata['data'][datalabel] = [r.value]
-    #        else:
-    #            outdata['data'][datalabel].append(r.value)
+        for r in d.records:
+            datalabel = "{} {}".format(r.label, r.probe.uuid)
+            if datalabel not in outdata['data'].keys():
+                outdata['data'][datalabel] = [r.value]
+            else:
+                outdata['data'][datalabel].append(r.value)
 
     return outdata
 
