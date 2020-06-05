@@ -1944,8 +1944,8 @@ class DataAPI(Resource):
             sensordata_query = sensordata_query.order_by(Data.ts).filter(Data.ts >= day_st).filter(Data.ts <= day_end)
             app.logger.debug("GET DATA 2")
             sensordata = sensordata_query.all()
-            pd_data = pd.read_sql(sensordata_query.statement, sensordata_query.session.bind)
-            app.logger.debug(pd_data)
+            #pd_data = pd.read_sql(sensordata_query.statement, sensordata_query.session.bind)
+            #app.logger.debug(pd_data)
             app.logger.debug("GET DATA 3")
             if sensordata:
                 #sensordata = list(islice(sensordata, 0, len(sensordata), 10))
