@@ -191,6 +191,11 @@ class SQLAlchemyNoPool(SQLAlchemy):
         })
         super(SQLAlchemy, self).apply_driver_hacks(app, info, options)
 
+def get_count(q):
+    count_q = q.statement.with_only_columns([func.count()]).order_by(None)
+    count = q.session.execute(count_q).scalar()
+    return count
+        
 
 def custom_serializer(data):
     outdata = {"labels": [], "data": {}, "cameras": []}
@@ -1943,11 +1948,13 @@ class DataAPI(Resource):
             #app.logger.debug(["DATES", first_rec_day, last_rec_day])
             sensordata_query = sensordata_query.order_by(Data.ts).filter(Data.ts >= day_st).filter(Data.ts <= day_end)
             app.logger.debug("GET DATA 2")
-            sensordata = sensordata_query.all()
+            #sensordata = sensordata_query.all()
             #pd_data = pd.read_sql(sensordata_query.statement, sensordata_query.session.bind)
             #app.logger.debug(pd_data)
             app.logger.debug("GET DATA 3")
-            if sensordata:
+            query_count = get_count(sensordata_query)
+            if query_count > 0:
+                sensordata = sensordata_query
                 #sensordata = list(islice(sensordata, 0, len(sensordata), 10))
                 if fill_date:
                     pass
@@ -2016,8 +2023,8 @@ class DataAPI(Resource):
                         data = self.f_schema.dump(sensordata).data
                     else:
                         if len(sensordata) > 1000:
-                            proportion = int(len(sensordata)/1000)
-                            sensordata = list(islice(sensordata, 0, len(sensordata), proportion))
+                            proportion = int(len(query_count)/1000)
+                            sensordata = list(islice(sensordata, 0, len(query_count), proportion))
                             app.logger.debug("SHORT DATA 4 RESAMPLE")
                         app.logger.debug("SHORT DATA 4")
                         data = custom_serializer(sensordata)
