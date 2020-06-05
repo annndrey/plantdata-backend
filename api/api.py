@@ -17,9 +17,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
 from sqlalchemy import func as sql_func
 from sqlalchemy.pool import NullPool
-#from flask_marshmallow import Marshmallow
-import toastedmarshmallow
-#
+from flask_marshmallow import Marshmallow
 from flask_httpauth import HTTPBasicAuth
 from flask_cors import CORS, cross_origin
 from flask_restful.utils import cors
@@ -177,7 +175,7 @@ TMPDIR = app.config['TEMPDIR']
 COLOR_THRESHOLD = 75000
 
 JSONIFY_PRETTYPRINT_REGULAR=False
-JSON_SORT_KEYS = False
+
 
 if CLASSIFY_ZONES:
     with open("cropsettings.yaml", 'r') as stream:
@@ -979,7 +977,6 @@ class DataSchema(ma.ModelSchema):
     class Meta:
         model = Data
         exclude = ['pictures', 'sensor']
-        jit = toastedMarshmallow.Jit
     cameras = ma.Nested("CameraOnlySchema", many=True, exclude=["data",])
     records = ma.Nested("ProbeDataSchema", many=True)
 
