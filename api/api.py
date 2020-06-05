@@ -174,6 +174,8 @@ TMPDIR = app.config['TEMPDIR']
 
 COLOR_THRESHOLD = 75000
 
+JSONIFY_PRETTYPRINT_REGULAR=False
+
 if CLASSIFY_ZONES:
     with open("cropsettings.yaml", 'r') as stream:
         try:
