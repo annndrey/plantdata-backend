@@ -197,7 +197,7 @@ def custom_serializer(data):
     for d in data:
         outdata['labels'].append(d.ts)
         if len(d.cameras) > 0:
-            outdata['cameras'].append(d.cameras)
+            outdata['cameras'].append([{"camlabel":c.camlabel, "id":c.id, "warnings":c.warnings} for c in d.cameras])
         for r in d.records:
             datalabel = "{} {}".format(r.label, r.probe.uuid)
             if datalabel not in outdata['data'].keys():
@@ -2010,8 +2010,8 @@ class DataAPI(Resource):
                         data = self.f_schema.dump(sensordata).data
                     else:
                         app.logger.debug("SHORT DATA 4")
-                        #data = custom_serializer(sensordata)
-                        data = self.m_schema.dump(sensordata).data
+                        data = custom_serializer(sensordata)
+                        #data = self.m_schema.dump(sensordata).data
                     app.logger.debug("GET DATA 5")                        
                     #if puuid:
                     #    for d in data:
