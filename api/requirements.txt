@@ -64,4 +64,4 @@ Werkzeug==0.14.1
 WTForms==2.2.1
 zipp==0.6.0
 flask-caching==1.8.0
-
+orjson==3.0.2

@@ -66,7 +66,7 @@ import requests
 from PIL import Image, ImageDraw, ImageFont
 import glob
 from collections import OrderedDict
-
+import orjson
 
 from multiprocessing import Pool
 #from multiprocessing.dummy import Pool 
@@ -2010,8 +2010,8 @@ class DataAPI(Resource):
                         data = self.f_schema.dump(sensordata).data
                     else:
                         app.logger.debug("SHORT DATA 4")
-                        app.logger.debug(custom_serializer(sensordata))
-                        data = self.m_schema.dump(sensordata).data
+                        data = custom_serializer(sensordata)
+                        #data = self.m_schema.dump(sensordata).data
                     app.logger.debug("GET DATA 5")                        
                     #if puuid:
                     #    for d in data:
@@ -2025,7 +2025,8 @@ class DataAPI(Resource):
                            'data': data
                     }
                     # app.logger.debug(["RESPONSE", res])
-                    return jsonify(res), 200
+                    #return jsonify(res), 200
+                    return orjson.dumps(res), 200
 
         else:
             sensordata = db.session.query(Data).filter(Data.sensor.has(uuid=suuid)).filter(Data.id == dataid).first()
