@@ -997,12 +997,14 @@ class DataSchema(ma.ModelSchema):
 
     
 
-    #@post_dump(pass_many=True)
+    @post_dump(pass_many=True)
     def flattern_data(self, data, many, **kwargs):
         if many:
-            outdata = {"labels": [], "data": {}}
+            outdata = {"labels": [], "data": {}, "cameras": []}
             for d in data:
                 outdata['labels'].append(d['ts'])
+                if len(d['cameras']) > 0:
+                    outdata['cameras'].append(d['cameras'])
                 for r in d['records']:
                     datalabel = "{} {}".format(r['label'], r['probe']['uuid'])
                     if datalabel not in outdata['data'].keys():
