@@ -2009,6 +2009,7 @@ class DataAPI(Resource):
                         app.logger.debug("FULL DATA 4")
                         data = self.f_schema.dump(sensordata).data
                     else:
+                        sensordata = list(islice(sensordata, 0, len(sensordata), 10))
                         app.logger.debug("SHORT DATA 4")
                         data = custom_serializer(sensordata)
                         #data = self.m_schema.dump(sensordata).data
