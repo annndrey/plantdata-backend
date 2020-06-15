@@ -119,7 +119,7 @@ class Notification(db.Model):
     user_id = db.Column(db.Integer, ForeignKey('user.id'))
     user = relationship("User", backref=backref("notifications"))
     sent = db.Column(db.Boolean, default=False)
-    
+    ntype = db.Column(db.String(200))
     
 # Sensors
 class Sensor(db.Model):
@@ -177,6 +177,11 @@ class SensorType(db.Model):
     minvalue = db.Column(db.Float(), nullable=True)
     maxvalue = db.Column(db.Float(), nullable=True)
     ptype = db.Column(db.String(200))
+
+
+class NotificationType(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    ntype = db.Column(db.String(200))
     
 
 class Data(db.Model):
