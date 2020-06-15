@@ -2221,10 +2221,10 @@ class DataAPI(Resource):
                             if l.prtype.ptype == pd['ptype']:
                                 if not l.minvalue < pd['value'] < l.maxvalue:
                                     app.logger.debug(["Current value is out of limits, sending notification", pd['ptype'], pd['label'], pd['value'], "limits", l.minvalue, l.maxvalue])
-                                    pd['ts'] = ts#pr['ts'].strftime("%d-%m-%Y %H:%M:%S")
+                                    pd['ts'] = newdata.ts.strftime("%d-%m-%Y %H:%M:%S")
                                     pd['uuid'] = pr['puuid']
                                     pd['location'] = probe.sensor.location.address
-                                    pd['coords'] = "x: {} y: {} z:{}".format(probe.x, probe.y, probe.z)
+                                    pd['coords'] = "x:{} y:{} z:{}".format(probe.x, probe.y, probe.z)
                                     app.logger.debug(pd)
                                     newnotification = Notification(user=sensor.user, text=json.dumps(pd), ntype='sensors')
                                     # Create notification and send it
