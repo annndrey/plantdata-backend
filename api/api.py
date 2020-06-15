@@ -441,13 +441,13 @@ def setup_periodic_tasks(sender, **kwargs):
     sender.add_periodic_task(
         crontab(minute=0, hour='*/3'),
         #crontab(),
-        check_pending_notifications.s(),
+        check_pending_image_notifications.s(),
     )
     # TODO: Add sensors vaules check Issue #83
 
 
 @celery.task
-def check_pending_notifications():
+def check_pending_image_notifications():
     with app.app_context():
         print("Checking pending notifications")
         dbusers = db.session.query(User).filter(User.additional_email != None).filter(User.notifications.any(Notification.sent.is_(False))).all()
@@ -455,28 +455,24 @@ def check_pending_notifications():
             for dbuser in dbusers:
                 notifications = []
                 for n in dbuser.notifications:
-                    if not n.sent:
+                    if not n.sent and n.ntype=='image':
                         notifications.append(n.text)
                         n.sent = True
                         db.session.add(n)
                         db.session.commit()
                 app.logger.debug(f"Sending user notifications {dbuser.additional_email}")
-                # TODO Check email status before setting notification status to "Sent"
-                send_email_notification.delay(dbuser.additional_email, notifications)
+                send_images_email_notification.delay(dbuser.additional_email, notifications)
 
 
 
 @celery.task
-def send_email_notification(email, pict_status_list):
+def send_images_email_notification(email, pict_status_list):
     print("Sending email")
-
-    sender = MAILUSER#"noreply@plantdata.fermata.tech"
+    sender = MAILUSER
     msg = MIMEMultipart('related')
     msg['Subject'] = 'Plantdata Service Notification'
     msg['From'] = sender
     msg['To'] = email
-
-    # form message body here
 
     email_body = """\
 <html>
@@ -860,7 +856,7 @@ def parse_request_pictures(parent_data, camposition_id, req_file, flabel, user_l
                         for p in picts_unhealthy_status:
                             app.logger.debug(["CREATING NOTIFICATION", p])
                             p['ts'] = p['ts'].strftime("%d-%m-%Y %H:%M:%S")
-                            newnotification = Notification(user=sensor.user, text=json.dumps(p))
+                            newnotification = Notification(user=sensor.user, text=json.dumps(p), ntype='image')
                             db.session.add(newnotification)
                             db.session.commit()
         os.unlink(req_file)
@@ -2225,6 +2221,12 @@ class DataAPI(Resource):
                             if l.prtype.ptype == pd['ptype']:
                                 if not l.minvalue < pd['value'] < l.maxvalue:
                                     app.logger.debug(["Current value is out of limits, sending notification", pd['ptype'], pd['label'], pd['value'], "limits", l.minvalue, l.maxvalue])
+                                    pd['ts'] = pr['ts'].strftime("%d-%m-%Y %H:%M:%S")
+                                    pd['uuid'] = pr['puuid']
+                                    pd['location'] = probe.sensor.location.address
+                                    pd['coords'] = "x: {} y: {} z:{}".format(probe.x, probe.y, probe.z)
+                                    app.logger.debug(pd)
+                                    newnotification = Notification(user=sensor.user, text=json.dumps(pd), ntype='sensors')
                                     # Create notification and send it
                     db.session.add(newprobedata)
                     db.session.commit()
