@@ -440,10 +440,12 @@ def get_zones(pict, n, m):
 def setup_periodic_tasks(sender, **kwargs):
     sender.add_periodic_task(
         crontab(minute=0, hour='*/3'),
-        #crontab(),
         check_pending_image_notifications.s(),
     )
-    # TODO: Add sensors vaules check Issue #83
+    sender.add_periodic_task(
+        crontab(minute=0, hour='*/2'),
+        check_pending_sensor_notifications.s(),
+    )
 
 
 @celery.task
@@ -463,6 +465,24 @@ def check_pending_image_notifications():
                 app.logger.debug(f"Sending user notifications {dbuser.additional_email}")
                 send_images_email_notification.delay(dbuser.additional_email, notifications)
 
+
+@celery.task
+def check_pending_sensor_notifications():
+    with app.app_context():
+        print("Checking pending notifications")
+        dbusers = db.session.query(User).filter(User.additional_email != None).filter(User.notifications.any(Notification.sent.is_(False))).all()
+        if dbusers:
+            for dbuser in dbusers:
+                notifications = []
+                for n in dbuser.notifications:
+                    if not n.sent and n.ntype=='sensors':
+                        notifications.append(n.text)
+                        n.sent = True
+                        db.session.add(n)
+                        db.session.commit()
+                app.logger.debug(f"Sending user notifications {dbuser.additional_email}")
+                send_sensors_email_notification.delay(dbuser.additional_email, notifications)
+                
 
 
 @celery.task
@@ -535,6 +555,52 @@ def send_images_email_notification(email, pict_status_list):
     s.quit()
     print("mail sent")
 
+
+@celery.task
+def send_sensors_email_notification(email, status_list):
+    print("Sending email")
+    sender = MAILUSER
+    msg = MIMEMultipart('related')
+    msg['Subject'] = 'Plantdata Service Notification'
+    msg['From'] = sender
+    msg['To'] = email
+
+    email_body = """\
+<html>
+    <head></head>
+       <body>
+    The following sensor values are outside the scope:
+    <ul>
+    {}
+    </ul>
+       </body>
+</html>
+    """
+
+    status_text = []
+    for i, obj in enumerate(status_list):
+        p = json.loads(obj)
+        r = """<li>
+        ts:{} location:{} sensor:{} probe:{} coords:{} label:{} min:{} max: {} <b>value: {}</b>
+        </li>
+        """.format(p['ts'], p['location'], p['suuid'], p['uuid'], p['coords'], p['label'], p['min'], p['max'], p['value'])
+        status_text.append(r)
+
+    status_text = "\n".join(status_text)
+    email_body = email_body.format(status_text)
+    message_text = MIMEText(email_body, 'html')
+    msg.attach(message_text)
+
+    print("mail ready to be sent")
+    s = smtplib.SMTP('smtp.yandex.ru', 587)
+    s.ehlo()
+    s.starttls()
+    print([MAILUSER, MAILPASS])
+    s.login(MAILUSER, MAILPASS)
+    s.sendmail(sender, email, msg.as_string())
+    s.quit()
+    print("mail sent")
+    
 
 
 @celery.task
@@ -2233,12 +2299,12 @@ class DataAPI(Resource):
                                         pd['coords'] = "x:{} y:{} z:{}".format(probe.x, probe.y, probe.z)
                                         pd['min'] = l.minvalue
                                         pd['max'] = l.maxvalue
-                                    
+                                        pd['suuid'] = probe.sensor.uuid
                                         app.logger.debug(pd)
                                         newnotification = Notification(user=sensor.user, text=json.dumps(pd), ntype='sensors')
                                         db.session.add(newnotification)
                                         db.session.commit()
-                                    # Create notification and send it
+
                     db.session.add(newprobedata)
                     db.session.commit()
                     newdata.records.append(newprobedata)
