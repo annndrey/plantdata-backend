@@ -2223,8 +2223,10 @@ class DataAPI(Resource):
                                 if not l.minvalue < pd['value'] < l.maxvalue:
                                     app.logger.debug(["Current value is out of limits, sending notification", pd['ptype'], pd['label'], pd['value'], "limits", l.minvalue, l.maxvalue])
                                     prev_three_values = db.session.query(ProbeData).join(Probe).join(Sensor).order_by(ProbeData.id.desc()).filter(ProbeData.ptype==pd['ptype']).filter(ProbeData.label==pd['label']).filter(Probe.uuid==probe_uuid).filter(Sensor.uuid==sensor.uuid).limit(3).offset(1)
-                                    app.logger.debug("Prev three values")
-                                    app.logger.debug([[v.id, v.data.ts.strftime("%d-%m-%Y %H:%M:%S"), v.value, v.ptype, v.label] for v in prev_three_values])
+                                    
+                                    if not all([l.minvalue < v.value < l.maxvalue for v in prev_three_values]):
+                                        app.logger.debug("Prev values are out of limits")
+                                        
                                     pd['ts'] = newdata.ts.strftime("%d-%m-%Y %H:%M:%S")
                                     pd['uuid'] = pr['puuid']
                                     pd['location'] = probe.sensor.location.address
