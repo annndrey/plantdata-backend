@@ -2226,7 +2226,7 @@ class DataAPI(Resource):
                             if l.prtype.ptype == pd['ptype']:
                                 app.logger.debug(["Current value:", pd['value'], "limits", l.minvalue, l.maxvalue])
                                 if not l.minvalue < pd['value'] < l.maxvalue:
-                                    app.logger.debug("Current value is out of limits, sending notification")
+                                    app.logger.debug(["Current value is out of limits, sending notification", probe.sensor.uuid, pd['ptype'], pd['label'], pd['value']])
                                     # Create notification and send it
                     db.session.add(newprobedata)
                     db.session.commit()
