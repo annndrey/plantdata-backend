@@ -280,6 +280,7 @@ def send_zones(zone, zonelabel, fuuid, file_format, fpath, user_login, sensor_uu
                 precise_res = cf_result
 
         elif unhealthy_results and 'unhealthy' not in cf_result:
+            # TODO >>> add _ns here, Issue #80
             if len(unhealthy_results) > 1 and len(set(unhealthy_results)) < len(unhealthy_results):
                 unhealthy_results = [(res, unhealthy_results.count(res)) for res in set(unhealthy_results)]
                 unhealthy_results = sorted(unhealthy_results, key=lambda x: x[1], reverse=True)
@@ -442,6 +443,7 @@ def setup_periodic_tasks(sender, **kwargs):
         #crontab(),
         check_pending_notifications.s(),
     )
+    # TODO: Add sensors vaules check Issue #83
 
 
 @celery.task
@@ -2206,6 +2208,7 @@ class DataAPI(Resource):
                     db.session.add(probe)
                     db.session.commit()
                 newdata.probes.append(probe)
+                
                 #probe.data.append(newdata)
                 for pd in pr['data']:
                     prtype = db.session.query(SensorType).filter(SensorType.ptype==pd['ptype']).first()
@@ -2213,6 +2216,18 @@ class DataAPI(Resource):
                     if prtype:
                         newprobedata.prtype = prtype
 
+
+                    # TODO >>> Add check parameter limits here Issue #83
+                    # And send notification immediately if the current data is out of specified range
+                    app.logger.debug("Sensor limits")
+                    if probe.sensor.limits:
+                        app.logger.debug("Checking sensor limits")
+                        for l in probe.sensor.limits:
+                            if l.prtype.ptype == pd['ptype']:
+                                app.logger.debug(["Current value:", pd['value'], "limits", l.minvalue, l.maxvalue])
+                                if not l.minvalue < pd['value'] < l.maxvalue:
+                                    app.logger.debug("Current value is out of limits, sending notification")
+                                    # Create notification and send it
                     db.session.add(newprobedata)
                     db.session.commit()
                     newdata.records.append(newprobedata)

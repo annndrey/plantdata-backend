@@ -110,9 +110,6 @@ class Probe(db.Model):
     x = db.Column(db.Integer)
     y = db.Column(db.Integer)
     z = db.Column(db.Integer)
-    #records = relationship("Data", secondary=data_probes)
-    #data_id = db.Column(db.Integer, ForeignKey('data.id'))
-    #data = relationship("Data", backref=backref("probes", uselist=True))
 
     
 # Notifications
@@ -155,12 +152,8 @@ class Sensor(db.Model):
             return max(ts)
         else:
             return 0
-    
-# Locations
-# descr
-# lat
-# lon
-# address
+
+        
 class Location(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     address = db.Column(db.Text(), nullable=True)
@@ -168,6 +161,17 @@ class Location(db.Model):
     lon = db.Column(db.Text(), nullable=True)
     cf_values = db.Column(db.Text())
 
+    
+class SensorLimit(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    prtype_id = db.Column(db.Integer, ForeignKey('sensor_type.id'))
+    sensor_id = db.Column(db.Integer, ForeignKey('sensor.id'))
+    prtype = relationship("SensorType", backref=backref("limits", uselist=True))
+    sensor = relationship("Sensor", backref=backref("limits", uselist=True))
+    minvalue = db.Column(db.Float(), nullable=True)
+    maxvalue = db.Column(db.Float(), nullable=True)
+    
+    
 class SensorType(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     minvalue = db.Column(db.Float(), nullable=True)
