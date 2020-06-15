@@ -2227,15 +2227,17 @@ class DataAPI(Resource):
                                     if not all([l.minvalue < v.value < l.maxvalue for v in prev_three_values]):
                                         app.logger.debug("Prev values are out of limits")
                                         
-                                    pd['ts'] = newdata.ts.strftime("%d-%m-%Y %H:%M:%S")
-                                    pd['uuid'] = pr['puuid']
-                                    pd['location'] = probe.sensor.location.address
-                                    pd['coords'] = "x:{} y:{} z:{}".format(probe.x, probe.y, probe.z)
-                                    pd['min'] = l.minvalue
-                                    pd['max'] = l.maxvalue
+                                        pd['ts'] = newdata.ts.strftime("%d-%m-%Y %H:%M:%S")
+                                        pd['uuid'] = pr['puuid']
+                                        pd['location'] = probe.sensor.location.address
+                                        pd['coords'] = "x:{} y:{} z:{}".format(probe.x, probe.y, probe.z)
+                                        pd['min'] = l.minvalue
+                                        pd['max'] = l.maxvalue
                                     
-                                    app.logger.debug(pd)
-                                    newnotification = Notification(user=sensor.user, text=json.dumps(pd), ntype='sensors')
+                                        app.logger.debug(pd)
+                                        newnotification = Notification(user=sensor.user, text=json.dumps(pd), ntype='sensors')
+                                        db.session.add(newnotification)
+                                        db.session.commit()
                                     # Create notification and send it
                     db.session.add(newprobedata)
                     db.session.commit()
