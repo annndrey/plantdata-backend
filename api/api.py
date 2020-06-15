@@ -2191,6 +2191,7 @@ class DataAPI(Resource):
             if sensor.user != user:
                 abort(403)
             ts = request.form.get("ts")
+            app.logger.debug(['TS', ts])
             newdata = Data(sensor_id=sensor.id,
                            ts = ts
             )
@@ -2225,6 +2226,9 @@ class DataAPI(Resource):
                                     pd['uuid'] = pr['puuid']
                                     pd['location'] = probe.sensor.location.address
                                     pd['coords'] = "x:{} y:{} z:{}".format(probe.x, probe.y, probe.z)
+                                    pd['min'] = l.minvalue
+                                    pd['max'] = l.maxvalue
+                                    
                                     app.logger.debug(pd)
                                     newnotification = Notification(user=sensor.user, text=json.dumps(pd), ntype='sensors')
                                     # Create notification and send it
