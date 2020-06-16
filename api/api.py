@@ -463,7 +463,8 @@ def check_pending_image_notifications():
                         db.session.add(n)
                         db.session.commit()
                 app.logger.debug(f"Sending user notifications {dbuser.additional_email}")
-                send_images_email_notification.delay(dbuser.additional_email, notifications)
+                if notifications:
+                    send_images_email_notification.delay(dbuser.additional_email, notifications)
 
 
 @celery.task
@@ -481,7 +482,8 @@ def check_pending_sensor_notifications():
                         db.session.add(n)
                         db.session.commit()
                 app.logger.debug(f"Sending user notifications {dbuser.additional_email}")
-                send_sensors_email_notification.delay(dbuser.additional_email, notifications)
+                if notifications:
+                    send_sensors_email_notification.delay(dbuser.additional_email, notifications)
                 
 
 
