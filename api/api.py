@@ -202,6 +202,7 @@ def custom_serializer(data, cameras=None):
     #outdata['labels'] = [d.ts for d in data if d.records]
     #outdata['cameras'] = [[{"camlabel":c.camlabel, "id":c.id, "warnings":c.warnings} for d in data for c in d.cameras]]
     if cameras:
+        app.logger.debug(cameras)
         outdata['cameras'].append([{"camlabel":c.camlabel, "id":c.id, "warnings":c.warnings} for c in cameras])
 
     for d in data:
