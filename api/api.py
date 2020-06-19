@@ -204,7 +204,7 @@ def custom_serializer(data, cameras=None):
     if cameras:
         for cam in cameras:
             outdata['cameras'].append([{"camlabel":c.camlabel, "id":c.id, "warnings":c.warnings} for c in cam])
-        app.logger.debug(outdata.cameras)
+        app.logger.debug(outdata['cameras'])
     for d in data:
         #app.logger.debug("PROCESS DATA {}".format(d.id))
         if len(d.records) > 0:
