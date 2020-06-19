@@ -2097,7 +2097,7 @@ class DataAPI(Resource):
                             all_cameras = [c.cameras for c in sensordata if c.cameras]
                             sensordata = list(islice(sensordata, 0, query_count, proportion))
                             app.logger.debug("SHORT DATA 4 RESAMPLE")
-                            data = custom_serializer(sensordata)#, cameras=all_cameras)
+                            data = custom_serializer(sensordata, cameras=all_cameras)
                         else:
                             app.logger.debug("SHORT DATA 4")
                             data = custom_serializer(sensordata)
