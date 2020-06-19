@@ -197,16 +197,20 @@ def get_count(q):
     return count
         
 
-def custom_serializer(data):
+def custom_serializer(data, cameras=None):
     outdata = {"labels": [], "data": {}, "cameras": []}
     #outdata['labels'] = [d.ts for d in data if d.records]
     #outdata['cameras'] = [[{"camlabel":c.camlabel, "id":c.id, "warnings":c.warnings} for d in data for c in d.cameras]]
+    if cameras:
+        outdata['cameras'].append([{"camlabel":c.camlabel, "id":c.id, "warnings":c.warnings} for c in cameras])
+
     for d in data:
         #app.logger.debug("PROCESS DATA {}".format(d.id))
         if len(d.records) > 0:
             outdata['labels'].append(d.ts)
-        if len(d.cameras) > 0:
-            outdata['cameras'].append([{"camlabel":c.camlabel, "id":c.id, "warnings":c.warnings} for c in d.cameras])
+        if not cameras:
+            if len(d.cameras) > 0:
+                outdata['cameras'].append([{"camlabel":c.camlabel, "id":c.id, "warnings":c.warnings} for c in d.cameras])
         for r in d.records:
             datalabel = "{} {}".format(r.label, r.probe.uuid)
             if datalabel not in outdata['data'].keys():
@@ -1997,7 +2001,6 @@ class DataAPI(Resource):
                 if all([first_rec_day, last_rec_day]):
                     # IF NO DATES SPECIFIED,
                     # SHOW ONLY LAST DAY RECORDS!!
-
                     day_st = last_rec_day.replace(hour=0, minute=0)
                     day_end = last_rec_day.replace(hour=23, minute=59, second=59)
                 else:
@@ -2090,10 +2093,13 @@ class DataAPI(Resource):
                     else:
                         if query_count > 1000:
                             proportion = int(query_count/1000)
+                            all_cameras = [c for c in sensordata.cameras]
                             sensordata = list(islice(sensordata, 0, query_count, proportion))
                             app.logger.debug("SHORT DATA 4 RESAMPLE")
-                        app.logger.debug("SHORT DATA 4")
-                        data = custom_serializer(sensordata)
+                            data = custom_serializer(sensordata, cameras=all_cameras)
+                        else:
+                            app.logger.debug("SHORT DATA 4")
+                            data = custom_serializer(sensordata)
                         #data = self.m_schema.dump(sensordata).data
                     app.logger.debug("GET DATA 5")                        
                     #if puuid:
@@ -2281,9 +2287,6 @@ class DataAPI(Resource):
                     if prtype:
                         newprobedata.prtype = prtype
 
-
-                    # TODO >>> Add check parameter limits here Issue #83
-                    # And send notification immediately if the current data is out of specified range
                     if probe.sensor.limits:
                         app.logger.debug(["Checking sensor limits for", probe.sensor.uuid, probe.sensor.user.login])
                         for l in probe.sensor.limits:
