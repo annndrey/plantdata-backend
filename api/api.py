@@ -2093,7 +2093,7 @@ class DataAPI(Resource):
                     else:
                         if query_count > 1000:
                             proportion = int(query_count/1000)
-                            all_cameras = [c for c in sensordata.cameras]
+                            all_cameras = [c.cameras for c in sensordata]
                             sensordata = list(islice(sensordata, 0, query_count, proportion))
                             app.logger.debug("SHORT DATA 4 RESAMPLE")
                             data = custom_serializer(sensordata, cameras=all_cameras)
