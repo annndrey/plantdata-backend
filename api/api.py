@@ -253,7 +253,6 @@ def send_zones(zone, zonelabel, fuuid, file_format, fpath, user_login, sensor_uu
     response = requests.post(CF_HOST.format("loadimage"), auth=(CF_LOGIN, CF_PASSWORD), files = {'imagefile': img_io}, data=cf_request_data)
     if response.status_code == 200:
         cf_result = response.json().get('objtype')
-        
         subzones = get_zones(cropped, 2, 2)
         sz_results = []
         for sz in subzones.keys():
@@ -284,16 +283,19 @@ def send_zones(zone, zonelabel, fuuid, file_format, fpath, user_login, sensor_uu
                 precise_res = cf_result
 
         elif unhealthy_results and 'unhealthy' not in cf_result:
-            # TODO >>> add _ns here, Issue #80
             if len(unhealthy_results) > 1 and len(set(unhealthy_results)) < len(unhealthy_results):
                 unhealthy_results = [(res, unhealthy_results.count(res)) for res in set(unhealthy_results)]
                 unhealthy_results = sorted(unhealthy_results, key=lambda x: x[1], reverse=True)
                 precise_res = unhealthy_results[0][0] + '_unhealthy'
             else:
                 precise_res = cf_result
-
+                
         elif cf_result in sz_results:
             precise_res = cf_result
+
+        elif 'unhealthy' in cf_result and not unhealthy_results:
+            # Issue #80
+            precise_res = cf_result + "_ns"
 
         else:
             precise_results = [(res, sz_results.count(res)) for res in set(sz_results)]
