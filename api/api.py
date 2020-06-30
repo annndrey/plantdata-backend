@@ -976,7 +976,7 @@ def get_auth_token_post():
     if user:
         if user.verify_password(password):
             token = user.generate_auth_token()
-            response = jsonify({ 'token': "%s" % token.decode('utf-8'), "user_id":user.id, "login": user.login, "name": user.name })
+            response = jsonify({ 'token': "%s" % token.decode('utf-8'), "user_id":user.id, "login": user.login, "name": user.name, "company": user.company })
             return response
     return make_response(jsonify({'error': 'Unauthorized access'}), 401)
 
