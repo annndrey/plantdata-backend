@@ -1026,7 +1026,7 @@ class SensorSchema(ma.ModelSchema):
     numrecords = ma.Function(lambda obj: obj.numrecords)
     mindate = ma.Function(lambda obj: obj.mindate)
     maxdate = ma.Function(lambda obj: obj.maxdate)
-
+    location = ma.Nested("LocationSchema")#, exclude=['camera',])
 
 class SensorShortSchema(ma.ModelSchema):
     class Meta:
