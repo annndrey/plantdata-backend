@@ -54,7 +54,7 @@ class User(db.Model):
     phone = db.Column(db.String(400))
     additional_email = db.Column(db.String(400))
     is_admin = db.Column(db.Boolean, default=False)
-    organization = db.Column(db.Text(), nullable=True)
+    company = db.Column(db.Text(), nullable=True)
     
     @validates('login')
     def validate_login(self, key, login):
