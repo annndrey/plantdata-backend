@@ -1661,6 +1661,112 @@ class ProbeAPI(Resource):
 
 
 
+
+        
+
+class SensorsStatsAPI(Resource):
+    def __init__(self):
+        #self.schema = ProbeDataSchema()
+        #self.m_schema = ProbeDataSchema(many=True)
+        self.method_decorators = []
+
+    def options(self, *args, **kwargs):
+        return jsonify([])
+
+    @token_required
+    @cross_origin()
+    #@cache.cached(timeout=300, key_prefix=cache_key)
+    def get(self):
+        """
+        GET Get sensors stats. In case of no sensor UUID provided 
+        return all user's sensor stats. 
+
+        The returning values are: 
+        * overall plants health: percentage of healthy plants
+        * Number of diseased zones discovered
+        * number of unusual spikes of sensors data
+        ---
+        tags: [Sensors,]
+        parameters:
+         - in: query
+           name: suuid
+           type: string
+           required: false
+           description: Sensor UUID
+         - in: query
+           name: ts_from
+           type: string
+           format: date-time
+           example: "2017-01-01 10:21"
+           required: false
+           description: Return data starting from the given timestamp
+         - in: query
+           name: ts_to
+           type: string
+           format: date-time
+           example: "2017-01-01 10:21"
+           required: false
+           description: Return data before the given timestamp
+        definitions:
+          SensorStats:
+            type: object
+            description: SensorData
+            properties:
+              mindate:
+                type: string
+                format: date-time
+                description: The earliest record date
+              maxdate:
+                type: string
+                format: date-time
+                description: The latest record date
+             health:
+                type: integer
+                description: Overall plants health, in percents
+              diseased_zones:
+                type: array
+                description: Diseased zones discovered, for the last 7 days
+                items:
+                  type: object
+                  description: A single data record
+                  properties:
+                    id:
+                      type: integer
+                      description: Data ID
+                    ts:
+                      type: integer
+                      description: Number of diseased zones discovered per day
+        responses:
+          200:
+            description: Sensor Stats
+            schema:
+               $ref: '#/definitions/SensorStats'
+          401:
+            description: Not authorized
+          404:
+            description: URL not found
+
+        """
+        auth_headers = request.headers.get('Authorization', '').split()
+        token = auth_headers[1]
+        udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
+        
+        user = User.query.filter_by(login=udata['sub']).first()
+        if not user:
+            abort(403)
+            
+        suuid = request.args.get('suuid', None)
+        ts_from = request.args.get('ts_from', None)
+        ts_to = request.args.get('ts_to', None)
+        sensor = db.session.query().filter(Sensor.uuid == suuid).first()
+        app.logger.debug(["STATS", suuid, ts_from, ts_to])
+        if sensor:
+            if sensor.user != user:
+                abort(403)
+
+        abort(404)
+        
+
 class ProbeDataAPI(Resource):
     def __init__(self):
         self.schema = ProbeDataSchema()
@@ -3013,6 +3119,7 @@ api.add_resource(ImagesAPI, '/images', endpoint='images')
 api.add_resource(CameraAPI, '/cameras/<int:id>', endpoint='cameras')
 api.add_resource(DataAPI, '/data', '/data/<int:id>', endpoint='savedata')
 api.add_resource(SensorAPI, '/sensors', '/sensors/<int:id>', endpoint='sensors')
+api.add_resource(SensorsStatsAPI, '/stats', endpoint='stats')
 api.add_resource(ProbeAPI, '/probes', '/probes/<int:id>', endpoint='probes')
 api.add_resource(ProbeDataAPI, '/probedata', '/probedata/<int:id>', endpoint='probedata')
 api.add_resource(PictAPI, "/p/<path:path>", endpoint="picts")
