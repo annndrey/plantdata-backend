@@ -4,6 +4,7 @@
 
 from functools import wraps
 from flask import Flask, g, make_response, request, current_app, send_file, url_for
+from flask import abort as fabort
 from flask_restful import Resource, Api, reqparse, abort, marshal_with
 from flask.json import jsonify
 from flasgger import Swagger
@@ -1764,16 +1765,19 @@ class SensorsStatsAPI(Resource):
         ts_from = request.args.get('ts_from', None)
         ts_to = request.args.get('ts_to', None)
         
-        app.logger.debug([len(p)==0 if p is not None else False for p in [suuid, ts_from, ts_to]])
+        # if no suuid provided, collect stats for all user's sensors
+        # if no ts_from or/and ts_to provided, collect stats for today's day
+        
         if any(len(p)==0 if p is not None else False for p in [suuid, ts_from, ts_to]):
             app.logger.debug("Wrong params")
-            abort(400)
+            fabort(400, "Wrong parameter's value")
 
         if any(p is None for p in [suuid, ts_from, ts_to]):
             app.logger.debug("Missong params")
-            abort(400)
+            fabort(400, "Missing values")
             
         app.logger.debug(["STATS", suuid, ts_from, ts_to])
+        
         sensor = db.session.query(Sensor).filter(Sensor.uuid == suuid).first()
         if sensor:
             if sensor.user != user:
