@@ -1020,14 +1020,17 @@ class CameraPositionSchema(ma.ModelSchema):
     pictures = ma.Nested("DataPictureSchema", many=True, exclude=["camera_position", "data", "thumbnail"])#, many=False, exclude=['thumbnail', 'camera', 'camera_position', 'data'])
     #image = ma.Function(lambda obj: obj.image)
 
+    
 class SensorSchema(ma.ModelSchema):
     class Meta:
         model = Sensor
+        exclude = ['data', ]
     numrecords = ma.Function(lambda obj: obj.numrecords)
     mindate = ma.Function(lambda obj: obj.mindate)
     maxdate = ma.Function(lambda obj: obj.maxdate)
     location = ma.Nested("LocationSchema")#, exclude=['camera',])
 
+    
 class SensorShortSchema(ma.ModelSchema):
     class Meta:
         model = Sensor
