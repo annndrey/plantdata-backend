@@ -1761,7 +1761,7 @@ class SensorsStatsAPI(Resource):
         ts_from = request.args.get('ts_from', None)
         ts_to = request.args.get('ts_to', None)
         
-        app.logger.debug([len(p)==0 if p else False for p in [suuid, ts_from, ts_to]])
+        app.logger.debug([len(p)==0 if p for p in [suuid, ts_from, ts_to]])
         if any(len(p)==0 if p else False for p in [suuid, ts_from, ts_to]):
             app.logger.debug("Wrong params")
             abort(400)
