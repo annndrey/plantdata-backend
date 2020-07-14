@@ -1758,8 +1758,8 @@ class SensorsStatsAPI(Resource):
         suuid = request.args.get('suuid', None)
         ts_from = request.args.get('ts_from', None)
         ts_to = request.args.get('ts_to', None)
-        sensor = db.session.query().filter(Sensor.uuid == suuid).first()
         app.logger.debug(["STATS", suuid, ts_from, ts_to])
+        sensor = db.session.query().filter(Sensor.uuid == suuid).first()
         if sensor:
             if sensor.user != user:
                 abort(403)
