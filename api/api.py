@@ -1768,6 +1768,11 @@ class SensorsStatsAPI(Resource):
         if any(len(p)==0 if p is not None else False for p in [suuid, ts_from, ts_to]):
             app.logger.debug("Wrong params")
             abort(400)
+
+        if any(p is None for p in [suuid, ts_from, ts_to]):
+            app.logger.debug("Missong params")
+            abort(400)
+            
         app.logger.debug(["STATS", suuid, ts_from, ts_to])
         sensor = db.session.query(Sensor).filter(Sensor.uuid == suuid).first()
         if sensor:
