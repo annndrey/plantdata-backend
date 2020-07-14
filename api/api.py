@@ -1761,7 +1761,7 @@ class SensorsStatsAPI(Resource):
         ts_from = request.args.get('ts_from', None)
         ts_to = request.args.get('ts_to', None)
         
-        app.logger.debug([len(p)==0 for p in [suuid, ts_from, ts_to] if p else False])
+        app.logger.debug([len(p)==0 for p in [suuid, ts_from, ts_to]])
         if any(p and len(p)==0 for p in [suuid, ts_from, ts_to]):
             abort(400)
         app.logger.debug(["STATS", suuid, ts_from, ts_to])
