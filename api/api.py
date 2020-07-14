@@ -1763,6 +1763,7 @@ class SensorsStatsAPI(Resource):
         
         app.logger.debug([len(p)==0 if p else False for p in [suuid, ts_from, ts_to]])
         if any(len(p)==0 if p else False for p in [suuid, ts_from, ts_to]):
+            app.logger.debug("Wrong params")
             abort(400)
         app.logger.debug(["STATS", suuid, ts_from, ts_to])
         sensor = db.session.query(Sensor).filter(Sensor.uuid == suuid).first()
