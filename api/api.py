@@ -1741,6 +1741,8 @@ class SensorsStatsAPI(Resource):
             description: Sensor Stats
             schema:
                $ref: '#/definitions/SensorStats'
+          400:
+            description: Bad request
           401:
             description: Not authorized
           404:
@@ -1758,8 +1760,10 @@ class SensorsStatsAPI(Resource):
         suuid = request.args.get('suuid', None)
         ts_from = request.args.get('ts_from', None)
         ts_to = request.args.get('ts_to', None)
+        if any([p and len(p)==0]):
+            abort(400)
         app.logger.debug(["STATS", suuid, ts_from, ts_to])
-        sensor = db.session.query().filter(Sensor.uuid == suuid).first()
+        sensor = db.session.query(Sensor).filter(Sensor.uuid == suuid).first()
         if sensor:
             if sensor.user != user:
                 abort(403)
