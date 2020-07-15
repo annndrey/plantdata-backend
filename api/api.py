@@ -1832,7 +1832,7 @@ class SensorsStatsAPI(Resource):
                 minvalue = l.minvalue
                 maxvalue = l.maxvalue
                 sp = spikes.filter(ProbeData.ptype==limit_type)\
-                           .filter(sqlalchemy.not_(ProbeData.value.between(minvalue,maxvalue))
+                           .filter(sqlalchemy.not_(ProbeData.value.between(minvalue,maxvalue)))
                 numsp = sp.scalar()
                 numspikes = numspikes + numsp
                 app.logger.debug(["SPIKES", limit_type, minvalue, maxvalue, numsp])
