@@ -1796,11 +1796,11 @@ class SensorsStatsAPI(Resource):
         all_unhealthy_zones = db.session.query(func.count(PictureZone.id))\
                                         .join(DataPicture).join(Data).join(Sensor)\
                                                                      .filter(PictureZone.results.like('%unhealthy%'))\
-                                                                     .filter(or_(Data.ts > ts_from, Data.ts < ts_to))
+                                                                     .filter(or_(PictureZone.ts > ts_from, PictureZone.ts < ts_to))
         
         all_zones = db.session.query(func.count(PictureZone.id))\
                               .join(DataPicture).join(Data).join(Sensor)\
-                                                           .filter(or_(Data.ts > ts_from, Data.ts < ts_to))
+                                                           .filter(or_(PictureZone.ts > ts_from, PictureZone.ts < ts_to))
         
         if suuid == 'all':
             all_unhealthy_zones = all_unhealthy_zones.filter(Sensor.uuid.in_([s.uuid for s in user.sensors]))
