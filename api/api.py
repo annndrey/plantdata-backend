@@ -1793,12 +1793,11 @@ class SensorsStatsAPI(Resource):
         all_unhealthy_zones = db.session.query(func.count(PictureZone.id))\
                                         .join(DataPicture).join(Data).join(Sensor)\
                                                                      .filter(PictureZone.results.like('%unhealthy%'))\
-                                                                     .filter(Data.ts > ts_from).filter(Data.ts < ts_to)
+                                                                     .filter(or_(Data.ts > ts_from, Data.ts < ts_to))
         
         all_zones = db.session.query(func.count(PictureZone.id))\
                               .join(DataPicture).join(Data).join(Sensor)\
-                                                           .filter(Data.ts > ts_from)\
-                                                           .filter(Data.ts < ts_to)
+                                                           .filter(or_(Data.ts > ts_from, Data.ts < ts_to))
         
         if suuid == 'all':
             all_unhealthy_zones = all_unhealthy_zones.filter(Sensor.uuid.in_([s.uuid for s in user.sensors]))
@@ -1816,7 +1815,7 @@ class SensorsStatsAPI(Resource):
         
 
         # number of unusual spikes
-        spikes = db.session.query(func.count(ProbeData.id)).join(Data).join(Probe).join(Sensor).filter(Data.ts > ts_from).filter(Data.ts > ts_to)
+        spikes = db.session.query(func.count(ProbeData.id)).join(Data).join(Probe).join(Sensor).filter(or_(Data.ts > ts_from, Data.ts > ts_to))
         if suuid == 'all':
             spikes = spikes.filter(Sensor.uuid.in_([s.uuid for s in user.sensors]))
         else:
