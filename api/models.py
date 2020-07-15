@@ -116,6 +116,7 @@ class Probe(db.Model):
 # Notifications
 class Notification(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    ts = db.Column(db.DateTime, default=datetime.datetime.now)
     text = db.Column(db.Text(), nullable=False)
     user_id = db.Column(db.Integer, ForeignKey('user.id'))
     user = relationship("User", backref=backref("notifications"))

@@ -1789,6 +1789,7 @@ class SensorsStatsAPI(Resource):
             if sensor.user != user:
                 abort(403)
                 
+        ## Overall health
         all_unhealthy_zones = db.session.query(func.count(PictureZone.id))\
                                         .join(DataPicture).join(Data).join(Sensor)\
                                                                      .filter(PictureZone.results.like('%unhealthy%'))\
@@ -1810,8 +1811,12 @@ class SensorsStatsAPI(Resource):
         all_zones = all_zones.scalar()
         all_healthy_zones = all_zones - all_unhealthy_zones
         
-        overall_health = (all_healthy_zones/all_zones) * 100
-        app.logger.debug(["STATS", all_unhealthy_zones, all_healthy_zones, all_zones, overall_health])
+        overall_health = int(round((all_healthy_zones/all_zones) * 100))
+        app.logger.debug(["STATS", overall_health, all_unhealthy_zones])
+
+
+        # number of unusual spikes
+        
         
         # Overall plants health:
         # all zones - 100%
