@@ -1833,8 +1833,8 @@ class SensorsStatsAPI(Resource):
                 limit_type = l.prtype.ptype
                 minvalue = l.minvalue
                 maxvalue = l.maxvalue
-                sp = spikes.filter(ProbrData.ptype==limit_type)\
-                           .filter(or_(ProbrData.value < minvalue, ProbeData.value > maxvalue))
+                sp = spikes.filter(ProbeData.ptype==limit_type)\
+                           .filter(or_(ProbeData.value < minvalue, ProbeData.value > maxvalue))
                 numsp = sp.scalar()
                 numspikes = numspikes + numsp
                 app.logger.debug(["SPIKES", limit_type, minvalue, maxvalue, numsp])
