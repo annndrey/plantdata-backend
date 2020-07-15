@@ -1811,7 +1811,7 @@ class SensorsStatsAPI(Resource):
         output['health'] = overall_health
         output['diseased_zones'] = all_unhealthy_zones
         
-        app.logger.debug(["STATS", {"overall_health": overall_health, "unhealthy_zones": all_unhealthy_zones}])
+        app.logger.debug(["STATS", {"overall_health": overall_health, "unhealthy_zones": all_unhealthy_zones, "all zones": all_zones}])
         
 
         # number of unusual spikes
