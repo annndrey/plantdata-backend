@@ -1780,7 +1780,7 @@ class SensorsStatsAPI(Resource):
         if not ts_from or ts_from == '':
             ts_from = datetime.datetime.now().replace(hour=0, minute=0)
         if not ts_to or ts_to == '':
-            ts_from = datetime.datetime.now().replace(hour=23, minute=59, second=59)
+            ts_to = datetime.datetime.now().replace(hour=23, minute=59, second=59)
             
         app.logger.debug(["STATS", suuid, ts_from, ts_to])
         
@@ -1788,7 +1788,36 @@ class SensorsStatsAPI(Resource):
         if sensor:
             if sensor.user != user:
                 abort(403)
+                
+        all_unhealthy_zones = db.session.query(func.count(PictureZone.id))\
+                                        .join(DataPicture).join(Data).join(Sensor)\
+                                                                     .filter(PictureZone.results.like('%unhealthy%'))\
+                                                                     .filter(Data.ts > ts_from).filter(Data.ts < ts_to)
+        
+        all_zones = db.session.query(func.count(PictureZone.id))\
+                              .join(DataPicture).join(Data).join(Sensor)\
+                                                           .filter(Data.ts > ts_from)\
+                                                           .filter(Data.ts < ts_to)
+        
+        if suuid == 'all':
+            all_unhealthy_zones = overall_health.filter(Sensor.uuid.in_([s.uuid for s in user.sensors]))
+            all_zones = all_zones.filter(Sensor.uuid.in_([s.uuid for s in user.sensors]))
+        else:
+            all_unhealthy_zones = overall_health.filter(Sensor.uuid == suuid)
+            all_zones = all_zones.filter(Sensor.uuid == suuid)
+            
+        all_unhealthy_zones = all_unhealthy_zones.scalar()
+        all_zones = all_zones.scalar()
+        app.logger.debug(["STATS, "all_unhealthy_zones, all_zones])
+        # Overall plants health:
+        # all zones - 100%
+        # Healthy zones - x
+        # x = (healthy_zones * 100)/all_zones
+        # db.session.query(func.count(PictureZone.id)).join(DataPicture).join(Data).join(Sensor).filter(sqlalchemy.not_(PictureZone.results.like('%unhealthy%'))).filter(Sensor.uuid=="426882bd-5ecc-49b1-bf69-5268e7860efd").filter(Data.ts > datetime.datetime.now().replace(hour=0, minute=0, second=0))
+        # Diseased zones discovered:
 
+        # Number of unusual spikes
+                
         fabort(404, "Not found")
         
 
