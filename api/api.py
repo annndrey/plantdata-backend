@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 
@@ -10,7 +10,7 @@ from flask.json import jsonify
 from flasgger import Swagger
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import or_, desc, and_, func
+from sqlalchemy import or_, desc, and_, func, not_
 from sqlalchemy import create_engine
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import scoped_session
@@ -1831,8 +1831,7 @@ class SensorsStatsAPI(Resource):
                 limit_type = l.prtype.ptype
                 minvalue = l.minvalue
                 maxvalue = l.maxvalue
-                sp = spikes.filter(ProbeData.ptype==limit_type)\
-                           .filter(sqlalchemy.not_(ProbeData.value.between(minvalue,maxvalue)))
+                sp = spikes.filter(ProbeData.ptype==limit_type).filter(not_(ProbeData.value.between(minvalue,maxvalue)))
                 numsp = sp.scalar()
                 numspikes = numspikes + numsp
                 app.logger.debug(["SPIKES", limit_type, minvalue, maxvalue, numsp])
