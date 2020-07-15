@@ -1812,7 +1812,6 @@ class SensorsStatsAPI(Resource):
         output['diseased_zones'] = all_unhealthy_zones
         
         app.logger.debug(["STATS", {"overall_health": overall_health, "unhealthy_zones": all_unhealthy_zones, "all zones": all_zones}])
-        
 
         # number of unusual spikes
         spikes = db.session.query(func.count(ProbeData.id)).join(Data).join(Probe).join(Sensor).filter(Data.ts > ts_from).filter(Data.ts < ts_to)
@@ -1833,7 +1832,7 @@ class SensorsStatsAPI(Resource):
                 minvalue = l.minvalue
                 maxvalue = l.maxvalue
                 sp = spikes.filter(ProbeData.ptype==limit_type)\
-                           .filter(or_(ProbeData.value < minvalue, ProbeData.value > maxvalue))
+                           .filter(sqlalchemy.not_(ProbeData.value.between(minvalue,maxvalue))
                 numsp = sp.scalar()
                 numspikes = numspikes + numsp
                 app.logger.debug(["SPIKES", limit_type, minvalue, maxvalue, numsp])
