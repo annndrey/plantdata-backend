@@ -1810,7 +1810,7 @@ class SensorsStatsAPI(Resource):
         all_zones = all_zones.scalar()
         all_healthy_zones = all_zones - all_unhealthy_zones
         
-        overall_health = (all_zones/all_healthy_zones) * 100
+        overall_health = (all_healthy_zones/all_zones) * 100
         app.logger.debug(["STATS", all_unhealthy_zones, all_healthy_zones, all_zones, overall_health])
         
         # Overall plants health:
