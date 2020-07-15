@@ -1810,23 +1810,36 @@ class SensorsStatsAPI(Resource):
         all_unhealthy_zones = all_unhealthy_zones.scalar()
         all_zones = all_zones.scalar()
         all_healthy_zones = all_zones - all_unhealthy_zones
-        
         overall_health = int(round((all_healthy_zones/all_zones) * 100))
-        app.logger.debug(["STATS", overall_health, all_unhealthy_zones])
-
+        
+        app.logger.debug(["STATS", {"overall_health": overall_health, "unhealthy_zones": all_unhealthy_zones}])
+        
 
         # number of unusual spikes
-        
-        
-        # Overall plants health:
-        # all zones - 100%
-        # Healthy zones - x
-        # x = (healthy_zones * 100)/all_zones
-        # db.session.query(func.count(PictureZone.id)).join(DataPicture).join(Data).join(Sensor).filter(sqlalchemy.not_(PictureZone.results.like('%unhealthy%'))).filter(Sensor.uuid=="426882bd-5ecc-49b1-bf69-5268e7860efd").filter(Data.ts > datetime.datetime.now().replace(hour=0, minute=0, second=0))
-        # Diseased zones discovered:
-
-        # Number of unusual spikes
+        spikes = db.session.query(func.count(ProbeData.id)).join(Data).join(Probe).join(Sensor).filter(Data.ts > ts_from).filter(Data.ts > ts_to)
+        if suuid == 'all':
+            spikes = spikes.filter(Sensor.uuid.in_([s.uuid for s in user.sensors]))
+        else:
+            spikes = spikes.filter(Sensor.uuid == suuid)
+            
+        if suuid == 'all':
+            sensors = user.sensors
+        else:
+            sensors = db.session.query(Sensor).filter(Sensor.uuid == suuid).all()
+            
+        numspikes = 0 
+        for s in sensors:
+            for l in s.limits:
+                limit_type = l.prtype.ptype
+                minvalue = l.minvalue
+                maxvalue = l.maxvalue
+                sp = spikes.filter(ProbrData.ptype==limit_type)\
+                           .filter(or_(ProbrData.value < minvalue, ProbeData.value > maxvalue))
+                numsp = sp.scalar()
+                numspikes = numspikes + numsp
+                app.logger.debug(["SPIKES", limit_type, minvalue, maxvalue, numsp])
                 
+        app.logger.debug(["TOTAL SPIKES", numspikes])
         fabort(404, "Not found")
         
 
