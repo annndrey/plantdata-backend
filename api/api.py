@@ -1727,6 +1727,9 @@ class SensorsStatsAPI(Resource):
              health:
                 type: integer
                 description: Overall plants health, in percents
+             numspikes:
+                type: integer
+                description: Unusual spikes of sensors data count 
               diseased_zones:
                 type: array
                 description: Diseased zones discovered, for the last 7 days
@@ -1764,7 +1767,7 @@ class SensorsStatsAPI(Resource):
         suuid = request.args.get('suuid', None)
         ts_from = request.args.get('ts_from', None)
         ts_to = request.args.get('ts_to', None)
-        
+        output = {"health":0, "spikes": 0, "diseased_zones": 0}
         # if no suuid provided, collect stats for all user's sensors
         # if no ts_from or/and ts_to provided, collect stats for today's day
         
@@ -1810,6 +1813,9 @@ class SensorsStatsAPI(Resource):
         all_zones = all_zones.scalar()
         all_healthy_zones = all_zones - all_unhealthy_zones
         overall_health = int(round((all_healthy_zones/all_zones) * 100))
+
+        output['health'] = overall_health
+        output['diseased_zones'] = all_unhealthy_zones
         
         app.logger.debug(["STATS", {"overall_health": overall_health, "unhealthy_zones": all_unhealthy_zones}])
         
@@ -1837,9 +1843,12 @@ class SensorsStatsAPI(Resource):
                 numsp = sp.scalar()
                 numspikes = numspikes + numsp
                 app.logger.debug(["SPIKES", limit_type, minvalue, maxvalue, numsp])
-                
+        output['spikes'] = numspikes
+        
         app.logger.debug(["TOTAL SPIKES", numspikes])
-        fabort(404, "Not found")
+        
+        return jsonify(output), 200
+
         
 
 class ProbeDataAPI(Resource):
