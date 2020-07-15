@@ -1768,13 +1768,19 @@ class SensorsStatsAPI(Resource):
         # if no suuid provided, collect stats for all user's sensors
         # if no ts_from or/and ts_to provided, collect stats for today's day
         
-        if any(len(p)==0 if p is not None else False for p in [suuid, ts_from, ts_to]):
-            app.logger.debug("Wrong params")
-            fabort(400, "Wrong parameter's value")
+        #if any(len(p)==0 if p is not None else False for p in [suuid, ts_from, ts_to]):
+        #    app.logger.debug("Wrong params")
+        #    fabort(400, "Wrong parameter's value")
 
-        if any(p is None for p in [suuid, ts_from, ts_to]):
-            app.logger.debug("Missong params")
-            fabort(400, "Missing values")
+        #if any(p is None for p in [suuid, ts_from, ts_to]):
+        #    app.logger.debug("Missong params")
+        #    fabort(400, "Missing values")
+        if not suuid or suuid == '':
+            suuid = 'all'
+        if not ts_from or ts_from == '':
+            ts_from = datetime.datetime.now().replace(hour=0, minute=0)
+        if not ts_to or ts_to == '':
+            ts_from = datetime.datetime.now().replace(hour=23, minute=59, second=59)
             
         app.logger.debug(["STATS", suuid, ts_from, ts_to])
         
@@ -1783,7 +1789,7 @@ class SensorsStatsAPI(Resource):
             if sensor.user != user:
                 abort(403)
 
-        abort(404)
+        fabort(404, "Not found")
         
 
 class ProbeDataAPI(Resource):
