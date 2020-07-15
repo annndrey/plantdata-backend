@@ -1838,6 +1838,8 @@ class SensorsStatsAPI(Resource):
                 numspikes = numspikes + numsp
                 app.logger.debug(["SPIKES", limit_type, minvalue, maxvalue, numsp])
         output['spikes'] = numspikes
+        output["ts_from"] = ts_from
+        output["ts_to"] = ts_to
         
         app.logger.debug(["TOTAL SPIKES", numspikes])
         
