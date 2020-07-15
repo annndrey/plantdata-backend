@@ -1800,10 +1800,10 @@ class SensorsStatsAPI(Resource):
                                                            .filter(Data.ts < ts_to)
         
         if suuid == 'all':
-            all_unhealthy_zones = overall_health.filter(Sensor.uuid.in_([s.uuid for s in user.sensors]))
+            all_unhealthy_zones = all_unhealthy_zones.filter(Sensor.uuid.in_([s.uuid for s in user.sensors]))
             all_zones = all_zones.filter(Sensor.uuid.in_([s.uuid for s in user.sensors]))
         else:
-            all_unhealthy_zones = overall_health.filter(Sensor.uuid == suuid)
+            all_unhealthy_zones = all_unhealthy_zones.filter(Sensor.uuid == suuid)
             all_zones = all_zones.filter(Sensor.uuid == suuid)
             
         all_unhealthy_zones = all_unhealthy_zones.scalar()
