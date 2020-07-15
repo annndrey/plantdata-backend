@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-
 from functools import wraps
 from flask import Flask, g, make_response, request, current_app, send_file, url_for
 from flask import abort as fabort
@@ -1806,8 +1805,11 @@ class SensorsStatsAPI(Resource):
         all_unhealthy_zones = all_unhealthy_zones.scalar()
         all_zones = all_zones.scalar()
         all_healthy_zones = all_zones - all_unhealthy_zones
-        overall_health = int(round((all_healthy_zones/all_zones) * 100))
-
+        if all_zones > 0:
+            overall_health = int(round((all_healthy_zones/all_zones) * 100))
+        else:
+            overall_health = 100
+            
         output['health'] = overall_health
         output['diseased_zones'] = all_unhealthy_zones
         
