@@ -10,7 +10,7 @@ from flask.json import jsonify
 from flasgger import Swagger
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import or_, desc, and_
+from sqlalchemy import or_, desc, and_, func
 from sqlalchemy import create_engine
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import scoped_session
