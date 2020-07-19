@@ -1786,9 +1786,9 @@ class SensorsStatsAPI(Resource):
             ts_from = datetime.datetime.fromtimestamp(ts_from).replace(hour=0, minute=0, second=0)
             
         if not ts_to or ts_to == '':
-            ts_to = int(ts_to)
             ts_to = datetime.datetime.now().replace(hour=23, minute=59, second=59)
         else:
+            ts_to = int(ts_to)
             datetime.datetime.fromtimestamp(ts_to).replace(hour=23, minute=59, second=59)
             
         app.logger.debug(["STATS", suuid, ts_from, ts_to])
