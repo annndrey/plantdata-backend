@@ -1782,9 +1782,11 @@ class SensorsStatsAPI(Resource):
         if not ts_from or ts_from == '':
             ts_from = datetime.datetime.now().replace(hour=0, minute=0, second=0)
         else:
+            ts_from = int(ts_from)
             ts_from = datetime.datetime.fromtimestamp(ts_from).replace(hour=0, minute=0, second=0)
             
         if not ts_to or ts_to == '':
+            ts_to = int(ts_to)
             ts_to = datetime.datetime.now().replace(hour=23, minute=59, second=59)
         else:
             datetime.datetime.fromtimestamp(ts_to).replace(hour=23, minute=59, second=59)
