@@ -1700,16 +1700,16 @@ class SensorsStatsAPI(Resource):
            name: ts_from
            type: string
            format: date-time
-           example: "2017-01-01 10:21"
+           example: "1595181421"
            required: false
-           description: Return data starting from the given timestamp
+           description: Unix timestamp in seconds
          - in: query
            name: ts_to
            type: string
            format: date-time
-           example: "2017-01-01 10:21"
+           example: "1595181421"
            required: false
-           description: Return data before the given timestamp
+           description: Unix timestamp in seconds
         definitions:
           SensorStats:
             type: object
@@ -1782,12 +1782,12 @@ class SensorsStatsAPI(Resource):
         if not ts_from or ts_from == '':
             ts_from = datetime.datetime.now().replace(hour=0, minute=0, second=0)
         else:
-            ts_from = ts_from.replace(hour=0, minute=0, second=0)
+            ts_from = datetime.datetime.fromtimestamp(ts_from).replace(hour=0, minute=0, second=0)
             
         if not ts_to or ts_to == '':
             ts_to = datetime.datetime.now().replace(hour=23, minute=59, second=59)
         else:
-            ts_to.replace(hour=23, minute=59, second=59)
+            datetime.datetime.fromtimestamp(ts_to).replace(hour=23, minute=59, second=59)
             
         app.logger.debug(["STATS", suuid, ts_from, ts_to])
         
