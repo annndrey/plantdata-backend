@@ -1791,18 +1791,21 @@ class SensorsStatsAPI(Resource):
             ts_to = int(ts_to)
             ts_to = datetime.datetime.fromtimestamp(ts_to).replace(hour=23, minute=59, second=59)
 
-        grouped_ts_from = ts_to - datetime.timedelta(days=7)
+        grouped_ts_from = ts_to - datetime.timedelta(days=6)
         #date_list = [ts_to - datetime.timedelta(days=x) for x in range(7)]
-        app.logger.debug(["STATS", suuid, ts_from, ts_to])
+        app.logger.debug(["STATS", suuid, ts_from, ts_to, grouped_ts_from])
         
         sensor = db.session.query(Sensor).filter(Sensor.uuid == suuid).first()
+        
         if sensor:
             if sensor.user != user:
                 abort(403)
                 
         ## Overall health
         all_unhealthy_zones = db.session.query(func.count(PictureZone.id)).join(DataPicture).join(Data).join(Sensor).filter(PictureZone.results.like('%unhealthy%')).filter(PictureZone.ts >= ts_from).filter(PictureZone.ts <= ts_to)
+        
         grouped_zones = db.session.query(PictureZone.ts, func.count(PictureZone.id)).filter(PictureZone.results.like('%unhealthy%')).filter(PictureZone.ts >= grouped_ts_from).filter(PictureZone.ts <= ts_to)
+        
         all_zones = db.session.query(func.count(PictureZone.id)).join(DataPicture).join(Data).join(Sensor).filter(PictureZone.ts >= ts_from).filter(PictureZone.ts <= ts_to)
         
         if suuid == 'all':
@@ -1815,7 +1818,8 @@ class SensorsStatsAPI(Resource):
             all_zones = all_zones.filter(Sensor.uuid == suuid)
             
         grouped_zones = [(g[0].replace(hour=0, minute=0, second=0), g[1]) for g in grouped_zones.group_by(func.year(PictureZone.ts), func.month(PictureZone.ts), func.day(PictureZone.ts)).all()]
-        date_range = [ts_to.replace(hour=0, minute=0, second=0) - datetime.timedelta(days=x+1) for x in range(8)][::-1]
+        app.logger.debug(["GROUPS", grouped_zones])
+        date_range = [ts_to.replace(hour=0, minute=0, second=0) - datetime.timedelta(days=x+1) for x in range(7)][::-1]
         
         grouped_zones_output = {}
         for d in date_range:
