@@ -1827,6 +1827,7 @@ class SensorsStatsAPI(Resource):
                 grouped_zones.append((d, 0))
         
         grouped_zones = sorted(grouped_zones, key=lambda tup: tup[0])
+        grouped_zones = [{"name":g[0], "amount":g[1]} for g in grouped_zones]
         
         all_unhealthy_zones = all_unhealthy_zones.scalar()
         
