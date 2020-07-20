@@ -1791,7 +1791,7 @@ class SensorsStatsAPI(Resource):
             ts_to = int(ts_to)
             ts_to = datetime.datetime.fromtimestamp(ts_to).replace(hour=23, minute=59, second=59)
 
-        grouped_ts_from = ts_to - datetime.timedelta(days=6)
+        grouped_ts_from = ts_to - datetime.timedelta(days=7)
         #date_list = [ts_to - datetime.timedelta(days=x) for x in range(7)]
         app.logger.debug(["STATS", suuid, ts_from, ts_to, grouped_ts_from])
         
@@ -1819,7 +1819,7 @@ class SensorsStatsAPI(Resource):
             
         grouped_zones = [(g[0].replace(hour=0, minute=0, second=0), g[1]) for g in grouped_zones.group_by(func.year(PictureZone.ts), func.month(PictureZone.ts), func.day(PictureZone.ts)).all()]
         app.logger.debug(["GROUPS", grouped_zones])
-        date_range = [ts_to.replace(hour=0, minute=0, second=0) - datetime.timedelta(days=x+1) for x in range(7)][::-1]
+        date_range = [ts_to.replace(hour=0, minute=0, second=0) - datetime.timedelta(days=x) for x in range(7)][::-1]
         
         grouped_zones_output = {}
         for d in date_range:
