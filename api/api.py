@@ -1822,7 +1822,7 @@ class SensorsStatsAPI(Resource):
             if d not in [g[0] for g in grouped_zones]:
                 grouped_zones.append((d, 0))
         
-        #grouped_zones = [g[-1] for g in grouped_zones]
+        grouped_zones = sorted(grouped_zones, key=lambda tup: tup[0])
         
         all_unhealthy_zones = all_unhealthy_zones.scalar()
         
