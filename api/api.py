@@ -1801,9 +1801,9 @@ class SensorsStatsAPI(Resource):
                 abort(403)
                 
         ## Overall health
-        all_unhealthy_zones = db.session.query(func.count(PictureZone.id)).join(DataPicture).join(Data).join(Sensor).filter(PictureZone.results.like('%unhealthy%')).filter(PictureZone.ts > ts_from).filter(PictureZone.ts < ts_to)
-        grouped_zones = db.session.query(PictureZone.ts, func.count(PictureZone.id)).filter(PictureZone.results.like('%unhealthy%')).filter(PictureZone.ts > grouped_ts_from).filter(PictureZone.ts < ts_to)
-        all_zones = db.session.query(func.count(PictureZone.id)).join(DataPicture).join(Data).join(Sensor).filter(PictureZone.ts > ts_from).filter(PictureZone.ts < ts_to)
+        all_unhealthy_zones = db.session.query(func.count(PictureZone.id)).join(DataPicture).join(Data).join(Sensor).filter(PictureZone.results.like('%unhealthy%')).filter(PictureZone.ts >= ts_from).filter(PictureZone.ts <= ts_to)
+        grouped_zones = db.session.query(PictureZone.ts, func.count(PictureZone.id)).filter(PictureZone.results.like('%unhealthy%')).filter(PictureZone.ts >= grouped_ts_from).filter(PictureZone.ts <= ts_to)
+        all_zones = db.session.query(func.count(PictureZone.id)).join(DataPicture).join(Data).join(Sensor).filter(PictureZone.ts >= ts_from).filter(PictureZone.ts <= ts_to)
         
         if suuid == 'all':
             all_unhealthy_zones = all_unhealthy_zones.filter(Sensor.uuid.in_([s.uuid for s in user.sensors]))
