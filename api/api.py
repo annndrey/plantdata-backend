@@ -1808,17 +1808,21 @@ class SensorsStatsAPI(Resource):
         else:
             all_unhealthy_zones = all_unhealthy_zones.filter(Sensor.uuid == suuid)
             all_zones = all_zones.filter(Sensor.uuid == suuid)
-            
+        grouped_zones = all_unhealthy_zones.group_by(func.year(PictureZone.ts), func.month(PictureZone.ts), func.day(PictureZone.ts)).all()
+        grouped_zones = [g[-1] for g in grouped_zones]
+        
         all_unhealthy_zones = all_unhealthy_zones.scalar()
         all_zones = all_zones.scalar()
         all_healthy_zones = all_zones - all_unhealthy_zones
+        
         if all_zones > 0:
             overall_health = int(round((all_healthy_zones/all_zones) * 100))
         else:
             overall_health = 100
             
         output['health'] = overall_health
-        output['diseased_zones'] = all_unhealthy_zones
+        
+        output['diseased_zones'] = grouped_zones #all_unhealthy_zones
         
         app.logger.debug(["STATS", {"overall_health": overall_health, "unhealthy_zones": all_unhealthy_zones, "all zones": all_zones}])
 
