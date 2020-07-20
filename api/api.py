@@ -1790,7 +1790,9 @@ class SensorsStatsAPI(Resource):
         else:
             ts_to = int(ts_to)
             ts_to = datetime.datetime.fromtimestamp(ts_to).replace(hour=23, minute=59, second=59)
-            
+
+        grouped_ts_from = ts_to - datetime.timedelta(days=7)
+        
         app.logger.debug(["STATS", suuid, ts_from, ts_to])
         
         sensor = db.session.query(Sensor).filter(Sensor.uuid == suuid).first()
@@ -1800,18 +1802,23 @@ class SensorsStatsAPI(Resource):
                 
         ## Overall health
         all_unhealthy_zones = db.session.query(func.count(PictureZone.id)).join(DataPicture).join(Data).join(Sensor).filter(PictureZone.results.like('%unhealthy%')).filter(PictureZone.ts > ts_from).filter(PictureZone.ts < ts_to)
+        grouped_zones = db.session.query(func.count(PictureZone.id)).join(DataPicture).join(Data).join(Sensor).filter(PictureZone.results.like('%unhealthy%')).filter(PictureZone.ts > grouped_ts_from).filter(PictureZone.ts < ts_to)
         all_zones = db.session.query(func.count(PictureZone.id)).join(DataPicture).join(Data).join(Sensor).filter(PictureZone.ts > ts_from).filter(PictureZone.ts < ts_to)
         
         if suuid == 'all':
             all_unhealthy_zones = all_unhealthy_zones.filter(Sensor.uuid.in_([s.uuid for s in user.sensors]))
+            grouped_zones = grouped_zones.filter(Sensor.uuid.in_([s.uuid for s in user.sensors]))
             all_zones = all_zones.filter(Sensor.uuid.in_([s.uuid for s in user.sensors]))
         else:
             all_unhealthy_zones = all_unhealthy_zones.filter(Sensor.uuid == suuid)
+            grouped_zones = grouped_zones.filter(Sensor.uuid == suuid)
             all_zones = all_zones.filter(Sensor.uuid == suuid)
-        grouped_zones = all_unhealthy_zones.group_by(func.year(PictureZone.ts), func.month(PictureZone.ts), func.day(PictureZone.ts)).all()
+            
+        grouped_zones = grouped_zones.group_by(func.year(PictureZone.ts), func.month(PictureZone.ts), func.day(PictureZone.ts)).all()
         grouped_zones = [g[-1] for g in grouped_zones]
         
         all_unhealthy_zones = all_unhealthy_zones.scalar()
+        
         all_zones = all_zones.scalar()
         all_healthy_zones = all_zones - all_unhealthy_zones
         
