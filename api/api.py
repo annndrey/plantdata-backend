@@ -1697,6 +1697,14 @@ class SensorsStatsAPI(Resource):
            required: false
            description: Sensor UUID
          - in: query
+           name: output
+           type: array
+           items:
+             type: string
+             enum: [diseased_zones, health, spikes]
+           required: false
+           description: A list of output parameters. If nothing provided, all values are returned
+         - in: query
            name: ts_from
            type: string
            format: date-time
@@ -1766,6 +1774,10 @@ class SensorsStatsAPI(Resource):
         suuid = request.args.get('suuid', None)
         ts_from = request.args.get('ts_from', None)
         ts_to = request.args.get('ts_to', None)
+        output_params = request.args.get('ouptut', None)
+        
+        app.logger.debug(output_params)
+        
         output = {"health":0, "spikes": 0, "diseased_zones": 0}
         # if no suuid provided, collect stats for all user's sensors
         # if no ts_from or/and ts_to provided, collect stats for today's day
