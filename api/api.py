@@ -1774,7 +1774,7 @@ class SensorsStatsAPI(Resource):
         suuid = request.args.get('suuid', None)
         ts_from = request.args.get('ts_from', None)
         ts_to = request.args.get('ts_to', None)
-        output_params = request.args.get('ouptut', None)
+        output_params = request.args.get('output', None)
         
         app.logger.debug(output_params)
         
