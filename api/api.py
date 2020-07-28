@@ -1849,7 +1849,7 @@ class SensorsStatsAPI(Resource):
             
             grouped_zones = [(g[0].replace(hour=0, minute=0, second=0), g[1]) for g in grouped_zones.group_by(func.year(PictureZone.ts), func.month(PictureZone.ts), func.day(PictureZone.ts)).all()]
             app.logger.debug(["GROUPS", grouped_zones])
-            date_range = [ts_to.replace(hour=0, minute=0, second=0) - datetime.timedelta(days=x) for x in range(7)][::-1]
+            date_range = [ts_to.replace(hour=0, minute=0, second=0) - datetime.timedelta(days=x) for x in range(numentries)][::-1]
         
             grouped_zones_output = {}
             for d in date_range:
