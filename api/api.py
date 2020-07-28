@@ -1897,11 +1897,11 @@ class SensorsStatsAPI(Resource):
                     app.logger.debug(["SPIKES", limit_type, minvalue, maxvalue, numsp])
                 
             output['spikes'] = numspikes
-            
+            app.logger.debug(["TOTAL SPIKES", numspikes])
+
         output["ts_from"] = ts_from
         output["ts_to"] = ts_to
         
-        app.logger.debug(["TOTAL SPIKES", numspikes])
         
         return jsonify(output), 200
 
