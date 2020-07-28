@@ -1697,6 +1697,11 @@ class SensorsStatsAPI(Resource):
            required: false
            description: Sensor UUID
          - in: query
+           name: numentries
+           type: number
+           required: false
+           description: Number of diseased zones to return
+         - in: query
            name: output
            type: array
            items:
@@ -1775,7 +1780,7 @@ class SensorsStatsAPI(Resource):
         ts_from = request.args.get('ts_from', None)
         ts_to = request.args.get('ts_to', None)
         output_params = request.args.getlist('output', None)
-        
+        numentries = request.args.getlist('numentries', 7)        
         app.logger.debug(output_params)
         output = {}
         if output_params:
@@ -1812,7 +1817,7 @@ class SensorsStatsAPI(Resource):
             ts_to = int(ts_to)
             ts_to = datetime.datetime.fromtimestamp(ts_to).replace(hour=23, minute=59, second=59)
 
-        grouped_ts_from = ts_to - datetime.timedelta(days=7)
+        grouped_ts_from = ts_to - datetime.timedelta(days=numentries)
         
         app.logger.debug(["STATS", suuid, ts_from, ts_to, grouped_ts_from])
 
