@@ -1777,8 +1777,17 @@ class SensorsStatsAPI(Resource):
         output_params = request.args.getlist('output', None)
         
         app.logger.debug(output_params)
-        
-        output = {"health":0, "spikes": 0, "diseased_zones": 0}
+        output = {}
+        if output_params:
+            if 'health' in output_params:
+                output['health'] = 0
+            if 'spikes' in output_params:
+                output['spikes'] = 0
+            if 'diseased_zones' in output_params:
+                output['diseased_zones'] = 0
+        else:
+            output = {"health":0, "spikes": 0, "diseased_zones": 0}
+            
         # if no suuid provided, collect stats for all user's sensors
         # if no ts_from or/and ts_to provided, collect stats for today's day
         
@@ -1804,82 +1813,91 @@ class SensorsStatsAPI(Resource):
             ts_to = datetime.datetime.fromtimestamp(ts_to).replace(hour=23, minute=59, second=59)
 
         grouped_ts_from = ts_to - datetime.timedelta(days=7)
-        #date_list = [ts_to - datetime.timedelta(days=x) for x in range(7)]
-        app.logger.debug(["STATS", suuid, ts_from, ts_to, grouped_ts_from])
         
+        app.logger.debug(["STATS", suuid, ts_from, ts_to, grouped_ts_from])
+
         sensor = db.session.query(Sensor).filter(Sensor.uuid == suuid).first()
         
         if sensor:
             if sensor.user != user:
                 abort(403)
-                
-        ## Overall health
-        all_unhealthy_zones = db.session.query(func.count(PictureZone.id)).join(DataPicture).join(Data).join(Sensor).filter(PictureZone.results.like('%unhealthy%')).filter(PictureZone.ts >= ts_from).filter(PictureZone.ts <= ts_to)
-        
-        grouped_zones = db.session.query(PictureZone.ts, func.count(PictureZone.id)).filter(PictureZone.results.like('%unhealthy%')).filter(PictureZone.ts >= grouped_ts_from).filter(PictureZone.ts <= ts_to)
-        
-        all_zones = db.session.query(func.count(PictureZone.id)).join(DataPicture).join(Data).join(Sensor).filter(PictureZone.ts >= ts_from).filter(PictureZone.ts <= ts_to)
-        
-        if suuid == 'all':
-            all_unhealthy_zones = all_unhealthy_zones.filter(Sensor.uuid.in_([s.uuid for s in user.sensors]))
-            grouped_zones = grouped_zones.filter(Sensor.uuid.in_([s.uuid for s in user.sensors]))
-            all_zones = all_zones.filter(Sensor.uuid.in_([s.uuid for s in user.sensors]))
-        else:
-            all_unhealthy_zones = all_unhealthy_zones.filter(Sensor.uuid == suuid)
-            grouped_zones = grouped_zones.filter(Sensor.uuid == suuid)
-            all_zones = all_zones.filter(Sensor.uuid == suuid)
-            
-        grouped_zones = [(g[0].replace(hour=0, minute=0, second=0), g[1]) for g in grouped_zones.group_by(func.year(PictureZone.ts), func.month(PictureZone.ts), func.day(PictureZone.ts)).all()]
-        app.logger.debug(["GROUPS", grouped_zones])
-        date_range = [ts_to.replace(hour=0, minute=0, second=0) - datetime.timedelta(days=x) for x in range(7)][::-1]
-        
-        grouped_zones_output = {}
-        for d in date_range:
-            if d not in [g[0] for g in grouped_zones]:
-                grouped_zones.append((d, 0))
-        
-        grouped_zones = sorted(grouped_zones, key=lambda tup: tup[0])
-        grouped_zones = [{"name":g[0], "amount":g[1]} for g in grouped_zones]
-        
-        all_unhealthy_zones = all_unhealthy_zones.scalar()
-        
-        all_zones = all_zones.scalar()
-        all_healthy_zones = all_zones - all_unhealthy_zones
-        
-        if all_zones > 0:
-            overall_health = int(round((all_healthy_zones/all_zones) * 100))
-        else:
-            overall_health = 100
-            
-        output['health'] = overall_health
-        
-        output['diseased_zones'] = grouped_zones #all_unhealthy_zones
-        
-        app.logger.debug(["STATS", {"overall_health": overall_health, "unhealthy_zones": all_unhealthy_zones, "all zones": all_zones}])
 
-        # number of unusual spikes
-        spikes = db.session.query(func.count(ProbeData.id)).join(Data).join(Probe).join(Sensor).filter(Data.ts > ts_from).filter(Data.ts < ts_to)
-        if suuid == 'all':
-            spikes = spikes.filter(Sensor.uuid.in_([s.uuid for s in user.sensors]))
-        else:
-            spikes = spikes.filter(Sensor.uuid == suuid)
+        if ( output_params and 'health' in output_params ) or ( output_params and 'diseased_zones' in output_params ) or not output_params:
+
+                
+            ## Overall health
+            all_unhealthy_zones = db.session.query(func.count(PictureZone.id)).join(DataPicture).join(Data).join(Sensor).filter(PictureZone.results.like('%unhealthy%')).filter(PictureZone.ts >= ts_from).filter(PictureZone.ts <= ts_to)
+        
+            grouped_zones = db.session.query(PictureZone.ts, func.count(PictureZone.id)).filter(PictureZone.results.like('%unhealthy%')).filter(PictureZone.ts >= grouped_ts_from).filter(PictureZone.ts <= ts_to)
+        
+            all_zones = db.session.query(func.count(PictureZone.id)).join(DataPicture).join(Data).join(Sensor).filter(PictureZone.ts >= ts_from).filter(PictureZone.ts <= ts_to)
+        
+            if suuid == 'all':
+                all_unhealthy_zones = all_unhealthy_zones.filter(Sensor.uuid.in_([s.uuid for s in user.sensors]))
+                grouped_zones = grouped_zones.filter(Sensor.uuid.in_([s.uuid for s in user.sensors]))
+                all_zones = all_zones.filter(Sensor.uuid.in_([s.uuid for s in user.sensors]))
+            else:
+                all_unhealthy_zones = all_unhealthy_zones.filter(Sensor.uuid == suuid)
+                grouped_zones = grouped_zones.filter(Sensor.uuid == suuid)
+                all_zones = all_zones.filter(Sensor.uuid == suuid)
             
-        if suuid == 'all':
-            sensors = user.sensors
-        else:
-            sensors = db.session.query(Sensor).filter(Sensor.uuid == suuid).all()
+            grouped_zones = [(g[0].replace(hour=0, minute=0, second=0), g[1]) for g in grouped_zones.group_by(func.year(PictureZone.ts), func.month(PictureZone.ts), func.day(PictureZone.ts)).all()]
+            app.logger.debug(["GROUPS", grouped_zones])
+            date_range = [ts_to.replace(hour=0, minute=0, second=0) - datetime.timedelta(days=x) for x in range(7)][::-1]
+        
+            grouped_zones_output = {}
+            for d in date_range:
+                if d not in [g[0] for g in grouped_zones]:
+                    grouped_zones.append((d, 0))
+        
+            grouped_zones = sorted(grouped_zones, key=lambda tup: tup[0])
+            grouped_zones = [{"name":g[0], "amount":g[1]} for g in grouped_zones]
+        
+            all_unhealthy_zones = all_unhealthy_zones.scalar()
+        
+            all_zones = all_zones.scalar()
+            all_healthy_zones = all_zones - all_unhealthy_zones
+        
+            if all_zones > 0:
+                overall_health = int(round((all_healthy_zones/all_zones) * 100))
+            else:
+                overall_health = 100
             
-        numspikes = 0 
-        for s in sensors:
-            for l in s.limits:
-                limit_type = l.prtype.ptype
-                minvalue = l.minvalue
-                maxvalue = l.maxvalue
-                sp = spikes.filter(ProbeData.ptype==limit_type).filter(not_(ProbeData.value.between(minvalue,maxvalue)))
-                numsp = sp.scalar()
-                numspikes = numspikes + numsp
-                app.logger.debug(["SPIKES", limit_type, minvalue, maxvalue, numsp])
-        output['spikes'] = numspikes
+            if ( output_params and 'health' in output_params ) or not output_params:
+                output['health'] = overall_health
+            if ( output_params and 'diseased_zones' in output_params ) or not output_params:
+                output['diseased_zones'] = grouped_zones #all_unhealthy_zones
+        
+            app.logger.debug(["STATS", {"overall_health": overall_health, "unhealthy_zones": all_unhealthy_zones, "all zones": all_zones}])
+
+        
+        if ( output_params and 'spikes' in output_params ) or not output_params:                
+
+            # number of unusual spikes
+            spikes = db.session.query(func.count(ProbeData.id)).join(Data).join(Probe).join(Sensor).filter(Data.ts > ts_from).filter(Data.ts < ts_to)
+            if suuid == 'all':
+                spikes = spikes.filter(Sensor.uuid.in_([s.uuid for s in user.sensors]))
+            else:
+                spikes = spikes.filter(Sensor.uuid == suuid)
+            
+            if suuid == 'all':
+                sensors = user.sensors
+            else:
+                sensors = db.session.query(Sensor).filter(Sensor.uuid == suuid).all()
+            
+            numspikes = 0 
+            for s in sensors:
+                for l in s.limits:
+                    limit_type = l.prtype.ptype
+                    minvalue = l.minvalue
+                    maxvalue = l.maxvalue
+                    sp = spikes.filter(ProbeData.ptype==limit_type).filter(not_(ProbeData.value.between(minvalue,maxvalue)))
+                    numsp = sp.scalar()
+                    numspikes = numspikes + numsp
+                    app.logger.debug(["SPIKES", limit_type, minvalue, maxvalue, numsp])
+                
+            output['spikes'] = numspikes
+            
         output["ts_from"] = ts_from
         output["ts_to"] = ts_to
         
