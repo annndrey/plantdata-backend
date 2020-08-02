@@ -1736,10 +1736,10 @@ class SensorsStatsAPI(Resource):
                 type: string
                 format: date-time
                 description: The latest record date
-             health:
+              health:
                 type: integer
                 description: Overall plants health, in percents
-             numspikes:
+              numspikes:
                 type: integer
                 description: Unusual spikes of sensors data count 
               diseased_zones:
