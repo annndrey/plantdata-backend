@@ -1728,8 +1728,21 @@ class LocationWarningsAPI(Resource):
             
         outdata = warnings_query.all()
         
-        app.logger.debug([(c[0].data.ts.timestamp(), c[1].posx, c[1].posy, c[1].posz, c[1].camlabel, c[0].numwarnings) for c in outdata])
-        
+        app.logger.debug([(c[0].data.ts, c[1].posx, c[1].posy, c[1].posz, c[1].camlabel, c[0].numwarnings) for c in outdata])
+        for c in outdata:
+            outdict = {"ts": c[0].data.ts,
+                       "x": c[1].posx,
+                       "y": c[1].posy,
+                       "z": c[1].posz,
+                       "numwarnungs":c[0].numwarnings,
+                       "camlabel": c[1].camlabel
+            }
+            
+            if c[0].data.ts not in output:
+                output[c[0].data.ts] = [outdict,]
+            else:
+                output[c[0].data.ts].append(outdict)
+                
         return jsonify(output), 200
 
 
