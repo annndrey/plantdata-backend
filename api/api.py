@@ -1738,7 +1738,7 @@ class LocationWarningsAPI(Resource):
                        "camlabel": c[1].camlabel
             }
             key = int(c[0].data.ts.timestamp())
-            if c[0].data.ts not in output:
+            if key not in output.keys():
                 output[key] = [outdict,]
             else:
                 output[key].append(outdict)
