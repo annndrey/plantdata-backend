@@ -1722,9 +1722,9 @@ class LocationWarningsAPI(Resource):
         warnings_query = db.session.query(Camera, CameraLocation).join(Data).join(Sensor).join(Location).join(CameraLocation, Camera.camlabel==CameraLocation.camlabel).filter(Data.ts >= ts_from).filter(Data.ts <= ts_to)
         
         if suuid == 'all':
-            warnings_query = warnings_query.filter(Sensors.id.in_([s.uuid for s in user.sensors]))
+            warnings_query = warnings_query.filter(Sensor.id.in_([s.id for s in user.sensors]))
         else:
-            warnings_query = warnings_query.filter(Sensors.uuid == suuid)
+            warnings_query = warnings_query.filter(Sensor.uuid == suuid)
             
         outdata = warnings_query.all()
         
