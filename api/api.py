@@ -1737,11 +1737,11 @@ class LocationWarningsAPI(Resource):
                        "numwarnungs":c[0].numwarnings,
                        "camlabel": c[1].camlabel
             }
-            
+            key = int(c[0].data.ts.timestamp())
             if c[0].data.ts not in output:
-                output[c[0].data.ts] = [outdict,]
+                output[key] = [outdict,]
             else:
-                output[c[0].data.ts].append(outdict)
+                output[key].append(outdict)
                 
         return jsonify(output), 200
 
