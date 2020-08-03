@@ -1728,7 +1728,7 @@ class LocationWarningsAPI(Resource):
             
         outdata = warnings_query.all()
         
-        app.logger.debug([(c[0].data.ts.strftime("%d-%m-%y %H:%M"), c[1].posx, c[1].posy, c[1].posz, c[1].camlabel, c[0].numwarnings) for c in outdata])
+        app.logger.debug([(c[0].data.ts.timestamp(), c[1].posx, c[1].posy, c[1].posz, c[1].camlabel, c[0].numwarnings) for c in outdata])
         
         return jsonify(output), 200
 
