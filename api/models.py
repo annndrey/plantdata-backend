@@ -245,9 +245,7 @@ class Camera(db.Model):
             for pict in pos.pictures:
                 for zone in pict.zones:
                     if "unhealthy" in zone.results:
-                        # Here is the exclamation sign (triangle)
-                        numwarning = ️numwarning + 1
-                        
+                        numwarning = numwarning + 1
         return warning
     
             
