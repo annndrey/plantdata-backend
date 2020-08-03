@@ -1735,7 +1735,8 @@ class LocationWarningsAPI(Resource):
                        "y": c[1].posy,
                        "z": c[1].posz,
                        "numwarnungs":c[0].numwarnings,
-                       "camlabel": c[1].camlabel
+                       "camlabel": c[1].camlabel,
+                       "camid": c[0].id
             }
             key = int(c[0].data.ts.timestamp())
             if key not in output.keys():
