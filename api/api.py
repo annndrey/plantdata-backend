@@ -1719,6 +1719,17 @@ class LocationWarningsAPI(Resource):
             
         app.logger.debug([ts_from, ts_to])
 
+        warnings_query = db.session.query(Camera, CameraLocation).join(Data).join(Sensor).join(Location).join(CameraLocation, Camera.camlabel==CameraLocation.camlabel).filter(Data.ts >= ts_from).filter(Data.ts <= ts_to)
+        
+        if suuid == 'all':
+            warnings_query = warnings_query.filter(Sensors.id.in_([s.uuid for s in user.sensors]))
+        else:
+            warnings_query = warnings_query.filter(Sensors.uuid == suuid)
+            
+        outdata = warnings_query.all()
+        
+        app.logger.debug([(c[0].data.ts.strftime("%d-%m-%y %H:%M"), c[1].posx, c[1].posy, c[1].posz, c[1].camlabel, c[0].numwarnings) for c in outdata])
+        
         return jsonify(output), 200
 
 
