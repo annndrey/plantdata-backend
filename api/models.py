@@ -237,6 +237,17 @@ class Camera(db.Model):
                         # Here is the exclamation sign (triangle)
                         warning = "⚠️"
         return warning
+
+    @hybrid_property
+    def numwarnings(self):
+        numwarning = 0
+        for pos in self.positions:
+            for pict in pos.pictures:
+                for zone in pict.zones:
+                    if "unhealthy" in zone.results:
+                        # Here is the exclamation sign (triangle)
+                        numwarning += ️1
+        return warning
     
             
 class CameraPosition(db.Model):
