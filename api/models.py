@@ -246,7 +246,7 @@ class Camera(db.Model):
                 for zone in pict.zones:
                     if "unhealthy" in zone.results:
                         numwarning = numwarning + 1
-        return warning
+        return numwarning
     
             
 class CameraPosition(db.Model):
