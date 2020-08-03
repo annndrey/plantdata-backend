@@ -1670,8 +1670,57 @@ class ProbeAPI(Resource):
 
 
 
+# Camera locations warnings API here:
+# example:
+# [(c[0].data.ts.strftime("%d-%m-%y %H:%M"), c[1].posx, c[1].posy, c[1].posz, c[1].camlabel, c[0].numwarnings) for c in db.session.query(Camera, CameraLocation).join(Data).join(Sensor).join(Location).join(CameraLocation, Camera.camlabel==CameraLocation.camlabel).filter(Data.ts > ts_from).filter(Location.id == 3).all()]
 
+
+class LocationWarningsAPI(Resource):
+    def __init__(self):
+        #self.schema = ProbeDataSchema()
+        #self.m_schema = ProbeDataSchema(many=True)
+        self.method_decorators = []
+
+    def options(self, *args, **kwargs):
+        return jsonify([])
+
+    @token_required
+    @cross_origin()
+    #@cache.cached(timeout=300, key_prefix=cache_key)
+    def get(self):
+        """
+        """
+        auth_headers = request.headers.get('Authorization', '').split()
+        token = auth_headers[1]
+        udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         
+        user = User.query.filter_by(login=udata['sub']).first()
+        if not user:
+            abort(403)
+            
+        suuid = request.args.get('suuid', None)
+        ts_from = request.args.get('ts_from', None)
+        ts_to = request.args.get('ts_to', None)
+        output = {}
+        
+        if not suuid or suuid == '':
+            suuid = 'all'
+        if not ts_from or ts_from == '':
+            ts_from = datetime.datetime.now().replace(hour=0, minute=0, second=0)
+        else:
+            ts_from = int(ts_from)
+            ts_from = datetime.datetime.fromtimestamp(ts_from).replace(hour=0, minute=0, second=0)
+            
+        if not ts_to or ts_to == '':
+            ts_to = datetime.datetime.now().replace(hour=23, minute=59, second=59)
+        else:
+            ts_to = int(ts_to)
+            ts_to = datetime.datetime.fromtimestamp(ts_to).replace(hour=23, minute=59, second=59)
+            
+        app.logger.debug([ts_from, ts_to])
+
+        return jsonify(output), 200
+
 
 class SensorsStatsAPI(Resource):
     def __init__(self):
@@ -3273,6 +3322,7 @@ api.add_resource(CameraAPI, '/cameras/<int:id>', endpoint='cameras')
 api.add_resource(DataAPI, '/data', '/data/<int:id>', endpoint='savedata')
 api.add_resource(SensorAPI, '/sensors', '/sensors/<int:id>', endpoint='sensors')
 api.add_resource(SensorsStatsAPI, '/stats', endpoint='stats')
+api.add_resource(LocationWarningsAPI, '/locationwarnings', endpoint='locationwarnings')
 api.add_resource(ProbeAPI, '/probes', '/probes/<int:id>', endpoint='probes')
 api.add_resource(ProbeDataAPI, '/probedata', '/probedata/<int:id>', endpoint='probedata')
 api.add_resource(PictAPI, "/p/<path:path>", endpoint="picts")
