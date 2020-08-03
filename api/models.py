@@ -247,7 +247,6 @@ class Camera(db.Model):
                     if "unhealthy" in zone.results:
                         numwarning = numwarning + 1
         return numwarning
-    
             
 class CameraPosition(db.Model):
     id = db.Column(db.Integer, primary_key=True)
