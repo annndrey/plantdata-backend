@@ -246,4 +246,14 @@ class CameraPosition(db.Model):
     poslabel = db.Column(db.Integer)
     url = db.Column(db.Text())
 
-        
+    
+class CameraLocation(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    location_id = db.Column(db.Integer, ForeignKey('location.id'))
+    location = relationship("Location", backref=backref("camlocations"))
+    #camera_id = db.Column(db.Integer, ForeignKey('camera.id'))
+    camlabel = db.Column(db.Text())
+    locname = db.Column(db.Text())
+    posx = db.Column(db.Integer)
+    posy = db.Column(db.Integer)
+    posz = db.Column(db.Integer)

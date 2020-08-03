@@ -24,7 +24,7 @@ from flask_restful.utils import cors
 from marshmallow import fields, pre_dump, post_dump
 from marshmallow_enum import EnumField
 from itertools import groupby, islice
-from models import db, User, Sensor, Location, Data, DataPicture, Camera, CameraPosition, Probe, ProbeData, PictureZone, SensorType, data_probes, Notification
+from models import db, User, Sensor, Location, Data, DataPicture, Camera, CameraPosition, CameraLocation, Probe, ProbeData, PictureZone, SensorType, data_probes, Notification
 import logging
 import os
 import copy
@@ -1012,6 +1012,7 @@ class CameraSchema(ma.ModelSchema):
         model = Camera
     warnings = ma.Function(lambda obj: obj.warnings)
     positions = ma.Nested("CameraPositionSchema", many=True, exclude=["camera", "url"])#, exclude=['camera',])
+    location = ma.Nested("CameraLocationSchema", many=False, exclude=["camera",])
 
 
 class CameraPositionSchema(ma.ModelSchema):
@@ -1020,7 +1021,12 @@ class CameraPositionSchema(ma.ModelSchema):
     pictures = ma.Nested("DataPictureSchema", many=True, exclude=["camera_position", "data", "thumbnail"])#, many=False, exclude=['thumbnail', 'camera', 'camera_position', 'data'])
     #image = ma.Function(lambda obj: obj.image)
 
-    
+
+class CameraLocationSchema(ma.ModelSchema):
+    class Meta:
+        model = CameraLocation
+
+        
 class SensorSchema(ma.ModelSchema):
     class Meta:
         model = Sensor
@@ -1241,7 +1247,7 @@ class PictAPI(Resource):
         response.headers['Content-Type'] = 'image/jpeg'
         return response
 
-
+    
 class CameraAPI(Resource):
     def __init__(self):
         self.schema = CameraSchema()
@@ -2229,21 +2235,22 @@ class DataAPI(Resource):
         cam_numsamples = request.args.get('cam_numsamples', False)
         ignore_night_photos = request.args.get('ignore_night_photos', False)
         label_text = request.args.get('label_text', False)
-
         cam_skipsamples = request.args.get('cam_skipsamples', False)
         data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         daystart = dayend = None
         # By default show data for the last recorded day
         #
         user = User.query.filter_by(login=data['sub']).first()
-        sensor = db.session.query(Sensor).filter(Sensor.uuid == suuid).first()
+        if suuid:
+            sensor = db.session.query(Sensor).filter(Sensor.uuid == suuid).first()
         if user != sensor.user:
             abort(403)
         if not user:
             abort(401)
-        if not suuid:
-            return make_response(jsonify({'error': 'No sensor uuid provided'}), 400)
-            abort(404)
+            
+        #if not suuid:
+        #    return make_response(jsonify({'error': 'No sensor uuid provided'}), 400)
+        #    abort(404)
         #if not puuid:
         #    return make_response(jsonify({'error': 'No probe uuid provided'}), 400)
 
