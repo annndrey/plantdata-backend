@@ -1734,7 +1734,7 @@ class LocationWarningsAPI(Resource):
                        "x": c[1].posx,
                        "y": c[1].posy,
                        "z": c[1].posz,
-                       "numwarnungs":c[0].numwarnings,
+                       "numwarnings":c[0].numwarnings,
                        "camlabel": c[1].camlabel,
                        "camid": c[0].id
             }
