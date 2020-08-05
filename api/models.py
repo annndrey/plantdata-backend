@@ -207,7 +207,14 @@ class DataPicture(db.Model):
     results = db.Column(db.Text())
     ts = db.Column(db.DateTime, default=datetime.datetime.now)
 
+    @hybrid_property
+    def numwarnings(self):
+        numwarning = 0
+        if self.results:
+            numwarning = self.results.count("unhealthy")
+        return numwarning
 
+    
 class PictureZone(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     picture_id = db.Column(db.Integer, ForeignKey('data_picture.id'))
@@ -218,8 +225,8 @@ class PictureZone(db.Model):
     revisedresults = db.Column(db.Text())
     zone = db.Column(db.Text())
     ts = db.Column(db.DateTime, default=datetime.datetime.now)
-    
-    
+
+   
 class Camera(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     data_id = db.Column(db.Integer, ForeignKey('data.id'))
