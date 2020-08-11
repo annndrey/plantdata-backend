@@ -2343,7 +2343,7 @@ class DataAPI(Resource):
                 if all([first_rec_day, last_rec_day]):
                     # IF NO DATES SPECIFIED,
                     # SHOW ONLY LAST DAY RECORDS!!
-                    day_st = last_rec_day.replace(hour=0, minute=0)
+                    day_st = last_rec_day.replace(hour=0, minute=0, second=0)
                     day_end = last_rec_day.replace(hour=23, minute=59, second=59)
                 else:
                     return jsonify([])
@@ -2357,8 +2357,9 @@ class DataAPI(Resource):
                 else:
                     day_st = datetime.datetime.strptime(ts_from, '%d-%m-%Y %H:%M').replace(hour=0, minute=0, second=0)
                     day_end = datetime.datetime.strptime(ts_to, '%d-%m-%Y %H:%M').replace(hour=23, minute=59, second=59)
-
-            sensordata_query = db.session.query(Data).filter(Data.sensor.has(Sensor.uuid == suuid))
+            
+            #sensordata_query = db.session.query(Data).filter(Data.sensor.has(Sensor.uuid == suuid))
+            sensordata_query = db.session.query(Data).filter(Data.sensor.has(Sensor.uuid.in_([s.uuid for s in sensor])))
             if puuid:
                 sensordata_query = sensordata_query.join(Data.records).options(contains_eager(Data.records)).filter(ProbeData.probe.has(Probe.uuid==puuid))
 
