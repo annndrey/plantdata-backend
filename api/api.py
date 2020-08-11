@@ -2292,7 +2292,7 @@ class DataAPI(Resource):
             description: URL not found
         """
         app.logger.debug("GET DATA")
-        # here the data should be scaled or not
+
         suuid = request.args.get('suuid', None)
         puuid = request.args.get('puuid', None)
         dataid = request.args.get('dataid', None)
@@ -2318,26 +2318,27 @@ class DataAPI(Resource):
         cam_skipsamples = request.args.get('cam_skipsamples', False)
         data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         daystart = dayend = None
+        
         # By default show data for the last recorded day
         #
         user = User.query.filter_by(login=data['sub']).first()
-        if suuid:
-            sensor = db.session.query(Sensor).filter(Sensor.uuid == suuid).first()
-        if user != sensor.user:
-            abort(403)
+        
         if not user:
             abort(401)
+        
+        if suuid:
+            sensor = db.session.query(Sensor).filter(Sensor.uuid == suuid).all()
+        else:
+            sensor = db.session.query(Sensor).filter(Sensor.uuid.in_([s.uuid for s in user.sensors])).all()
+        if user not in [s.user for s in sensor]:
+            abort(403)
             
-        #if not suuid:
-        #    return make_response(jsonify({'error': 'No sensor uuid provided'}), 400)
-        #    abort(404)
-        #if not puuid:
-        #    return make_response(jsonify({'error': 'No probe uuid provided'}), 400)
-
         if not dataid:
-            first_rec_day = db.session.query(sql_func.min(Data.ts)).filter(Data.sensor.has(Sensor.uuid == suuid)).first()[0]
-            last_rec_day = db.session.query(sql_func.max(Data.ts)).filter(Data.sensor.has(Sensor.uuid == suuid)).first()[0]
-            app.logger.debug("GET DATA 1")
+            #first_rec_day = db.session.query(sql_func.min(Data.ts)).filter(Data.sensor.has(Sensor.uuid == suuid)).first()[0]
+            first_rec_day = db.session.query(sql_func.min(Data.ts)).filter(Data.sensor.has(Sensor.uuid.in_([s.uuid for s in sensor]))).first()[0]
+            #last_rec_day = db.session.query(sql_func.max(Data.ts)).filter(Data.sensor.has(Sensor.uuid == suuid)).first()[0]
+            last_rec_day = db.session.query(sql_func.max(Data.ts)).filter(Data.sensor.has(Sensor.uuid.in_([s.uuid for s in sensor]))).first()[0]
+            app.logger.debug(["GET DATA 1", first_rec_day, last_rec_day])
             if not all([ts_from, ts_to]):
                 if all([first_rec_day, last_rec_day]):
                     # IF NO DATES SPECIFIED,
