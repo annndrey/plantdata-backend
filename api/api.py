@@ -2313,6 +2313,7 @@ class DataAPI(Resource):
         
         compact_data = request.args.get('compact', False)
         dataonly = request.args.get('dataonly', False)
+        unixdate = request.args.get('unixdate', False)
         
         cam_skipsamples = request.args.get('cam_skipsamples', False)
         data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
@@ -2346,8 +2347,15 @@ class DataAPI(Resource):
                 else:
                     return jsonify([])
             else:
-                day_st = datetime.datetime.strptime(ts_from, '%d-%m-%Y %H:%M')
-                day_end = datetime.datetime.strptime(ts_to, '%d-%m-%Y %H:%M')
+                if unixdate:
+                    day_st = int(ts_from)
+                    day_st = datetime.datetime.fromtimestamp(day_st).replace(hour=0, minute=0, second=0)
+                    day_end = int(ts_to)
+                    day_end = datetime.datetime.fromtimestamp(day_end).replace(hour=23, minute=59, second=59)
+
+                else:
+                    day_st = datetime.datetime.strptime(ts_from, '%d-%m-%Y %H:%M').replace(hour=0, minute=0, second=0)
+                    day_end = datetime.datetime.strptime(ts_to, '%d-%m-%Y %H:%M').replace(hour=23, minute=59, second=59)
 
             sensordata_query = db.session.query(Data).filter(Data.sensor.has(Sensor.uuid == suuid))
             if puuid:
