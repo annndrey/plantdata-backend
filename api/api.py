@@ -2310,7 +2310,10 @@ class DataAPI(Resource):
         cam_numsamples = request.args.get('cam_numsamples', False)
         ignore_night_photos = request.args.get('ignore_night_photos', False)
         label_text = request.args.get('label_text', False)
+        
         compact_data = request.args.get('compact', False)
+        dataonly = request.args.get('dataonly', False)
+        
         cam_skipsamples = request.args.get('cam_skipsamples', False)
         data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         daystart = dayend = None
@@ -2350,77 +2353,14 @@ class DataAPI(Resource):
             if puuid:
                 sensordata_query = sensordata_query.join(Data.records).options(contains_eager(Data.records)).filter(ProbeData.probe.has(Probe.uuid==puuid))
 
-            #app.logger.debug(["DATES", day_st, day_end])
-            #app.logger.debug(["DATES", first_rec_day, last_rec_day])
             sensordata_query = sensordata_query.order_by(Data.ts).filter(Data.ts >= day_st).filter(Data.ts <= day_end)
             app.logger.debug("GET DATA 2")
-            #sensordata = sensordata_query.all()
-            #pd_data = pd.read_sql(sensordata_query.statement, sensordata_query.session.bind)
-            #app.logger.debug(pd_data)
             app.logger.debug("GET DATA 3")
             query_count = get_count(sensordata_query)
             if query_count > 0:
                 sensordata = sensordata_query
-                #sensordata = list(islice(sensordata, 0, len(sensordata), 10))
                 if fill_date:
                     pass
-                #if fill_date:
-                #    sensordata = self.fill_empty_dates(sensordata_query)
-                #if export_data:
-                #    app.logger.debug(f"EXPORT DATA, {export_data}")
-                #    proxy = io.StringIO()
-                #    writer = csv.writer(proxy, delimiter=';', quotechar='"',quoting=csv.QUOTE_MINIMAL)
-                #    writer.writerow(['sensor_id',
-                #                     'timestamp',
-                #                     'wght0',
-                #                     'wght1',
-                #                     'wght2',
-                #                     'wght3',
-                #                     'wght4',
-                #                     'temp0',
-                #                     'temp1',
-                #                     'hum0',
-                #                     'hum1',
-                #                     'tempA0',
-                #                     'lux',
-                #                     'co2'
-                #    ])
-                #    for r in sensordata:
-                #        writer.writerow([r.sensor.id,
-                #                         r.ts,
-                #                         r.wght0,
-                #                         r.wght1,
-                #                         r.wght2,
-                #                         r.wght3,
-                #                         r.wght4,
-                #                         r.temp0,
-                #                         r.temp1,
-                #                         r.hum0,
-                #                         r.hum1,
-                #                         r.tempA,
-                #                         r.lux,
-                #                         r.co2
-                #        ])
-                #    mem = io.BytesIO()
-                #    mem.write(proxy.getvalue().encode('utf-8'))
-                #    mem.seek(0)
-                #    proxy.close()
-                #    return send_file(mem, mimetype='text/csv', attachment_filename="file.csv", as_attachment=True)
-                #if export_zones:
-                #    app.logger.debug(f"EXPORT ZONES, {export_zones}")
-                #    if ignore_night_photos:
-                #        sensordata_query = sensordata_query.filter(Data.lux > 30)
-                #
-                #    res_data = sensordata_query.filter(Data.pictures.any()).all()
-                #    app.logger.debug(len(res_data))
-                #    crop_zones.delay(self.f_schema.dump(res_data).data, cam_names, cam_positions, cam_zones, cam_numsamples, cam_skipsamples, label_text)
-                #
-                #    res = {"numrecords": len(res_data),
-                #           'mindate': first_rec_day,
-                #           'maxdate': last_rec_day,
-                #           'data': self.m_schema.dump(res_data).data
-                #    }
-                #    return jsonify(res), 200
 
                 else:
                     app.logger.debug("GET DATA 4")
@@ -2438,21 +2378,18 @@ class DataAPI(Resource):
                         else:
                             app.logger.debug("SHORT DATA 4")
                             data = custom_serializer(sensordata)
-                        #data = self.m_schema.dump(sensordata).data
-                    app.logger.debug("GET DATA 5")                        
-                    #if puuid:
-                    #    for d in data:
-                    #        for ind, pr in enumerate(d['probes']):
-                    #            if pr['uuid'] != puuid:
-                    #                d['probes'].pop(ind)
+                            
+                    app.logger.debug("GET DATA 5")
 
+                    if dataonly:
+                        data.pop('cameras', None)
+                    
                     res = {"numrecords": query_count,
                            'mindate': first_rec_day,
                            'maxdate': last_rec_day,
                            'data': data
                     }
-                    # app.logger.debug(["RESPONSE", res])
-                    #return jsonify(res), 200
+                    
                     if compact_data:
                         return orjson.dumps(res), 200
                     else:
