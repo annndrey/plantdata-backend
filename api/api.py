@@ -2310,6 +2310,7 @@ class DataAPI(Resource):
         cam_numsamples = request.args.get('cam_numsamples', False)
         ignore_night_photos = request.args.get('ignore_night_photos', False)
         label_text = request.args.get('label_text', False)
+        compact_data = request.args.get('compact', False)
         cam_skipsamples = request.args.get('cam_skipsamples', False)
         data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         daystart = dayend = None
@@ -2452,8 +2453,11 @@ class DataAPI(Resource):
                     }
                     # app.logger.debug(["RESPONSE", res])
                     #return jsonify(res), 200
-                    return orjson.dumps(res), 200
-
+                    if compact_data:
+                        return orjson.dumps(res), 200
+                    else:
+                        return jsonify(res), 200
+                    
         else:
             sensordata = db.session.query(Data).filter(Data.sensor.has(uuid=suuid)).filter(Data.id == dataid).first()
             if sensordata:
