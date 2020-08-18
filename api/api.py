@@ -1628,7 +1628,8 @@ class ProbeAPI(Resource):
         else:
             # No suuid provided, return all user's probes
             probes = [p for sens in user.sensors for p in sens.probes]
-            app.logger.debug(["SENSOR Probes", probes])
+            return jsonify(self.m_schema.dump(probes).data), 200
+
         abort(404)
 
 
