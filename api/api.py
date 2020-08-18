@@ -1625,6 +1625,10 @@ class ProbeAPI(Resource):
         elif suuid:
             probes = db.session.query(Probe).join(Sensor).filter(Sensor.uuid == suuid).all()
             return jsonify(self.m_schema.dump(probes).data), 200
+        else:
+            # No suuid provided, return all user's probes
+            probes = [p for p in sens.probes for sens in user.sensors]
+            app.logger.debug(["SENSOR Probes", probes])
         abort(404)
 
 
