@@ -1937,7 +1937,7 @@ class SensorsStatsAPI(Resource):
             grouped_zones = [(g[0].replace(hour=0, minute=0, second=0), g[1]) for g in grouped_zones.group_by(func.year(PictureZone.ts), func.month(PictureZone.ts), func.day(PictureZone.ts)).all()]
             app.logger.debug(["GROUPED ZONES", grouped_zones])
             date_range = [ts_to.replace(hour=0, minute=0, second=0) - datetime.timedelta(days=x) for x in range(numentries)][::-1]
-            app.logger.debug(["GROUPED ZONES00", [g[0] for g in grouped_zones], date_range)
+            app.logger.debug(["GROUPED ZONES00", [g[0] for g in grouped_zones], date_range])
             grouped_zones_output = {}
             for d in date_range:
                 if d not in [g[0] for g in grouped_zones]:
