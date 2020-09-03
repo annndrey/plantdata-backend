@@ -1935,7 +1935,7 @@ class SensorsStatsAPI(Resource):
                 all_zones = all_zones.filter(Sensor.uuid == suuid)
             
             grouped_zones = [(g[0].replace(hour=0, minute=0, second=0), g[1]) for g in grouped_zones.group_by(func.year(PictureZone.ts), func.month(PictureZone.ts), func.day(PictureZone.ts)).all()]
-            app.logger.debug(["GROUPS", grouped_zones])
+            app.logger.debug(["GROUPED ZONES", grouped_zones])
             date_range = [ts_to.replace(hour=0, minute=0, second=0) - datetime.timedelta(days=x) for x in range(numentries)][::-1]
         
             grouped_zones_output = {}
@@ -1945,6 +1945,7 @@ class SensorsStatsAPI(Resource):
         
             grouped_zones = sorted(grouped_zones, key=lambda tup: tup[0])
             grouped_zones = [{"name":g[0], "amount":g[1]} for g in grouped_zones]
+            app.logger.debug(["GROUPED ZONES1", grouped_zones])
         
             all_unhealthy_zones = all_unhealthy_zones.scalar()
         
