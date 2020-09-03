@@ -1730,7 +1730,7 @@ class LocationWarningsAPI(Resource):
         
         if suuid == 'all':
             warnings_query = warnings_query.filter(Sensor.id.in_([s.id for s in user.sensors]))
-            #warnings_query = warnings_query.filter(CameraLocation.id.in_([s.location.id for s in user.sensors]))
+            warnings_query = warnings_query.filter(CameraLocation.id.in_([s.location.id for s in user.sensors]))
         else:
             warnings_query = warnings_query.filter(Sensor.uuid == suuid)
             
