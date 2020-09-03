@@ -836,7 +836,7 @@ def parse_request_pictures(parent_data, camposition_id, req_file, flabel, user_l
             outf.write(fdata)
 
         original.save(origpath)
-
+        
         imglabel = flabel
         app.logger.debug(["UPLNAME", flabel])
         classification_results = ""
@@ -1937,12 +1937,13 @@ class SensorsStatsAPI(Resource):
             grouped_zones = [(g[0].replace(hour=0, minute=0, second=0), g[1]) for g in grouped_zones.group_by(func.year(PictureZone.ts), func.month(PictureZone.ts), func.day(PictureZone.ts)).all()]
             app.logger.debug(["GROUPED ZONES", grouped_zones])
             date_range = [ts_to.replace(hour=0, minute=0, second=0) - datetime.timedelta(days=x) for x in range(numentries)][::-1]
-        
+            app.logger.debug(["GROUPED ZONES00", [g[0] for g in grouped_zones], date_range)
             grouped_zones_output = {}
             for d in date_range:
                 if d not in [g[0] for g in grouped_zones]:
                     grouped_zones.append((d, 0))
-                    
+            # >>>>> Stopped here
+            [g[0] for g in grouped_zones]
             app.logger.debug(["GROUPED ZONES0", grouped_zones])
             grouped_zones = sorted(grouped_zones, key=lambda tup: tup[0])
             grouped_zones = [{"name":g[0], "amount":g[1]} for g in grouped_zones]
