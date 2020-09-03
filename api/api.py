@@ -1938,7 +1938,7 @@ class SensorsStatsAPI(Resource):
             app.logger.debug(["GROUPED ZONES", grouped_zones])
             date_range = [ts_to.replace(hour=0, minute=0, second=0) - datetime.timedelta(days=x) for x in range(numentries)][::-1]
             
-            app.logger.debug(["GROUPED ZONES00", [datetime.datetime.strptime(g[0], '%d-%m-%Y') for g in grouped_zones], [datetime.datetime.strptime(d, '%d-%m-%Y') for d in date_range]])
+            app.logger.debug(["GROUPED ZONES00", (g[0].strftime('%d-%m-%Y') for g in grouped_zones], [d.strftime( '%d-%m-%Y') for d in date_range]])
             
             grouped_zones_output = {}
             for d in date_range:
