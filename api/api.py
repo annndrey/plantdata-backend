@@ -1994,7 +1994,7 @@ class SensorsStatsAPI(Resource):
 
         output["ts_from"] = ts_from
         output["ts_to"] = ts_to
-        
+        app.logger.debug(["STATS", {"overall_health": overall_health, "unhealthy_zones": all_unhealthy_zones, "all zones": all_zones}])
         
         return jsonify(output), 200
 
