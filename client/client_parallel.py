@@ -88,8 +88,8 @@ with open("config.yaml", 'r') as stream:
         logging.debug(exc)
 
 
-SERVER_LOGIN = CONFIG_FILE['AUTH']['SERVER_LOGIN']
-SERVER_PASSWORD = CONFIG_FILE['AUTH']['SERVER_PASSWORD']
+SERVER_LOGIN = CONFIG_FILE['SERVER_LOGIN']
+SERVER_PASSWORD = CONFIG_FILE['SERVER_PASSWORD']
 SERVER_HOST = "https://dev.plantdata.fermata.tech:5598/api/v2/{}"
 db_file = 'localdata.db'
 DATADIR = "picts"
@@ -113,6 +113,45 @@ session = Session()
 Base.metadata.create_all(engine, checkfirst=True)
 
 
+def collect_pictures(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP, LABEL, NUMFRAMES, NUMRETRIES):
+    cameradata = []
+    # Ping camera
+    try:
+        r = requests.put("http://{}".format(CAMERA_IP))
+    except:
+        logging.debug(["No connection with {} {}, skipping".format(LABEL, CAMERA_IP)])
+        return 
+        
+    for i in range(NUMFRAMES):
+        fname = os.path.join(DATADIR, str(uuid.uuid4())+".jpg")
+        putdata = {"Param1": i}
+        comm_sent = False
+        for n in range(NUMRETRIES):
+            if not comm_sent:
+                try:
+                    r = requests.put("http://{}:{}@{}/PTZ/1/Presets/Goto".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), data=putdata)
+                    comm_sent = True
+                except Exception as e:
+                    logging.debug("Failed to connect to camera PRESET SET")
+                    logging.debug(e)
+                    sleep(5)
+        # Delay for camera to get into the proper position
+        if comm_sent:
+            sleep(5)
+            rtsp = cv2.VideoCapture("rtsp://{}:{}@{}:554/live/0/MAIN".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))
+            # Read 5 frames and save the fifth one
+            # 
+            for j in range(5):
+                check, frame = rtsp.read()
+                sleep(1)
+            showPic = cv2.imwrite(fname, frame, [cv2.IMWRITE_JPEG_QUALITY, 100])
+            logging.debug("CAPTURED {} PICT {}".format(LABEL, i+1))
+            cameradata.append({"fname": fname, "label": LABEL + " {}".format(i+1), "cameraname": LABEL, "cameraposition": i+1})
+            rtsp.release()
+            #sleep(10)
+    return cameradata
+
+
 def create_session(db_file):
     engine = create_engine('sqlite:///{}'.format(db_file))
     Session = sessionmaker(bind=engine)
@@ -122,46 +161,49 @@ def create_session(db_file):
 
 async def async_read_sensor_data(session, url, dbsession, bsid):
     resp_json = []
-    async with session.get(url, timeout=10) as response:
-        pkl_fname = "{}.pkl".format(url.replace("/", "~"))
-        if response.status == 200:
-            logging.debug(["SENSOR {} RESPONSE".format(url)])
-            resp = await response.text()
-            resp_json = json.loads(resp)
-            if not os.path.exists(pkl_fname):
-                pkl_data = copy.deepcopy(resp_json)
-                for d in pkl_data['data']:
-                    d['value'] = 0
-                with open(pkl_fname, 'wb') as f:
-                    pickle.dump(pkl_data, f)
-        else:
-            logging.debug(["NO RESPONSE FROM {}".format(url), response.status])
-            f = open(pkl_fname, 'rb')
-            resp_json = pickle.load(f)
+    pkl_fname = "{}.pkl".format(url.replace("/", "~"))
+    try:
+        async with session.get(url, timeout=10) as response:
+            if response.status == 200:
+                logging.debug(["SENSOR {} RESPONSE".format(url)])
+                resp = await response.text()
+                resp_json = json.loads(resp)
+                if not os.path.exists(pkl_fname):
+                    pkl_data = copy.deepcopy(resp_json)
+                    for d in pkl_data['data']:
+                        d['value'] = 0
+                    with open(pkl_fname, 'wb') as f:
+                        pickle.dump(pkl_data, f)
+    except:
+        logging.debug(["NO RESPONSE FROM {}".format(url)])
+        f = open(pkl_fname, 'rb')
+        resp_json = pickle.load(f)
             
-        uuid = resp_json.get("UUID")
-        data = resp_json.get("data")
+    uuid = resp_json.get("UUID")
+    data = resp_json.get("data")
                 
-        logging.debug(["UUID", uuid])
-        logging.debug(["DATA", data])
-        bsrecord = dbsession.query(BaseStationData).filter(BaseStationData.id==bsid).first()
-        # Create Probe record
-        dbprobe = Probe(uuid=uuid)
-        dbsession.add(dbprobe)
-        dbsession.commit()
-            
-        bsrecord.probes.append(dbprobe)
-        dbsession.add(bsrecord)
-        dbsession.commit()
+    logging.debug(["UUID", uuid])
+    logging.debug(["DATA", data])
+    bsrecord = dbsession.query(BaseStationData).filter(BaseStationData.id==bsid).first()
+    # Create Probe record
+    dbprobe = Probe(uuid=uuid)
+    dbsession.add(dbprobe)
+    dbsession.commit()
+    
+    bsrecord.probes.append(dbprobe)
+    dbsession.add(bsrecord)
+    dbsession.commit()
                 
-        for pdata in data:
-            newpdata = ProbeData(probe=dbprobe, value=pdata['value'], ptype=pdata['ptype'], label=pdata['label'])
-            dbsession.add(newpdata)
-            dbsession.commit()
-            #basestation
-            # Create ProbeData records
-
-        return resp_json
+    for pdata in data:
+        if not pdata['value']:
+            pdata['value'] = 0
+        newpdata = ProbeData(probe=dbprobe, value=pdata['value'], ptype=pdata['ptype'], label=pdata['label'])
+        dbsession.add(newpdata)
+        dbsession.commit()
+        #basestation
+        # Create ProbeData records
+        
+    return resp_json
 
     
 async def fetch_all_sensors_data(urls, loop, dbsession, bsid):
@@ -173,10 +215,13 @@ async def fetch_all_sensors_data(urls, loop, dbsession, bsid):
 def send_patch_request(fname, flabel, fcamname, fcamposition, data_id, photo_id, header):
     files = {}
     files['{}'.format(flabel)] = open(fname, 'rb')
+    logging.debug("FILESIZE {}".format(os.stat(fname).st_size))
     url_str = "data/{}".format(data_id)
     logging.debug("SENDING PATCH REQUEST FOR {} {}".format(data_id, flabel))
+    logging.debug("SENDING FILE {}".format(files))
     # send camera_name, camera position
-    resp = requests.patch(SERVER_HOST.format(url_str), data={"camname": fcamname, 'flabel': flabel, "camposition": fcamposition, "recognize": True}, headers=header, files=files)
+    #resp = requests.patch(SERVER_HOST.format(url_str), data={"camname": fcamname, 'flabel': flabel, "camposition": fcamposition, "recognize": False}, headers=header, files=files)
+    resp = requests.patch(SERVER_HOST.format(url_str), data={"camname": fcamname, 'flabel': flabel, "camposition": fcamposition}, headers=header, files=files)
     logging.debug("PATCH RESPONSE STATUS CODE {}".format(resp.status_code))
     if resp.status_code == 200:
         os.unlink(os.path.join("/home/pi", fname))
@@ -285,13 +330,13 @@ def post_data(token, bsuuid, take_photos):
     if CONFIG_FILE:
         # Read sensors data
         sensor_urls = []
-        
-        for SENSOR in CONFIG_FILE['SENSORS']:
-            sensor_urls.append(SENSOR['URL'])
+        if CONFIG_FILE['SENSORS']:
+            for SENSOR in CONFIG_FILE['SENSORS']:
+                sensor_urls.append(SENSOR['URL'])
             
         loop = asyncio.get_event_loop()
         async_session = create_session(db_file)
-        # Colloecting sensors data
+        # Collecting sensors data
         responses = loop.run_until_complete(fetch_all_sensors_data(sensor_urls, loop, async_session, newdata.id))
         #logging.debug(responses)
         async_session.close()
@@ -299,107 +344,49 @@ def post_data(token, bsuuid, take_photos):
         # Take & process photos
         if take_photos:
             for CAMERA in CONFIG_FILE['CAMERAS']:
-                if CAMERA['CAMERA_TYPE'] == "USB":
-            
-                    v = cv2.VideoCapture(CAMERA['PORTNUM'])
-                    v.set(3,1280)
-                    v.set(4,960)
                 
-                    for i in range(15):
-                        check, frame = v.read()
-                        sleep(1)
-        
-                    fname = os.path.join(DATADIR, str(uuid.uuid4())+".jpg")
-                    showPic = cv2.imwrite(fname, frame)
-                    camdata = {"fname": fname, "label": CAMERA["LABEL"], "cameraname": CAMERA["LABEL"], "cameraposition": 1}
-                    v.release()
-                    logging.debug("Captured {}".format(CAMERA['LABEL']))
-    
-                    # Check for black images
-                    try:
-                        fimg = Image.open(camdata['fname'])
-                    except:
-                        logging.debug("Failed to open image {}, Skipping to the next image".format(camdata['fname']))
-                        continue
-                    # mean
-                    if sum(fimg.convert("L").getextrema())/2 >= LOWLIGHT:
-                        cameradata.append(camdata)
-                    else:
-                        os.unlink(camdata['fname'])
-                
-                elif CAMERA['CAMERA_TYPE'] == "IP":
+                if CAMERA['CAMERA_TYPE'] == "IP":
                     CAMERA_LOGIN = CAMERA['CAMERA_LOGIN']
                     CAMERA_PASSWORD = CAMERA['CAMERA_PASSWORD']
                     CAMERA_IP = CAMERA['CAMERA_IP']
                     NUMFRAMES = CAMERA['NUMFRAMES']
                     LABEL = CAMERA['LABEL']
                     NUMRETRIES = 3
-                    # Turn lights on
-                    # /form/IRset
-                    ir_data = {"IRmode": 1,
-                               "c2bwthr": 20,
-                               "bw2cthr": 70,
-                               "IRenable": 1,
-                               "IRdelay": 3
-                               }
-                    
-                    ir_set = False
-                    for n in range(NUMRETRIES):
-                        if not ir_set:
-                            try:
-                                ir_respr = requests.post("http://{}:{}@{}/form/IRset".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), data=ir_data)
-                                ir_set = True
-                            except:
-                                logging.debug("Failed to connect to camera IR SET")
-                                sleep(5)
-                    if not ir_set:
-                        # skip camera
-                        logging.debug("NO CONNECTION, SKIPPING TO THE NEXT CAMERA")
-                        continue
-                    
-                    for i in range(0, NUMFRAMES):
-                        fname = os.path.join(DATADIR, str(uuid.uuid4())+".jpg")
-                        postdata = {"flag": 4,
-                                    "existFlag": 1,
-                                    "language": "cn",
-                                    "presetNum": i + 1
-                        }
-                        comm_sent = False
-                        for n in range(NUMRETRIES):
-                            if not comm_sent:
-                                try:
-                                    r = requests.post("http://{}:{}@{}/form/presetSet".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), data=postdata)
-                                    comm_sent = True
-                                except:
-                                    logging.debug("Failed to connect to camera PRESET SET")
-                                    sleep(5)
-                            
-                        # Delay for camera to get into the proper position
-                        sleep(5)
-                        rtsp = cv2.VideoCapture("rtsp://{}:{}@{}:554/1/h264major".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))
-                        # Read 5 frames and save the fifth one
-                        # 
-                        for j in range(5):
-                            check, frame = rtsp.read()
-                            sleep(1)
-                        showPic = cv2.imwrite(fname, frame, [cv2.IMWRITE_JPEG_QUALITY, 100])
-                        logging.debug("CAPTURED {} PICT {}".format(LABEL, i+1))
-                        cameradata.append({"fname": fname, "label": LABEL + " {}".format(i+1), "cameraname": LABEL, "cameraposition": i+1})
-                        rtsp.release()
-                        #sleep(10)
-                    # turn lights off
-                    ir_data['IRenable'] = 0
-                    ir_set = False
-                    for n in range(NUMRETRIES):
-                        if not ir_set:
-                            try:
-                                ir_respr = requests.post("http://{}:{}@{}/form/IRset".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), data=ir_data)
-                                ir_set = True
-                            except:
-                                logging.debug("Failed to connect to camera IR SET")
-                                sleep(5)
+                    photos = collect_pictures(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP, LABEL, NUMFRAMES, NUMRETRIES)
+                    if photos:
+                        cameradata.extend(photos)
+                    #camera_is_online = False
+                    #for i in range(NUMFRAMES):
+                    #    fname = os.path.join(DATADIR, str(uuid.uuid4())+".jpg")
+                    #    putdata = {"Param1": i}
+                    #    comm_sent = False
+                    #    for n in range(NUMRETRIES):
+                    #        if not comm_sent:
+                    #            try:
+                    #                r = requests.put("http://{}:{}@{}/PTZ/1/Presets/Goto".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), data=putdata)
+                    #                comm_sent = True
+                    #                camera_is_online = True
+                    #            except Exception as e:
+                    #                logging.debug("Failed to connect to camera PRESET SET")
+                    #                logging.debug(e)
+                    #                sleep(5)
+                    #    if not comm_sent:
+                    #        break
+                    #    else:
+                    #        # Delay for camera to get into the proper position
+                    #        sleep(5)
+                    #        rtsp = cv2.VideoCapture("rtsp://{}:{}@{}:554/live/0/MAIN".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))
+                    #        # Read 5 frames and save the fifth one
+                    #        # 
+                    #        for j in range(5):
+                    #            check, frame = rtsp.read()
+                    #            sleep(1)
+                    #        showPic = cv2.imwrite(fname, frame, [cv2.IMWRITE_JPEG_QUALITY, 100])
+                    #        logging.debug("CAPTURED {} PICT {}".format(LABEL, i+1))
+                    #        cameradata.append({"fname": fname, "label": LABEL + " {}".format(i+1), "cameraname": LABEL, "cameraposition": i+1})
+                    #        rtsp.release()
+                    #        #sleep(10)
 
-                    # ir_respr = requests.post("http://{}:{}@{}/form/IRset".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), data=ir_data)
 
 
     if take_photos:
@@ -414,9 +401,10 @@ def post_data(token, bsuuid, take_photos):
     # All data saved
     # Now sending all cached data to the server
     
-    numretries = 0
-
-    while not data_sent:
+    numretries = 3
+    
+    #while not data_sent:
+    if numretries > 0:
         try:
             cacheddata = session.query(BaseStationData).filter(BaseStationData.uploaded.is_(False)).all()
             logging.debug("send data")
@@ -466,21 +454,21 @@ def post_data(token, bsuuid, take_photos):
 
         except requests.exceptions.ConnectionError:
             sleep(2)
-            numretries =+ 1
-            logging.debug("Network error, trying to connect")
+            logging.debug("Network error, trying to connect, retry {}".format(numretries))
+            numretries = numretries - 1
 
 if __name__ == '__main__':
     base_station_uuid, token = get_base_station_uuid()
-    
+    print([base_station_uuid, token])
     if not base_station_uuid:
         token = get_token()
         base_station_uuid = register_base_station(token)
  
     scheduler = SafeScheduler()
-    scheduler.every(5).minutes.do(post_data, token, base_station_uuid, False)
+    #scheduler.every(5).minutes.do(post_data, token, base_station_uuid, False)
     scheduler.every(120).minutes.do(post_data, token, base_station_uuid, True)
     logging.debug(base_station_uuid)
-    #post_data(token, base_station_uuid, False)
+    #post_data(token, base_station_uuid, True)
     #sys.exit(1)
     while 1:
         scheduler.run_pending()
