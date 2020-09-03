@@ -1736,7 +1736,7 @@ class LocationWarningsAPI(Resource):
             
         outdata = warnings_query.all()
         
-        app.logger.debug([(c[0].data.ts, c[1].posx, c[1].posy, c[1].posz, c[1].camlabel, c[0].numwarnings) for c in outdata])
+        #app.logger.debug([(c[0].data.ts, c[1].posx, c[1].posy, c[1].posz, c[1].camlabel, c[0].numwarnings) for c in outdata])
         for c in outdata:
             outdict = {"ts": c[0].data.ts,
                        "x": c[1].posx,
