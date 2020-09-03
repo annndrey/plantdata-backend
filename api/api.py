@@ -1942,7 +1942,8 @@ class SensorsStatsAPI(Resource):
             for d in date_range:
                 if d not in [g[0] for g in grouped_zones]:
                     grouped_zones.append((d, 0))
-        
+                    
+            app.logger.debug(["GROUPED ZONES0", grouped_zones])
             grouped_zones = sorted(grouped_zones, key=lambda tup: tup[0])
             grouped_zones = [{"name":g[0], "amount":g[1]} for g in grouped_zones]
             app.logger.debug(["GROUPED ZONES1", grouped_zones])
