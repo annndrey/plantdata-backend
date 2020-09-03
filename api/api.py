@@ -1868,7 +1868,7 @@ class SensorsStatsAPI(Resource):
         output_params = request.args.getlist('output', None)
         numentries = request.args.get('numentries', 7)
         numentries = int(numentries)
-        app.logger.debug(output_params)
+
         output = {}
         if output_params:
             if 'health' in output_params:
@@ -1925,6 +1925,7 @@ class SensorsStatsAPI(Resource):
             all_zones = db.session.query(func.count(PictureZone.id)).join(DataPicture).join(Data).join(Sensor).filter(PictureZone.ts >= ts_from).filter(PictureZone.ts <= ts_to)
         
             if suuid == 'all':
+                app.logger.debug(["STATS suuid", [s.uuid for s in user.sensors]])
                 all_unhealthy_zones = all_unhealthy_zones.filter(Sensor.uuid.in_([s.uuid for s in user.sensors]))
                 grouped_zones = grouped_zones.filter(Sensor.uuid.in_([s.uuid for s in user.sensors]))
                 all_zones = all_zones.filter(Sensor.uuid.in_([s.uuid for s in user.sensors]))
