@@ -1942,7 +1942,7 @@ class SensorsStatsAPI(Resource):
             
             grouped_zones_output = {}
             for d in date_range:
-                if d not in [g[0] for g in grouped_zones]:
+                if d.strftime('%d-%m-%Y') not in [g[0].strftime('%d-%m-%Y') for g in grouped_zones]:
                     grouped_zones.append((d, 0))
             # >>>>> Stopped here
             [g[0] for g in grouped_zones]
