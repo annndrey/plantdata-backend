@@ -834,8 +834,8 @@ def parse_request_pictures(parent_data, camposition_id, req_file, flabel, user_l
 
         with open(fullpath, 'wb') as outf:
             outf.write(fdata)
-
-        original.save(origpath)
+        
+        original.save(origpath, quality=100, subsampling=0)
         
         imglabel = flabel
         app.logger.debug(["UPLNAME", flabel])
@@ -885,7 +885,8 @@ def parse_request_pictures(parent_data, camposition_id, req_file, flabel, user_l
                         app.logger.debug(["NO ZONES", newzones])
                         newzones = None
                         classification_results = ""
-                original.save(fullpath)
+                # Picture with zones
+                original.save(fullpath)#, quality=100, subsampling=0)
                 app.logger.debug(["IMGLABEL", imglabel, classification_results])
                 imglabel = imglabel + " " + classification_results
         # Thumbnails
