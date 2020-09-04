@@ -1334,8 +1334,16 @@ class CameraAPI(Resource):
           404:
             description: URL not found
         """
+        # Join Data Join Sensors
+        auth_headers = request.headers.get('Authorization', '').split()
+        token = auth_headers[1]
+        udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
+        
+        user = User.query.filter_by(login=udata['sub']).first()
+        if not user:
+            abort(403)
 
-        camera = db.session.query(Camera).filter(Camera.id==id).first()
+        camera = db.session.query(Camera).join(Data).join(Sensor).filter(Sensor.id.in_([s.id for s in user.sensors])).filter(Camera.id==id).first()
         if camera:
             return jsonify(self.schema.dump(camera).data), 200
         return abort(404)
