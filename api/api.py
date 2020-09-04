@@ -1338,7 +1338,6 @@ class CameraAPI(Resource):
         auth_headers = request.headers.get('Authorization', '').split()
         token = auth_headers[1]
         udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
-        
         user = User.query.filter_by(login=udata['sub']).first()
         if not user:
             abort(403)
@@ -1752,7 +1751,8 @@ class LocationWarningsAPI(Resource):
                        "z": c[1].posz,
                        "numwarnings":c[0].numwarnings,
                        "camlabel": c[1].camlabel,
-                       "camid": c[0].id
+                       "camid": c[0].id,
+                       "camlocation": c[1].location.address
             }
             key = int(c[0].data.ts.timestamp())
             if key not in output.keys():
