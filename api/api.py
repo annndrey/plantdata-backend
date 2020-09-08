@@ -2573,7 +2573,7 @@ class DataAPI(Resource):
         if sensor:
             if sensor.user != user:
                 abort(403)
-            ts = request.form.get("ts")
+            ts = request.json.get("ts")
             app.logger.debug(['TS', ts])
             newdata = Data(sensor_id=sensor.id,
                            ts = ts
