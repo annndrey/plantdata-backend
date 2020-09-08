@@ -50,9 +50,9 @@ CAMERAS:
   - LABEL: "USB0"
     CAMERA_TYPE: "USB"
     PORTNUM: 0
-SENSORS:
-  - URL: http://localhost:8000/sensor_data
-  - URL: http://localhost:8001/sensor_data
-  - URL: http://localhost:8002/sensor_data
 SERVER_LOGIN: "your_login_here"
 SERVER_PASSWORD: "your_password_here"
+SERVER_HOST: "https://dev.plantdata.fermata.tech:5598/api/v2/{}"
+DB_FILE: "localdata.db"
+DATADIR: "picts"
+LOWLIGHT: 10
