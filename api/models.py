@@ -162,7 +162,10 @@ class Location(db.Model):
     lat = db.Column(db.Text(), nullable=True)
     lon = db.Column(db.Text(), nullable=True)
     cf_values = db.Column(db.Text())
-
+    dimx = db.Column(db.Integer)
+    dimy = db.Column(db.Integer)
+    dimz = db.Column(db.Integer)
+    
     
 class SensorLimit(db.Model):
     id = db.Column(db.Integer, primary_key=True)
