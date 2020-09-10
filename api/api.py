@@ -198,12 +198,11 @@ def get_count(q):
         
 
 def custom_serializer(data, cameras=None):
-    outdata = {"labels": [], "data": {}, "cameras": []}
-    #outdata['labels'] = [d.ts for d in data if d.records]
-    #outdata['cameras'] = [[{"camlabel":c.camlabel, "id":c.id, "warnings":c.warnings} for d in data for c in d.cameras]]
+    outdata = {"labels": [], "data": {}, "cameras": [], "locdimensions": {} }
+    
     if cameras:
         for cam in cameras:
-            outdata['cameras'].append([{"camlabel":c.camlabel, "id":c.id, "warnings":c.warnings} for c in cam])
+            outdata['cameras'].append([{"camlabel": c.camlabel, "id":c.id, "warnings":c.warnings} for c in cam])
     for d in data:
         #app.logger.debug("PROCESS DATA {}".format(d.id))
         if len(d.records) > 0:
@@ -213,6 +212,11 @@ def custom_serializer(data, cameras=None):
                 outdata['cameras'].append([{"camlabel":c.camlabel, "id":c.id, "warnings":c.warnings} for c in d.cameras])
         for r in d.records:
             datalabel = "{} {}".format(r.label, r.probe.uuid)
+            
+            if r.probe.uuid not in outdata['locdimensions'].keys():
+                data_loc = r.probe.sensor.location
+                outdata['locdimensions'][r.probe.uuid] = {"x":data_loc.dimx, "y":data_loc.dimy, "z":data_loc.dimz}
+                
             if datalabel not in outdata['data'].keys():
                 outdata['data'][datalabel] = [r.value]
             else:
