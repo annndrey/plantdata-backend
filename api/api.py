@@ -215,7 +215,7 @@ def custom_serializer(data, cameras=None):
             
             if r.probe.uuid not in outdata['locdimensions'].keys():
                 data_loc = r.probe.sensor.location
-                outdata['locdimensions'][r.probe.uuid] = {"x":data_loc.dimx, "y":data_loc.dimy, "z":data_loc.dimz}
+                outdata['locdimensions'][r.probe.sensor.uuid] = {"x":data_loc.dimx, "y":data_loc.dimy, "z":data_loc.dimz}
                 
             if datalabel not in outdata['data'].keys():
                 outdata['data'][datalabel] = [r.value]
