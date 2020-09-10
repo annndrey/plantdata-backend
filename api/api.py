@@ -211,7 +211,7 @@ def custom_serializer(data, cameras=None):
             if len(d.cameras) > 0:
                 outdata['cameras'].append([{"camlabel":c.camlabel, "id":c.id, "warnings":c.warnings} for c in d.cameras])
         for r in d.records:
-            datalabel = "{} {}".format(r.label, r.probe.uuid)
+            datalabel = "{} {} {}".format(r.label, r.probe.uuid, r.probe.sensor.uuid)
             
             if r.probe.uuid not in outdata['locdimensions'].keys():
                 data_loc = r.probe.sensor.location
