@@ -241,7 +241,8 @@ def custom_serializer(data, cameras=None):
             substr = set(max_value) - set(outdata['probelabels'])
             for s in substr:
                 missing_ind = max_value.index(s)
-                outdata['probelabels'].insert(missing_ind, 0)
+                outdata['probelabels'][k].insert(missing_ind, s)
+                
 
     return outdata
 
