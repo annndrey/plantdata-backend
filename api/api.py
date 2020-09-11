@@ -198,19 +198,21 @@ def get_count(q):
         
 
 def custom_serializer(data, cameras=None):
-    outdata = {"labels": [], "data": {}, "cameras": [], "locdimensions": {} }
+    outdata = {"labels": [], "data": {}, "cameras": [], "locdimensions": {}, "probelabels": {} }
     
     if cameras:
         for cam in cameras:
             outdata['cameras'].append([{"camlabel": c.camlabel, "id":c.id, "warnings":c.warnings} for c in cam])
+    
     for d in data:
-        #app.logger.debug("PROCESS DATA {}".format(d.id))
         if len(d.records) > 0:
             outdata['labels'].append(d.ts)
+
         if not cameras:
             if len(d.cameras) > 0:
                 outdata['cameras'].append([{"camlabel":c.camlabel, "id":c.id, "warnings":c.warnings} for c in d.cameras])
         for r in d.records:
+            probelabel = "{} {}".format(r.probe.uuid, r.probe.sensor.uuid)
             datalabel = "{} {} {}".format(r.label, r.probe.uuid, r.probe.sensor.uuid)
             
             if r.probe.uuid not in outdata['locdimensions'].keys():
@@ -221,7 +223,12 @@ def custom_serializer(data, cameras=None):
                 outdata['data'][datalabel] = [r.value]
             else:
                 outdata['data'][datalabel].append(r.value)
-
+                
+            if probelabel not in outdata['probelabels'].keys():
+                outdata['probelabels'][probelabel] = [ts]
+            else:
+                outdata['probelabels'][probelabel].append(ts)
+            
     return outdata
 
 
@@ -2108,7 +2115,6 @@ class DataAPI(Resource):
 
     def fill_empty_dates(self, query):
         pictures = {p.id: p.pictures for p in query.all()}
-
         df = pd.read_sql(query.statement, query.session.bind)
         df = df.assign(ts=df.ts.dt.round('T'))
         r = pd.date_range(start=df.ts.min(), end=df.ts.max(), freq="T")
@@ -2335,11 +2341,9 @@ class DataAPI(Resource):
         cam_numsamples = request.args.get('cam_numsamples', False)
         ignore_night_photos = request.args.get('ignore_night_photos', False)
         label_text = request.args.get('label_text', False)
-        
         compact_data = request.args.get('compact', False)
         dataonly = request.args.get('dataonly', False)
         unixdate = request.args.get('unixdate', False)
-        
         cam_skipsamples = request.args.get('cam_skipsamples', False)
         data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         daystart = dayend = None
@@ -2359,9 +2363,7 @@ class DataAPI(Resource):
             abort(403)
             
         if not dataid:
-            #first_rec_day = db.session.query(sql_func.min(Data.ts)).filter(Data.sensor.has(Sensor.uuid == suuid)).first()[0]
             first_rec_day = db.session.query(sql_func.min(Data.ts)).filter(Data.sensor.has(Sensor.uuid.in_([s.uuid for s in sensor]))).first()[0]
-            #last_rec_day = db.session.query(sql_func.max(Data.ts)).filter(Data.sensor.has(Sensor.uuid == suuid)).first()[0]
             last_rec_day = db.session.query(sql_func.max(Data.ts)).filter(Data.sensor.has(Sensor.uuid.in_([s.uuid for s in sensor]))).first()[0]
             app.logger.debug(["GET DATA 1", first_rec_day, last_rec_day])
             if not all([ts_from, ts_to]):
@@ -2383,14 +2385,15 @@ class DataAPI(Resource):
                     day_st = datetime.datetime.strptime(ts_from, '%d-%m-%Y %H:%M').replace(hour=0, minute=0, second=0)
                     day_end = datetime.datetime.strptime(ts_to, '%d-%m-%Y %H:%M').replace(hour=23, minute=59, second=59)
             
-            #sensordata_query = db.session.query(Data).filter(Data.sensor.has(Sensor.uuid == suuid))
             sensordata_query = db.session.query(Data).filter(Data.sensor.has(Sensor.uuid.in_([s.uuid for s in sensor])))
             if puuid:
                 sensordata_query = sensordata_query.join(Data.records).options(contains_eager(Data.records)).filter(ProbeData.probe.has(Probe.uuid==puuid))
 
             sensordata_query = sensordata_query.order_by(Data.ts).filter(Data.ts >= day_st).filter(Data.ts <= day_end)
+            
             app.logger.debug("GET DATA 2")
             app.logger.debug("GET DATA 3")
+            
             query_count = get_count(sensordata_query)
             if query_count > 0:
                 sensordata = sensordata_query
