@@ -227,7 +227,8 @@ def custom_serializer(data, cameras=None):
             if probelabel not in outdata['probelabels'].keys():
                 outdata['probelabels'][probelabel] = [d.ts]
             else:
-                outdata['probelabels'][probelabel].append(d.ts)
+                if d.ts not in outdata['probelabels'][probelabel]:
+                    outdata['probelabels'][probelabel].append(d.ts)
             
     return outdata
 
