@@ -232,7 +232,7 @@ def custom_serializer(data, cameras=None):
         # fix missing data
         # find longest probelabel
         # find index of labels that are not in other probelabels
-        max_key = max(outdata['probelabels'], key= lambda x: len(set(d[x])))
+        max_key = max(outdata['probelabels'], key= lambda x: len(set(outdata['probelabels'][x])))
         app.logger.debug(['Longest key', max_key])
     return outdata
 
