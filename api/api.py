@@ -234,7 +234,7 @@ def custom_serializer(data, cameras=None):
     # find longest probelabel
     # find index of labels that are not in other probelabels
     
-    if len(set(map(len, outdata['probelabels'].values))) != 1:
+    if len(set(map(len, outdata['probelabels'].values()))) != 1:
         max_key, max_value = max(outdata['probelabels'].items(), key = lambda x: len(set(x[1])))
         for k in outdata['probelabels']:
             if k != max_key:
