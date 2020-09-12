@@ -235,16 +235,18 @@ def custom_serializer(data, cameras=None):
     # find index of labels that are not in other probelabels
     
     if len(set(map(len, outdata['probelabels'].values()))) != 1:
-        max_key, max_value = max(outdata['probelabels'].items(), key = lambda x: len(set(x[1])))
-        for k in outdata['probelabels']:
-            if k != max_key:
-                substr = set(max_value) - set(outdata['probelabels'][k])
-                for s in substr:
-                    missing_ind = max_value.index(s)
-                    outdata['probelabels'][k].insert(missing_ind, s)
-                    for dk in outdata['data']:
-                        if dk[3:] == k:
-                            outdata['data'][dk].insert(missing_ind, 0)
+        maxvalues = max(outdata['probelabels'].items(), key = lambda x: len(set(x[1])))
+        if maxvalues:
+            max_key, max_value = maxvalues
+            for k in outdata['probelabels']:
+                if k != max_key:
+                    substr = set(max_value) - set(outdata['probelabels'][k])
+                    for s in substr:
+                        missing_ind = max_value.index(s)
+                        outdata['probelabels'][k].insert(missing_ind, s)
+                        for dk in outdata['data']:
+                            if dk[3:] == k:
+                                outdata['data'][dk].insert(missing_ind, 0)
 
     return outdata
 
