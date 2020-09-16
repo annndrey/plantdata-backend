@@ -43,6 +43,7 @@ from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from celery import Celery
 from celery.schedules import crontab
+from celery.utils.log import get_task_logger
 
 # caching
 from flask_caching import Cache
@@ -90,7 +91,7 @@ ma = Marshmallow(app)
 gunicorn_logger = logging.getLogger('gunicorn.error')
 app.logger.handlers = gunicorn_logger.handlers
 app.logger.setLevel(gunicorn_logger.level)
-
+celery_logger = get_task_logger(__name__)
 HOST = app.config.get('HOST', 'localhost')
 REDIS_HOST = app.config.get('REDIS_HOST', 'localhost')
 REDIS_PORT = app.config.get('REDIS_PORT', 6379)
@@ -841,7 +842,7 @@ def parse_request_pictures(parent_data, camposition_id, req_file, flabel, user_l
 
         picts = []
         picts_unhealthy_status = []
-        app.logger.info("PARSING REQUEST PICTURES")
+        celery_logger.info("PARSING REQUEST PICTURES")
         #for uplname in sorted(req_files):
         pict = req_file#s.get(uplname)
         fpath = os.path.join(current_app.config['FILE_PATH'], user_login, sensor_uuid)
