@@ -2852,9 +2852,9 @@ class DataAPI(Resource):
             pict_recognize = False
 
             numcolors = check_colors(tmpf)
-            if numcolors < COLOR_THRESHOLD:
-                highlight = False
-            tmpf.seek(0)
+            #if numcolors < COLOR_THRESHOLD:
+            #    highlight = False
+            #tmpf.seek(0)
             # Running parse_request_pictures in the background
             if recognize and highlight:
                 pict_recognize = True
