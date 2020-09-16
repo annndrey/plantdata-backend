@@ -841,7 +841,7 @@ def parse_request_pictures(parent_data, camposition_id, req_file, flabel, user_l
 
         picts = []
         picts_unhealthy_status = []
-        app.logger.debug("PARSING REQUEST PICTURES")
+        app.logger.info("PARSING REQUEST PICTURES")
         #for uplname in sorted(req_files):
         pict = req_file#s.get(uplname)
         fpath = os.path.join(current_app.config['FILE_PATH'], user_login, sensor_uuid)
@@ -2849,7 +2849,7 @@ class DataAPI(Resource):
             tmpf.write(fl.read())
             tmpf.seek(0)
             request_image_size = os.stat(tmpfname).st_size
-
+            
             if request_image_size == 0:
                 app.logger.debug(["ZERO PICT FILESIZE", request_image_size])                
                 return "Missing image", 400
