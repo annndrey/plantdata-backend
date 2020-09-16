@@ -846,10 +846,10 @@ def parse_request_pictures(parent_data, camposition_id, req_file, flabel, user_l
         #for uplname in sorted(req_files):
         pict = req_file#s.get(uplname)
         fpath = os.path.join(current_app.config['FILE_PATH'], user_login, sensor_uuid)
-        app.logger.debug(fpath)
+        celery_logger.info(fpath)
         if not os.path.exists(fpath):
             os.makedirs(fpath)
-        app.logger.debug(["PICT FILESIZE", os.stat(pict).st_size])
+        celery_logger.info(["PICT FILESIZE", os.stat(pict).st_size])
         fdata = open(pict, 'rb').read()
         imgbytes = io.BytesIO(fdata)
         imgbytes.seek(0)
@@ -873,9 +873,9 @@ def parse_request_pictures(parent_data, camposition_id, req_file, flabel, user_l
         original.save(origpath, quality=100, subsampling=0)
         
         imglabel = flabel
-        app.logger.debug(["UPLNAME", flabel])
+        celery_logger.info(["UPLNAME", flabel])
         classification_results = ""
-        app.logger.debug("FILE SAVED")
+        celery_logger.info("FILE SAVED")
         newzones = []
 
         if recognize:
@@ -884,7 +884,7 @@ def parse_request_pictures(parent_data, camposition_id, req_file, flabel, user_l
                 zones = get_zones(original, 3, 4)
                 cf_headers = None #= {'Authorization': 'Bearer ' + CF_TOKEN}
                 # 2592x1944
-                app.logger.debug(["ZONES", zones])
+                celery_logger.info(["ZONES", zones])
                 if zones:
                     responses = []
                     newzones = []
@@ -901,12 +901,12 @@ def parse_request_pictures(parent_data, camposition_id, req_file, flabel, user_l
                             zone_id = send_zones(zones[z], z, fuuid, FORMAT, fpath, user_login, sensor_uuid, cf_headers, original)
                             
                         zones_ids.append(zone_id)
-                    app.logger.debug(["SAVED ZONES", [zones_ids]])
+                    celery_logger.info(["SAVED ZONES", [zones_ids]])
                     db.session.commit()
 
                     if zones_ids:
                         newzones = db.session.query(PictureZone).filter(PictureZone.id.in_(zones_ids)).all()
-                        app.logger.debug(["NEWZONES", [(n.id, n.results) for n in newzones]])
+                        celery_logger.info(["NEWZONES", [(n.id, n.results) for n in newzones]])
                         # Draw a red rectangle around the unhealthy zone
                         for nzone in newzones:
                             if "unhealthy" in nzone.results:
@@ -917,17 +917,17 @@ def parse_request_pictures(parent_data, camposition_id, req_file, flabel, user_l
                         class_results = ["{}: {}".format(z.zone, process_result(z.results)) for z in sorted(newzones, key=lambda x: int(x.zone[4:]))]
                         classification_results = "Results: {}".format(", ".join(class_results))
                     else:
-                        app.logger.debug(["NO ZONES", newzones])
+                        celery_logger.info(["NO ZONES", newzones])
                         newzones = None
                         classification_results = ""
                 # Picture with zones
                 original.save(fullpath)#, quality=100, subsampling=0)
-                app.logger.debug(["IMGLABEL", imglabel, classification_results])
+                celery_logger.info(["IMGLABEL", imglabel, classification_results])
                 imglabel = imglabel + " " + classification_results
         # Thumbnails
         original.thumbnail((300, 300), Image.ANTIALIAS)
         original.save(thumbpath, FORMAT, quality=90)
-        app.logger.debug(["CAMERA TO PICT", camposition.camera.camlabel, camposition.poslabel, imglabel])
+        celery_logger.info(["CAMERA TO PICT", camposition.camera.camlabel, camposition.poslabel, imglabel])
         newpicture = DataPicture(fpath=partpath,
                                  label=imglabel,
                                  thumbnail=partthumbpath,
