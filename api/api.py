@@ -849,7 +849,7 @@ def parse_request_pictures(parent_data, camposition_id, req_file, flabel, user_l
         celery_logger.info(fpath)
         if not os.path.exists(fpath):
             os.makedirs(fpath)
-        celery_logger.info(["PICT FILESIZE", os.stat(pict).st_size])
+        #celery_logger.info(["PICT FILESIZE", os.stat(pict).st_size])
         fdata = open(pict, 'rb').read()
         imgbytes = io.BytesIO(fdata)
         imgbytes.seek(0)
@@ -2849,10 +2849,12 @@ class DataAPI(Resource):
             fl = [request.files.get(f) for f in request.files][0]
             tmpf.write(fl.read())
             tmpf.seek(0)
+            tmpf.close()
             request_image_size = os.stat(tmpfname).st_size
             
             if request_image_size == 0:
-                app.logger.debug(["ZERO PICT FILESIZE", request_image_size])                
+                app.logger.debug(["ZERO PICT FILESIZE", request_image_size])
+                os.unlink(tmpfname)
                 return "Missing image", 400
             
             db.session.add(data)
