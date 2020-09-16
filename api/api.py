@@ -2854,7 +2854,7 @@ class DataAPI(Resource):
             
             highlight = True
             pict_recognize = False
-            app.logger.debug(["PICT FILESIZE", os.stat(tmpf).st_size])
+            app.logger.debug(["PICT FILESIZE", os.stat(tmpffname).st_size ])
             #numcolors = check_colors(tmpf)
             #if numcolors < COLOR_THRESHOLD:
             #    highlight = False
