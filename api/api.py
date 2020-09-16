@@ -848,7 +848,7 @@ def parse_request_pictures(parent_data, camposition_id, req_file, flabel, user_l
         app.logger.debug(fpath)
         if not os.path.exists(fpath):
             os.makedirs(fpath)
-        app.logger.debug(["PICT FILESIZE", os.stat(pict).st_size)
+        app.logger.debug(["PICT FILESIZE", os.stat(pict).st_size])
         fdata = open(pict, 'rb').read()
         imgbytes = io.BytesIO(fdata)
         imgbytes.seek(0)
