@@ -2851,7 +2851,7 @@ class DataAPI(Resource):
             highlight = True
             pict_recognize = False
 
-            numcolors = check_colors(tmpf)
+            #numcolors = check_colors(tmpf)
             #if numcolors < COLOR_THRESHOLD:
             #    highlight = False
             #tmpf.seek(0)
