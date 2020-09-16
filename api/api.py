@@ -849,7 +849,10 @@ def parse_request_pictures(parent_data, camposition_id, req_file, flabel, user_l
         if not os.path.exists(fpath):
             os.makedirs(fpath)
         fdata = open(pict, 'rb').read()
-        original = Image.open(io.BytesIO(fdata))
+        imgbytes = io.BytesIO(fdata)
+        imgbytes.seek(0)
+        original = Image.open(imgbytes)
+        
         FORMAT = original.format
         fuuid = str(uuid.uuid4())
         fname = fuuid + "." + FORMAT.lower()
