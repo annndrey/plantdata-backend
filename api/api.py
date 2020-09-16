@@ -2842,19 +2842,26 @@ class DataAPI(Resource):
             app.logger.debug(["Consuming request data", len(request_data)])
             #if data.lux < 30:
             #highlight = [d.value > 30 for d in data.records if d.ptype == 'light']
-                
-            db.session.add(data)
-            db.session.commit()
             
             tmpfname = str(uuid.uuid4())
             tmpf = open(tmpfname, 'w+b')
             fl = [request.files.get(f) for f in request.files][0]
             tmpf.write(fl.read())
             tmpf.seek(0)
+            request_image_size = os.stat(tmpfname).st_size
+
+            if request_image_size == 0:
+                app.logger.debug(["ZERO PICT FILESIZE", request_image_size])                
+                return "Missing image", 400
+            
+            db.session.add(data)
+            db.session.commit()
+            
             
             highlight = True
             pict_recognize = False
-            app.logger.debug(["PICT FILESIZE", os.stat(tmpfname).st_size ])
+            
+            
             #numcolors = check_colors(tmpf)
             #if numcolors < COLOR_THRESHOLD:
             #    highlight = False
