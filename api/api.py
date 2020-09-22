@@ -24,6 +24,7 @@ from flask_restful.utils import cors
 from marshmallow import fields, pre_dump, post_dump
 from marshmallow_enum import EnumField
 from itertools import groupby, islice
+from statistics import mean
 from models import db, User, Sensor, Location, Data, DataPicture, Camera, CameraPosition, CameraLocation, Probe, ProbeData, PictureZone, SensorType, data_probes, Notification
 import logging
 import os
@@ -247,7 +248,13 @@ def custom_serializer(data, cameras=None):
                             outdata['probelabels'][k].insert(missing_ind, s)
                             for dk in outdata['data']:
                                 if dk[3:] == k:
-                                    outdata['data'][dk].insert(missing_ind, 0)
+                                    missing_data = 0
+                                    max_index = len(outdata['data'][dk]) - 1
+                                    if missing_ind > 0 or missing_ind < max_ind:
+                                        missing_data = mean([outdata['data'][dk][missing_ind - 1], outdata['data'][dk][missing_ind + 1]])
+                                    elif missing_ind == max_ind:
+                                        missing_data = mean([outdata['data'][dk][max_ind - 2], outdata['data'][dk][max_ind - 1]])
+                                    outdata['data'][dk].insert(missing_ind, missing_data)
 
     return outdata
 
