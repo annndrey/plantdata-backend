@@ -2,6 +2,9 @@
 # -*- coding: utf-8 -*-
 
 import sys
+
+sys.path.append('/home/pi/lib/python3.5/site-packages')
+
 import requests
 import pickle
 import os
@@ -28,17 +31,29 @@ from sqlalchemy import create_engine, or_, func
 from models import Base, BaseStationData, Photo, Probe, ProbeData
 
 import logging
+from logging.handlers import RotatingFileHandler
+
 from traceback import format_exc
 from schedule import Scheduler
 
 
 
-logging.basicConfig(filename='client_parallel.log',
-                    filemode='w',
-                    format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
-                    datefmt='%H:%M:%S',
-                    level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("PlantData Client Log")
+logger.setLevel(logging.DEBUG)
+handler = RotatingFileHandler("client_parallel.log", mode='a', maxBytes=1000000, backupCount=5, encoding='utf-8', delay=0)
+handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+print(logger)
+logger.debug("App started")
+
+# Some useful camera commands
+# http://XXX.XXX.XXX.XXX/cgi-bin/hi3510/preset.cgi?-act=set&-status=1&-number=[0-7] :: установить позицию
+# http://XXX.XXX.XXX.XXX/cgi-bin/hi3510/ptzctrl.cgi?-step=1&-act=down :: Переход на один шаг вниз
+# http://XXX.XXX.XXX.XXX/cgi-bin/hi3510/preset.cgi?-act=set&-status=0&-number=[0-7] :: отключить позицию
+# http://XXX.XXX.XXX.XXX/cgi-bin/hi3510/preset.cgi?-act=goto&-status=1&-number=[0-7] :: перейти к заданной позиции
+# http://192.168.1.225/web/cgi-bin/hi3510/ptzctrl.cgi?-step=0&-act=zoomout&-speed=45 zoom
 
 tz = pytz.timezone('Europe/Moscow')
 
@@ -80,11 +95,12 @@ with open("config.yaml", 'r') as stream:
 
 SERVER_LOGIN = CONFIG_FILE['SERVER_LOGIN']
 SERVER_PASSWORD = CONFIG_FILE['SERVER_PASSWORD']
-SERVER_HOST = CONFIG_FILE['SERVER_HOST']
-db_file = CONFIG_FILE['DB_FILE']
-DATADIR = CONFIG_FILE['DATADIR']
-LOWLIGHT = CONFIG_FILE['LOWLIGHT']
+SERVER_HOST = "https://dev.plantdata.fermata.tech:5598/api/v2/{}"
 
+TEST_HOST = "http://testapi.me:9898/api/v2/{}"
+db_file = 'localdata.db'
+DATADIR = "picts"
+LOWLIGHT = 10
 # Weights
 OFFSET0 = 96249
 SCALE0 = 452
@@ -151,7 +167,6 @@ def create_session(db_file):
     return session
 
 async def async_read_sensor_data(session, url, dbsession, bsid):
-    # Move all this to lora_listener
     resp_json = []
     pkl_fname = "{}.pkl".format(url.replace("/", "~"))
     try:
@@ -199,14 +214,17 @@ async def async_read_sensor_data(session, url, dbsession, bsid):
 
     
 async def fetch_all_sensors_data(urls, loop, dbsession, bsid):
-    # Move to lora_listener
     async with aiohttp.ClientSession(loop=loop) as session:
         results = await asyncio.gather(*[async_read_sensor_data(session, url, dbsession, bsid) for url in urls], return_exceptions=True)
         return results
 
     
 def send_patch_request(fname, flabel, fcamname, fcamposition, data_id, photo_id, header):
+    resp = None
+    numretries = 5
     files = {}
+    img = Image.open(fname)
+    logger.debug(("IMAGEFILE", fname, img.format, "%dx%d" % img.size, img.mode, os.stat(fname).st_size))
     files['{}'.format(flabel)] = open(fname, 'rb')
     logger.debug("FILESIZE {}".format(os.stat(fname).st_size))
     url_str = "data/{}".format(data_id)
@@ -214,23 +232,37 @@ def send_patch_request(fname, flabel, fcamname, fcamposition, data_id, photo_id,
     logger.debug("SENDING FILE {}".format(files))
     # send camera_name, camera position
     #resp = requests.patch(SERVER_HOST.format(url_str), data={"camname": fcamname, 'flabel': flabel, "camposition": fcamposition, "recognize": False}, headers=header, files=files)
-    resp = requests.patch(SERVER_HOST.format(url_str), data={"camname": fcamname, 'flabel': flabel, "camposition": fcamposition}, headers=header, files=files)
-    logger.debug("PATCH RESPONSE STATUS CODE {}".format(resp.status_code))
-    if resp.status_code == 200:
-        os.unlink(os.path.join("/home/pi", fname))
-        session = Session()
-        dbphoto = session.query(Photo).filter(Photo.photo_id == photo_id).first()
-        if dbphoto:
-            dbphoto.uploaded = True
-            session.delete(dbphoto)
-            session.commit()
-            logger.debug("LOCAL PHOTO REMOVED {} {}".format(fname, flabel))
-        session.close()
-
-        #print(resp.json())
-    return resp.status_code
-
-
+    while numretries > 0:
+        logger.debug("{} RETRIES LEFT".format(numretries))
+        
+        try:
+            logger.debug(["DATA", {"camname": fcamname, 'flabel': flabel, "camposition": fcamposition}, header, files])
+            # resp = requests.patch(TEST_HOST.format(url_str), data={"camname": fcamname, 'flabel': flabel, "camposition": fcamposition}, headers=header, files=files, timeout=(40, 40))
+            resp = requests.patch(SERVER_HOST.format(url_str), data={"camname": fcamname, 'flabel': flabel, "camposition": fcamposition}, headers=header, files=files, timeout=(40, 40))
+            logger.debug("PATCH RESPONSE STATUS CODE {}".format(resp.status_code))
+            if resp.status_code == 200:
+                os.unlink(os.path.join("/home/pi", fname))
+                session = Session()
+                dbphoto = session.query(Photo).filter(Photo.photo_id == photo_id).first()
+                if dbphoto:
+                    dbphoto.uploaded = True
+                    session.delete(dbphoto)
+                    session.commit()
+                    logger.debug("LOCAL PHOTO REMOVED {} {}".format(fname, flabel))
+                session.close()
+                
+                #print(resp.json())
+                return resp.status_code
+            else:
+                logger.debug("Retrying... Response was {}".format(resp.status_code))
+                numretries = numretries - 1
+                sleep(3)
+        except Exception as e:
+            print("type error: " + str(e))
+            #return None
+            numretries = numretries - 1
+    return resp
+            
 def get_token():
     data_sent = False
     login_data = {"username": SERVER_LOGIN,
@@ -311,18 +343,29 @@ def post_data(token, bsuuid, take_photos):
     head = {'Authorization': 'Bearer ' + token}
 
     cameradata = []
-    
     sensordata = {}
     sensordata['uuid'] = bsuuid
     sensordata['TS'] = datetime.datetime.now(tz)
     
-    # Move to lora listener
-    # 
-    latestdata = session.query(BaseStationData).filter(BaseStationData.bs_uuid==sensordata['uuid']).order_by(BaseStationData.ts.desc()).first()
-    # Move to lora listener
+    newdata = BaseStationData(bs_uuid=sensordata['uuid'], ts=sensordata['TS'])
+    session.add(newdata)
+    session.commit()
     
 
     if CONFIG_FILE:
+        # Read sensors data
+        sensor_urls = []
+        if CONFIG_FILE['SENSORS']:
+            for SENSOR in CONFIG_FILE['SENSORS']:
+                sensor_urls.append(SENSOR['URL'])
+            
+        loop = asyncio.get_event_loop()
+        async_session = create_session(db_file)
+        # Collecting sensors data
+        responses = loop.run_until_complete(fetch_all_sensors_data(sensor_urls, loop, async_session, newdata.id))
+        #logger.debug(responses)
+        async_session.close()
+        
         # Take & process photos
         if take_photos:
             for CAMERA in CONFIG_FILE['CAMERAS']:
@@ -337,12 +380,44 @@ def post_data(token, bsuuid, take_photos):
                     photos = collect_pictures(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP, LABEL, NUMFRAMES, NUMRETRIES)
                     if photos:
                         cameradata.extend(photos)
-    
+                    #camera_is_online = False
+                    #for i in range(NUMFRAMES):
+                    #    fname = os.path.join(DATADIR, str(uuid.uuid4())+".jpg")
+                    #    putdata = {"Param1": i}
+                    #    comm_sent = False
+                    #    for n in range(NUMRETRIES):
+                    #        if not comm_sent:
+                    #            try:
+                    #                r = requests.put("http://{}:{}@{}/PTZ/1/Presets/Goto".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP), data=putdata)
+                    #                comm_sent = True
+                    #                camera_is_online = True
+                    #            except Exception as e:
+                    #                logger.debug("Failed to connect to camera PRESET SET")
+                    #                logger.debug(e)
+                    #                sleep(5)
+                    #    if not comm_sent:
+                    #        break
+                    #    else:
+                    #        # Delay for camera to get into the proper position
+                    #        sleep(5)
+                    #        rtsp = cv2.VideoCapture("rtsp://{}:{}@{}:554/live/0/MAIN".format(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP))
+                    #        # Read 5 frames and save the fifth one
+                    #        # 
+                    #        for j in range(5):
+                    #            check, frame = rtsp.read()
+                    #            sleep(1)
+                    #        showPic = cv2.imwrite(fname, frame, [cv2.IMWRITE_JPEG_QUALITY, 100])
+                    #        logger.debug("CAPTURED {} PICT {}".format(LABEL, i+1))
+                    #        cameradata.append({"fname": fname, "label": LABEL + " {}".format(i+1), "cameraname": LABEL, "cameraposition": i+1})
+                    #        rtsp.release()
+                    #        #sleep(10)
+
+
+
     if take_photos:
         files = {}
-        # Take newdata from the DB
         for i, d in enumerate(cameradata):
-            newphoto = Photo(bs=latestdata, photo_filename=d['fname'], label=d["label"], camname=d["cameraname"], camposition=d["cameraposition"])
+            newphoto = Photo(bs=newdata, photo_filename=d['fname'], label=d["label"], camname=d["cameraname"], camposition=d["cameraposition"])
             session.add(newphoto)
             session.commit()
     else:
@@ -356,47 +431,55 @@ def post_data(token, bsuuid, take_photos):
     #while not data_sent:
     if numretries > 0:
         try:
-            cacheddata = session.query(BaseStationData).filter(BaseStationData.uploaded.is_(False)).all()
+            cacheddata = session.query(BaseStationData).filter(or_(BaseStationData.uploaded.is_(False), BaseStationData.photos_uploaded.is_(False))).all()
             logger.debug("send data")
             #logger.debug(cacheddata)
             for cd in cacheddata:
-                postdata = {'uuid': cd.bs_uuid, 'ts': str(cd.ts), 'probes':[]}
-                for pr in cd.probes:
-                    probe = {"puuid": pr.uuid, "data": []}
-                    for pd in pr.values:
-                        if pd.value is not None:
-                            probe_data  = {"ptype":pd.ptype, "value":float(pd.value), "label": pd.label}
-                            probe['data'].append(probe_data)
-                    postdata['probes'].append(probe)
-                print(json.dumps(postdata, indent=4))
-                resp = requests.post(SERVER_HOST.format("data"), json=postdata, headers=head)
-                if resp.status_code == 201:
+                if not cd.uploaded:
+                    postdata = {'uuid': cd.bs_uuid, 'ts': str(cd.ts), 'probes':[]}
+                    for pr in cd.probes:
+                        probe = {"puuid": pr.uuid, "data": []}
+                        for pd in pr.values:
+                            if pd.value is not None:
+                                probe_data  = {"ptype":pd.ptype, "value":float(pd.value), "label": pd.label}
+                                probe['data'].append(probe_data)
+                        postdata['probes'].append(probe)
+                    print(json.dumps(postdata, indent=4))
+                    resp = requests.post(SERVER_HOST.format("data"), json=postdata, headers=head)
+                    if resp.status_code == 201:
             
-                    resp_data = json.loads(resp.text)
-                    cd.remote_data_id = resp_data['id']
-                    cd.uploaded = True
-                    session.add(cd)
-                    session.commit()
+                        resp_data = json.loads(resp.text)
+                        cd.remote_data_id = resp_data['id']
+                        cd.uploaded = True
+                        session.add(cd)
+                        session.commit()
                     
-                    # Send all cached photos
-                    if take_photos:
-                        cachedphotos = session.query(Photo).filter(Photo.uploaded.is_(False)).all()
-                        loopdata = []
-                        for i, f in enumerate(cachedphotos):
-                            if f.bs:
-                                if f.bs.remote_data_id:
-                                    loopdata.append(send_patch_request(f.photo_filename, f.label, f.camname, f.camposition, f.bs.remote_data_id, f.photo_id, head))
+                # Send all cached photos
+                if take_photos:
+                    cachedphotos = cd.photos
+                    loopdata = []
+                    for i, f in enumerate(cachedphotos):
+                        if f.bs:
+                            if f.bs.remote_data_id:
+                                logger.debug("Sending patch request {i}")
+                                patch_res = send_patch_request(f.photo_filename, f.label, f.camname, f.camposition, f.bs.remote_data_id, f.photo_id, head)
+                                loopdata.append(patch_res)
                         
-                        logger.debug(["RESULTS STATUSES", loopdata])
-                        # Обрабатывать неотправленные фото, не удалять их
-                        # и не удалять отправленные данные
-                        # помечать данные как sent
-                        # и после отправки всех фото
-                        # если у данных не осталось отправленных фото, от удалять
-                        logger.debug("PHOTOS SENT {}".format(len(loopdata)))
-                        # remove cached data here
+                    logger.debug(["RESULTS STATUSES", loopdata])
+                    if len(set(loopdata)) == 1:
+                        cd.photos_uploaded = True
+                        session.add(cd)
+                        session.commit()
+                            
+                    # Обрабатывать неотправленные фото, не удалять их
+                    # и не удалять отправленные данные
+                    # помечать данные как sent
+                    # и после отправки всех фото
+                    # если у данных не осталось отправленных фото, от удалять
+                    logger.debug("PHOTOS SENT {}".format(len(loopdata)))
+                    # remove cached data here
             data_sent=True
-            data_uploaded = session.query(BaseStationData).filter(BaseStationData.uploaded.is_(True)).all()
+            data_uploaded = session.query(BaseStationData).filter(BaseStationData.uploaded.is_(True)).filter(BaseStationData.photos_uploaded.is_(True)).all()
             for du in data_uploaded:
                 session.delete(du)
             session.commit()
@@ -409,16 +492,16 @@ def post_data(token, bsuuid, take_photos):
 
 if __name__ == '__main__':
     base_station_uuid, token = get_base_station_uuid()
-    print([base_station_uuid, token])
+    logger.debug(("App started", [base_station_uuid, token]))
     if not base_station_uuid:
         token = get_token()
         base_station_uuid = register_base_station(token)
  
     scheduler = SafeScheduler()
-    scheduler.every(5).minutes.do(post_data, token, base_station_uuid, False)
-    #scheduler.every(120).minutes.do(post_data, token, base_station_uuid, True)
+    #scheduler.every(5).minutes.do(post_data, token, base_station_uuid, False)
+    scheduler.every(120).minutes.do(post_data, token, base_station_uuid, True)
     logger.debug(base_station_uuid)
-    #post_data(token, base_station_uuid, False)
+    #post_data(token, base_station_uuid, True)
     #sys.exit(1)
     while 1:
         scheduler.run_pending()
