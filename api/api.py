@@ -260,8 +260,11 @@ def custom_serializer(data, cameras=None):
                         if 0 < ind < maxlen:
                             if data == 0:
                                 app.logger.debug(["IND", ind, len(newdata)])
-                                newdata[ind] = mean([newdata[ind-1], newdata[ind+1]])
-                                    
+                                if ind = maxlen - 1:
+                                    newdata[ind] = mean([newdata[ind-1], newdata[ind]])
+                                else:
+                                    newdata[ind] = mean([newdata[ind-1], newdata[ind + 1]])
+                                
                     newdata = list(accumulate(newdata, lambda x,y: y if y else mean([x, y])))
                     outdata['data'][dk] = newdata
             outdata['probelabels'][k] = longest_labels
