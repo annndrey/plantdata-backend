@@ -253,7 +253,9 @@ def custom_serializer(data, cameras=None):
                                     label_old_ind = orig_labels.index(lab)
                                     label_new_ind = longest_labels.index(lab)
                                     newdata[label_new_ind] = outdata['data'][dk][label_old_ind]
-                                app.logger.debug(["newdata", newdata])
+
+                                outdata['data'][dk] = newdata
+                        outdata['probelabels'][k] = longest_labels
                             #
                             #app.logger.debug([ "labels", label_new_ind,  label_old_ind, len(outdata['data'][dk])])
                             #newdata[label_new_ind] = outdata['data'][dk][label_old_ind]
