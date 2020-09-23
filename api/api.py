@@ -238,9 +238,9 @@ def custom_serializer(data, cameras=None):
     if outdata["probelabels"]:
         if len(set(map(len, outdata['probelabels'].values()))) != 1:
             maxvalues = max(outdata['probelabels'].items(), key = lambda x: len(set(x[1])))
-            maxlen = len(maxvalues)
             if maxvalues:
                 max_key, max_value = maxvalues
+                maxlen = len(maxvalue)
                 for k in outdata['probelabels']:
                     if k != max_key:
                         outdata['probelabels'][k] = max_value
