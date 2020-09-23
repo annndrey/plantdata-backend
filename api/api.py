@@ -272,7 +272,7 @@ def custom_serializer(data, cameras=None):
                                     #    missing_data = mean([outdata['data'][dk][missing_ind - 1], outdata['data'][dk][missing_ind + 1]])
                                     #elif missing_ind == max_ind:
                                     #    missing_data = mean([outdata['data'][dk][max_ind - 2], outdata['data'][dk][max_ind - 1]])
-                                    outdata['data'][dk].insert(missing_ind, missing_data)
+                                    outdata['data'][dk].insert(0, missing_data)
 
     return outdata
 
