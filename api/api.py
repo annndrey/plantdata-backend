@@ -238,27 +238,27 @@ def custom_serializer(data, cameras=None):
     if outdata["probelabels"]:
         if len(set(map(len, outdata['probelabels'].values()))) != 1:
             maxvalues = max(outdata['probelabels'].items(), key = lambda x: len(set(x[1])))
+            maxlen = len(maxvalues)
             if maxvalues:
                 max_key, max_value = maxvalues
                 for k in outdata['probelabels']:
                     if k != max_key:
-                        substr = set(max_value) - set(outdata['probelabels'][k])
-                        for s in substr:
-                            missing_ind = max_value.index(s)
-                            outdata['probelabels'][k].insert(missing_ind, s)
-                            for dk in outdata['data']:
-                                if dk[3:] == k:
-                                    missing_data = 0
-                                    max_index = len(outdata['data'][dk]) - 1
-                                    if missing_ind > 1 or missing_ind < max_ind:
-                                        app.logger.debug(["missing ind", missing_ind])
-                                        app.logger.debug(outdata['data'][dk][missing_ind - 1])
-                                        app.logger.debug(outdata['data'][dk][missing_ind + 1])
-                                        
-                                        missing_data = mean([outdata['data'][dk][missing_ind - 1], outdata['data'][dk][missing_ind + 1]])
-                                    elif missing_ind == max_ind:
-                                        missing_data = mean([outdata['data'][dk][max_ind - 2], outdata['data'][dk][max_ind - 1]])
-                                    outdata['data'][dk].insert(missing_ind, missing_data)
+                        outdata['probelabels'][k] = max_value
+                        newdata = [0] * maxlen
+                        app.logger.debug(["newdata", newdata])
+                        # substr = set(max_value) - set(outdata['probelabels'][k])
+                        # for s in substr:
+                        #     missing_ind = max_value.index(s)
+                        #    outdata['probelabels'][k].insert(missing_ind, s)
+                        #    for dk in outdata['data']:
+                        #        if dk[3:] == k:
+                        #            missing_data = 0
+                        #            max_index = len(outdata['data'][dk]) - 1
+                        #            if missing_ind > 1 or missing_ind < max_ind:
+                        #                missing_data = mean([outdata['data'][dk][missing_ind - 1], outdata['data'][dk][missing_ind + 1]])
+                        #            elif missing_ind == max_ind:
+                        #                missing_data = mean([outdata['data'][dk][max_ind - 2], outdata['data'][dk][max_ind - 1]])
+                        #            outdata['data'][dk].insert(missing_ind, missing_data)
 
     return outdata
 
