@@ -256,10 +256,11 @@ def custom_serializer(data, cameras=None):
                         newdata[label_new_ind] = outdata['data'][dk][label_old_ind]
 
                     # fix mixxing values
-                    #for ind, data in enumerate(newdata):
-                    #    if 0 < ind < maxlen:
-                    #        if data == 0:
-                    #            newdata[ind] = mean([newdata[ind-1], newdata[ind+1]])
+                    for ind, data in enumerate(newdata):
+                        if 0 < ind < maxlen:
+                            if data == 0:
+                                app.logger.debug(["IND", ind, len(newdata)])
+                                newdata[ind] = mean([newdata[ind-1], newdata[ind+1]])
                                     
                     newdata = list(accumulate(newdata, lambda x,y: y if y else mean([x, y])))
                     outdata['data'][dk] = newdata
