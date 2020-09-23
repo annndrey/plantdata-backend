@@ -256,9 +256,9 @@ def custom_serializer(data, cameras=None):
 
                                 # fix mixxing values
                                 for ind, data in enumerate(newdata):
-                                    if 0 < i < maxlen:
+                                    if 0 < ind < maxlen:
                                         if data == 0:
-                                            newdata[i] = mean([newdata[i-1], newdata[i+1]])
+                                            newdata[ind] = mean([newdata[ind-1], newdata[ind+1]])
                                     
                                 newdata = list(accumulate(newdata, lambda x,y: y if y else mean([x, y])))
                                 outdata['data'][dk] = newdata
