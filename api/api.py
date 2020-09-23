@@ -243,15 +243,22 @@ def custom_serializer(data, cameras=None):
                 maxlen = len(max_value)
                 for k in outdata['probelabels']:
                     if k != max_key:
-                        outdata['probelabels'][k] = max_value
+                        
+                        orig_value = outdata['probelabels'][k]
                         newdata = [0] * maxlen
+                        labels_intersection = list(set(max_value) & set(outdata['probelabels'][k]))
+                        for lab in labels_intersection:
+                            label_old_ind = orig_value.index(lab)
+                            label_new_ind = max_value.index(s)
+                            newdata[label_new_ind] = orig_value[label_old_ind]
+                            
+                        outdata['probelabels'][k] = max_value
                         app.logger.debug(["newdata", newdata])
-                        # substr = set(max_value) - set(outdata['probelabels'][k])
-                        # for s in substr:
-                        #     missing_ind = max_value.index(s)
+                        
                         #    outdata['probelabels'][k].insert(missing_ind, s)
-                        #    for dk in outdata['data']:
-                        #        if dk[3:] == k:
+                        for dk in outdata['data']:
+                            if dk[3:] == k:
+                                outdata['data'][dk] = newdata
                         #            missing_data = 0
                         #            max_index = len(outdata['data'][dk]) - 1
                         #            if missing_ind > 1 or missing_ind < max_ind:
