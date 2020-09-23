@@ -239,24 +239,25 @@ def custom_serializer(data, cameras=None):
         if len(set(map(len, outdata['probelabels'].values()))) != 1:
             maxvalues = max(outdata['probelabels'].items(), key = lambda x: len(set(x[1])))
             if maxvalues:
-                max_key, max_value = maxvalues
-                maxlen = len(max_value)
+                max_key, longest_labels = maxvalues
+                maxlen = len(longest_labels)
+                
                 for k in outdata['probelabels']:
                     if k != max_key:
+                        orig_labels = outdata['probelabels'][k]
+                        labels_intersection = list(set(longest_labels) & set(orig_labels))
                         for dk in outdata['data']:
                             if dk[3:] == k:
-                                orig_labels = outdata['probelabels'][k]
-                                labels_intersection = list(set(max_value) & set(orig_labels))
-                                newdata = [0] * maxlen
                                 for lab in labels_intersection:
                                     label_old_ind = orig_labels.index(lab)
-                                    label_new_ind = max_value.index(lab)
-                                    app.logger.debug([ "labels", label_new_ind,  label_old_ind, len(outdata['data'][dk])])
-                                    newdata[label_new_ind] = outdata['data'][dk][label_old_ind]
+                                    app.logger.debug(outdata['data'][dk][label_old_ind])
+                            #label_new_ind = max_value.index(lab)
+                            #app.logger.debug([ "labels", label_new_ind,  label_old_ind, len(outdata['data'][dk])])
+                            #newdata[label_new_ind] = outdata['data'][dk][label_old_ind]
                                     
                             
-                                outdata['probelabels'][k] = max_value
-                                app.logger.debug(["newdata", newdata])
+                            #outdata['probelabels'][k] = max_value
+                            #app.logger.debug(["newdata", newdata])
                         
                         #    outdata['probelabels'][k].insert(missing_ind, s)
                         # for dk in outdata['data']:
