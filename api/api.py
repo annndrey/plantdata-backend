@@ -265,7 +265,7 @@ def custom_serializer(data, cameras=None):
                                 else:
                                     newdata[ind] = mean([newdata[ind-1], newdata[ind + 1]])
                                 
-                    newdata = list(accumulate(newdata, lambda x,y: y if y else mean([x, y])))
+                    # newdata = list(accumulate(newdata, lambda x,y: y if y else mean([x, y])))
                     outdata['data'][dk] = newdata
             outdata['probelabels'][k] = longest_labels
                             #
