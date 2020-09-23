@@ -231,6 +231,7 @@ def custom_serializer(data, cameras=None):
             else:
                 if d.ts not in outdata['probelabels'][probelabel]:
                     outdata['probelabels'][probelabel].append(d.ts)
+
                     
     # fix missing data
     # find longest probelabel
@@ -253,8 +254,9 @@ def custom_serializer(data, cameras=None):
                         for s in substr:
                             missing_ind = max_value.index(s)
                             app.logger.debug(["missing ind", missing_ind, s])
-                            outdata['probelabels'][k].insert(missing_ind, s)
                             
+                            outdata['probelabels'][k].insert(missing_ind, s)
+                            app.logger.debug(["probelabels", outdata['probelabels'][k]])
                             for dk in outdata['data']:
                                 if dk[3:] == k:
                                     missing_data = 0
