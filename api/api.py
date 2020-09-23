@@ -260,7 +260,7 @@ def custom_serializer(data, cameras=None):
                         if 0 < ind < maxlen:
                             if data == 0:
                                 app.logger.debug(["IND", ind, len(newdata)])
-                                if ind = maxlen - 1:
+                                if ind == maxlen - 1:
                                     newdata[ind] = mean([newdata[ind-1], newdata[ind]])
                                 else:
                                     newdata[ind] = mean([newdata[ind-1], newdata[ind + 1]])
