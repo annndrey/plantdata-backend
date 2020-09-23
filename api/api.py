@@ -256,7 +256,10 @@ def custom_serializer(data, cameras=None):
                             app.logger.debug(["missing ind", missing_ind, s])
                             
                             outdata['probelabels'][k].insert(missing_ind, s)
-                            app.logger.debug(["probelabels", len(outdata['probelabels'][k]), len(outdata['probelabels'][max_key]))])
+                            app.logger.debug(["probelabels",
+                                              len(outdata['probelabels'][k]),
+                                              len(outdata['probelabels'][max_key])
+                            ])
                             for dk in outdata['data']:
                                 if dk[3:] == k:
                                     missing_data = 0
