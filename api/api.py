@@ -250,7 +250,7 @@ def custom_serializer(data, cameras=None):
                                 if dk[3:] == k:
                                     missing_data = 0
                                     max_index = len(outdata['data'][dk]) - 1
-                                    if missing_ind > 0 or missing_ind < max_ind:
+                                    if missing_ind > 1 or missing_ind < max_ind:
                                         
                                         app.logger.debug(outdata['data'][dk][missing_ind - 1])
                                         app.logger.debug(outdata['data'][dk][missing_ind + 1])
