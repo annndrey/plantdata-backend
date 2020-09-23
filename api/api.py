@@ -249,7 +249,7 @@ def custom_serializer(data, cameras=None):
                         labels_intersection = list(set(max_value) & set(outdata['probelabels'][k]))
                         for lab in labels_intersection:
                             label_old_ind = orig_value.index(lab)
-                            label_new_ind = max_value.index(s)
+                            label_new_ind = max_value.index(lab)
                             newdata[label_new_ind] = orig_value[label_old_ind]
                             
                         outdata['probelabels'][k] = max_value
