@@ -236,33 +236,34 @@ def custom_serializer(data, cameras=None):
     # find longest probelabel
     # find index of labels that are not in other probelabels
     if outdata["probelabels"]:
-        if len(set(map(len, outdata['probelabels'].values()))) != 1:
-            maxvalues = max(outdata['probelabels'].items(), key = lambda x: len(set(x[1])))
-            if maxvalues:
-                max_key, longest_labels = maxvalues
-                maxlen = len(longest_labels)
+        #if len(set(map(len, outdata['probelabels'].values()))) != 1:
+        #    maxvalues = max(outdata['probelabels'].items(), key = lambda x: len(set(x[1])))
+        #    if maxvalues:
+        #max_key, longest_labels = maxvalues
+        longest_labels = outdata['labels']
+        maxlen = len(longest_labels)
                 
-                for k in outdata['probelabels']:
-                    if k != max_key:
-                        orig_labels = outdata['probelabels'][k]
-                        labels_intersection = list(set(longest_labels) & set(orig_labels))
-                        for dk in outdata['data']:
-                            if dk[3:] == k:
-                                newdata = [0] * maxlen
-                                for lab in labels_intersection:
-                                    label_old_ind = orig_labels.index(lab)
-                                    label_new_ind = longest_labels.index(lab)
-                                    newdata[label_new_ind] = outdata['data'][dk][label_old_ind]
+        for k in outdata['probelabels']:
+        #if k != max_key:
+            orig_labels = outdata['probelabels'][k]
+            labels_intersection = list(set(longest_labels) & set(orig_labels))
+            for dk in outdata['data']:
+                if dk[3:] == k:
+                    newdata = [0] * maxlen
+                    for lab in labels_intersection:
+                        label_old_ind = orig_labels.index(lab)
+                        label_new_ind = longest_labels.index(lab)
+                        newdata[label_new_ind] = outdata['data'][dk][label_old_ind]
 
-                                # fix mixxing values
-                                for ind, data in enumerate(newdata):
-                                    if 0 < ind < maxlen:
-                                        if data == 0:
-                                            newdata[ind] = mean([newdata[ind-1], newdata[ind+1]])
+                    # fix mixxing values
+                    for ind, data in enumerate(newdata):
+                        if 0 < ind < maxlen:
+                            if data == 0:
+                                newdata[ind] = mean([newdata[ind-1], newdata[ind+1]])
                                     
-                                newdata = list(accumulate(newdata, lambda x,y: y if y else mean([x, y])))
-                                outdata['data'][dk] = newdata
-                        outdata['probelabels'][k] = longest_labels
+                    newdata = list(accumulate(newdata, lambda x,y: y if y else mean([x, y])))
+                    outdata['data'][dk] = newdata
+            outdata['probelabels'][k] = longest_labels
                             #
                             #app.logger.debug([ "labels", label_new_ind,  label_old_ind, len(outdata['data'][dk])])
                             #newdata[label_new_ind] = outdata['data'][dk][label_old_ind]
