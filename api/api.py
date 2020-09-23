@@ -257,15 +257,12 @@ def custom_serializer(data, cameras=None):
 
                     # fix mixxing values
                     for ind, data in enumerate(newdata):
-                        if 0 < ind < maxlen:
+                        if 0 < ind < maxlen - 1:
                             if data == 0:
-                                app.logger.debug(["IND", ind, len(newdata)])
-                                if ind == maxlen - 1:
-                                    newdata[ind] = mean([newdata[ind-1], newdata[ind]])
-                                else:
-                                    newdata[ind] = mean([newdata[ind-1], newdata[ind + 1]])
+                                # app.logger.debug(["IND", ind, len(newdata)])
+                                newdata[ind] = mean([newdata[ind-1], newdata[ind + 1]])
                                 
-                    # newdata = list(accumulate(newdata, lambda x,y: y if y else mean([x, y])))
+                    newdata = list(accumulate(newdata, lambda x,y: y if y else mean([x, y])))
                     outdata['data'][dk] = newdata
             outdata['probelabels'][k] = longest_labels
                             #
