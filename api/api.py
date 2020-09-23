@@ -251,15 +251,17 @@ def custom_serializer(data, cameras=None):
                                           substr,
                                           set(max_value),
                                           set(outdata['probelabels'][k])])
+                        
+                        outdata['probelabels'][k] = outdata['probelabels'][max_key]
                         for s in substr:
                             missing_ind = max_value.index(s)
-                            app.logger.debug(["missing ind", missing_ind, s])
+                            #app.logger.debug(["missing ind", missing_ind, s])
                             
-                            outdata['probelabels'][k].insert(missing_ind, s)
-                            app.logger.debug(["probelabels",
-                                              len(outdata['probelabels'][k]),
-                                              len(outdata['probelabels'][max_key])
-                            ])
+                            #outdata['probelabels'][k].insert(missing_ind, s)
+                            #app.logger.debug(["probelabels",
+                            #                  len(outdata['probelabels'][k]),
+                            #                  len(outdata['probelabels'][max_key])
+                            #])
                             for dk in outdata['data']:
                                 if dk[3:] == k:
                                     missing_data = 0
