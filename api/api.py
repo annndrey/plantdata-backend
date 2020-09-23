@@ -255,6 +255,11 @@ def custom_serializer(data, cameras=None):
                                     newdata[label_new_ind] = outdata['data'][dk][label_old_ind]
 
                                 # fix mixxing values
+                                for ind, data in enumerate(newdata):
+                                    if 0 < i < maxlen:
+                                        if data == 0:
+                                            newdata[i] = mean([newdata[i-1], newdata[i+1]])
+                                    
                                 newdata = list(accumulate(newdata, lambda x,y: y if y else mean([x, y])))
                                 outdata['data'][dk] = newdata
                         outdata['probelabels'][k] = longest_labels
