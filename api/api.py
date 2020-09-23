@@ -243,22 +243,24 @@ def custom_serializer(data, cameras=None):
                 maxlen = len(max_value)
                 for k in outdata['probelabels']:
                     if k != max_key:
-                        
-                        orig_value = outdata['probelabels'][k]
-                        newdata = [0] * maxlen
-                        labels_intersection = list(set(max_value) & set(outdata['probelabels'][k]))
-                        for lab in labels_intersection:
-                            label_old_ind = orig_value.index(lab)
-                            label_new_ind = max_value.index(lab)
-                            newdata[label_new_ind] = orig_value[label_old_ind]
-                            
-                        outdata['probelabels'][k] = max_value
-                        app.logger.debug(["newdata", newdata])
-                        
-                        #    outdata['probelabels'][k].insert(missing_ind, s)
                         for dk in outdata['data']:
                             if dk[3:] == k:
-                                outdata['data'][dk] = newdata
+                                orig_labels = outdata['probelabels'][k]
+                                labels_intersection = list(set(max_value) & set(orig_labels))
+                                newdata = [0] * maxlen
+                                for lab in labels_intersection:
+                                    label_old_ind = orig_value.index(lab)
+                                    label_new_ind = max_value.index(lab)
+                                    newdata[label_new_ind] = outdata['data'][dk][label_old_ind]
+                                    
+                            
+                                outdata['probelabels'][k] = max_value
+                                app.logger.debug(["newdata", newdata])
+                        
+                        #    outdata['probelabels'][k].insert(missing_ind, s)
+                        # for dk in outdata['data']:
+                        #    if dk[3:] == k:
+                        #        outdata['data'][dk] = newdata
                         #            missing_data = 0
                         #            max_index = len(outdata['data'][dk]) - 1
                         #            if missing_ind > 1 or missing_ind < max_ind:
