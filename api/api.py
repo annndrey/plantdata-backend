@@ -235,7 +235,8 @@ def custom_serializer(data, cameras=None):
     # fix missing data
     # find longest probelabel
     # find index of labels that are not in other probelabels
-    if outdata["probelabels"]:
+    if False:
+    #if outdata["probelabels"]:
         if len(set(map(len, outdata['probelabels'].values()))) != 1:
             maxvalues = max(outdata['probelabels'].items(), key = lambda x: len(set(x[1])))
             if maxvalues:
@@ -249,11 +250,11 @@ def custom_serializer(data, cameras=None):
                             for dk in outdata['data']:
                                 if dk[3:] == k:
                                     missing_data = 0
-                                    #max_index = len(outdata['data'][dk]) - 1
-                                    #if missing_ind > 0 or missing_ind < max_ind:
-                                    #    missing_data = mean([outdata['data'][dk][missing_ind - 1], outdata['data'][dk][missing_ind + 1]])
-                                    #elif missing_ind == max_ind:
-                                    #    missing_data = mean([outdata['data'][dk][max_ind - 2], outdata['data'][dk][max_ind - 1]])
+                                    max_index = len(outdata['data'][dk]) - 1
+                                    if missing_ind > 0 or missing_ind < max_ind:
+                                        missing_data = mean([outdata['data'][dk][missing_ind - 1], outdata['data'][dk][missing_ind + 1]])
+                                    elif missing_ind == max_ind:
+                                        missing_data = mean([outdata['data'][dk][max_ind - 2], outdata['data'][dk][max_ind - 1]])
                                     outdata['data'][dk].insert(missing_ind, missing_data)
 
     return outdata
