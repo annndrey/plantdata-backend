@@ -23,7 +23,7 @@ from flask_cors import CORS, cross_origin
 from flask_restful.utils import cors
 from marshmallow import fields, pre_dump, post_dump
 from marshmallow_enum import EnumField
-from itertools import groupby, islice
+from itertools import groupby, islice, accumulate
 from statistics import mean
 from models import db, User, Sensor, Location, Data, DataPicture, Camera, CameraPosition, CameraLocation, Probe, ProbeData, PictureZone, SensorType, data_probes, Notification
 import logging
@@ -254,6 +254,8 @@ def custom_serializer(data, cameras=None):
                                     label_new_ind = longest_labels.index(lab)
                                     newdata[label_new_ind] = outdata['data'][dk][label_old_ind]
 
+                                # fix mixxing values
+                                newdata = list(accumulate(newdata, lambda x,y: y if y else mean([x, y])))
                                 outdata['data'][dk] = newdata
                         outdata['probelabels'][k] = longest_labels
                             #
