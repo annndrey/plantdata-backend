@@ -231,44 +231,30 @@ def custom_serializer(data, cameras=None):
             else:
                 if d.ts not in outdata['probelabels'][probelabel]:
                     outdata['probelabels'][probelabel].append(d.ts)
-
                     
     # fix missing data
     # find longest probelabel
     # find index of labels that are not in other probelabels
-    if False:
-    #if outdata["probelabels"]:
+    if outdata["probelabels"]:
         if len(set(map(len, outdata['probelabels'].values()))) != 1:
             maxvalues = max(outdata['probelabels'].items(), key = lambda x: len(set(x[1])))
-            app.logger.debug(["maxvalues", maxvalues])
             if maxvalues:
                 max_key, max_value = maxvalues
-                max_length = len(outdata['probelabels'][max_key])
                 for k in outdata['probelabels']:
                     if k != max_key:
-                        app.logger.debug(["key", k])
                         substr = set(max_value) - set(outdata['probelabels'][k])
-                        #app.logger.debug(['substr',
-                        #                  substr,
-                        #                  set(max_value),
-                        #                  set(outdata['probelabels'][k])])
-                        #
-                        outdata['probelabels'][k] = outdata['probelabels'][max_key]
-
                         for s in substr:
                             missing_ind = max_value.index(s)
+                            outdata['probelabels'][k].insert(missing_ind, s)
                             for dk in outdata['data']:
                                 if dk[3:] == k:
-                                    newvalues = [0]*max_length
-                                    
-                                    app.logger.debug(['outdata', outdata['data'][dk]])
                                     missing_data = 0
-                                    #max_index = len(outdata['data'][dk]) - 1
-                                    #if missing_ind > 0 or missing_ind < max_ind:
-                                    #    missing_data = mean([outdata['data'][dk][missing_ind - 1], outdata['data'][dk][missing_ind + 1]])
-                                    #elif missing_ind == max_ind:
-                                    #    missing_data = mean([outdata['data'][dk][max_ind - 2], outdata['data'][dk][max_ind - 1]])
-                                    outdata['data'][dk].insert(0, missing_data)
+                                    max_index = len(outdata['data'][dk]) - 1
+                                    if missing_ind > 0 or missing_ind < max_ind:
+                                        missing_data = mean([outdata['data'][dk][missing_ind - 1], outdata['data'][dk][missing_ind + 1]])
+                                    elif missing_ind == max_ind:
+                                        missing_data = mean([outdata['data'][dk][max_ind - 2], outdata['data'][dk][max_ind - 1]])
+                                    outdata['data'][dk].insert(missing_ind, missing_data)
 
     return outdata
 
