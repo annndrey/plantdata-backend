@@ -247,9 +247,9 @@ def custom_serializer(data, cameras=None):
                         app.logger.debug(["key", k])
                         substr = set(max_value) - set(outdata['probelabels'][k])
                         app.logger.debug(['substr',
-                                      substr,
-                                      set(max_value),
-                                      set(outdata['probelabels'][k])])
+                                          substr,
+                                          set(max_value),
+                                          set(outdata['probelabels'][k])])
                         for s in substr:
                             missing_ind = max_value.index(s)
                             app.logger.debug(["missing ind", missing_ind])
@@ -258,11 +258,11 @@ def custom_serializer(data, cameras=None):
                             for dk in outdata['data']:
                                 if dk[3:] == k:
                                     missing_data = 0
-                                    max_index = len(outdata['data'][dk]) - 1
-                                    if missing_ind > 0 or missing_ind < max_ind:
-                                        missing_data = mean([outdata['data'][dk][missing_ind - 1], outdata['data'][dk][missing_ind + 1]])
-                                    elif missing_ind == max_ind:
-                                        missing_data = mean([outdata['data'][dk][max_ind - 2], outdata['data'][dk][max_ind - 1]])
+                                    #max_index = len(outdata['data'][dk]) - 1
+                                    #if missing_ind > 0 or missing_ind < max_ind:
+                                    #    missing_data = mean([outdata['data'][dk][missing_ind - 1], outdata['data'][dk][missing_ind + 1]])
+                                    #elif missing_ind == max_ind:
+                                    #    missing_data = mean([outdata['data'][dk][max_ind - 2], outdata['data'][dk][max_ind - 1]])
                                     outdata['data'][dk].insert(missing_ind, missing_data)
 
     return outdata
