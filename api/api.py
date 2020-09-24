@@ -2710,6 +2710,7 @@ class DataAPI(Resource):
         """
         DELETE All data
         """
+        app.logger.debug(["Delete"])
         auth_headers = request.headers.get('Authorization', '').split()
         token = auth_headers[1]
         udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
@@ -2718,7 +2719,7 @@ class DataAPI(Resource):
             for p in s.probes:
                 for d in p.data:
                     app.logger.debug(["Deleting data", p.data])
-        return 204
+        return ('', 204)
 
     
     @token_required
