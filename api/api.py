@@ -207,8 +207,8 @@ def custom_serializer(data, cameras=None):
             outdata['cameras'].append([{"camlabel": c.camlabel, "id":c.id, "warnings":c.warnings} for c in cam])
     
     for d in data:
-        if len(d.records) > 0:
-            outdata['labels'].append(d.ts)
+        #if len(d.records) > 0:
+        outdata['labels'].append(d.ts)
 
         if not cameras:
             if len(d.cameras) > 0:
@@ -258,7 +258,7 @@ def custom_serializer(data, cameras=None):
                         app.logger.debug(["DATA2", outdata['data'][dk]])
                         app.logger.debug(["DATA3", dk, label_old_ind, label_new_ind, len(orig_labels), len(outdata['data'][dk]), orig_labels[label_old_ind]])
                         app.logger.debug(["DATA4", outdata['data'][dk][label_old_ind]])
-
+                        
                         newdata[label_new_ind] = outdata['data'][dk][label_old_ind]
 
                     # fix missing values
