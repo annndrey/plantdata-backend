@@ -2718,9 +2718,10 @@ class DataAPI(Resource):
         for s in user.sensors:
             for p in s.probes:
                 for d in p.data:
-                    app.logger.debug(["Deleting data", p.data])
+                    #app.logger.debug(["Deleting data", p.data])
                     db.session.delete(d)
         db.session.commit()
+        app.logger.debug("Deleted data")
         return ('', 204)
 
     
