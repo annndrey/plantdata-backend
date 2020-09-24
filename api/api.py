@@ -2706,6 +2706,21 @@ class DataAPI(Resource):
 
     @token_required
     @cross_origin()
+    def delete(self, id=None):
+        """
+        DELETE All data
+        """
+        auth_headers = request.headers.get('Authorization', '').split()
+        token = auth_headers[1]
+        udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
+        user = User.query.filter_by(login=udata['sub']).first()
+        for s in user.sensors:
+            for p in s.probes:
+                for d in p.data:
+                    app.logger.debug(["Deleting data", p.data])
+    
+    @token_required
+    @cross_origin()
     def patch(self, id=None):
         """
         PATCH sensors data [TODO: Fix description]
