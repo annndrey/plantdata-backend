@@ -2719,6 +2719,8 @@ class DataAPI(Resource):
             for p in s.probes:
                 for d in p.data:
                     app.logger.debug(["Deleting data", p.data])
+                    db.session.delete(d)
+        db.session.commit()
         return ('', 204)
 
     
