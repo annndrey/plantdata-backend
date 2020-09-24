@@ -249,7 +249,7 @@ def custom_serializer(data, cameras=None):
             labels_intersection = list(set(longest_labels) & set(orig_labels))
             for dk in outdata['data']:
                 if dk[3:] == k:
-                    newdata = [0] * maxlen + 1
+                    newdata = [0] * (maxlen + 1)
 
                     for lab in labels_intersection:
                         label_old_ind = orig_labels.index(lab)
