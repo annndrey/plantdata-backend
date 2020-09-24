@@ -207,8 +207,8 @@ def custom_serializer(data, cameras=None):
             outdata['cameras'].append([{"camlabel": c.camlabel, "id":c.id, "warnings":c.warnings} for c in cam])
     
     for d in data:
-        #if len(d.records) > 0:
-        outdata['labels'].append(d.ts)
+        if len(d.records) > 0:
+            outdata['labels'].append(d.ts)
 
         if not cameras:
             if len(d.cameras) > 0:
@@ -235,7 +235,8 @@ def custom_serializer(data, cameras=None):
     # fix missing data
     # find longest probelabel
     # find index of labels that are not in other probelabels
-    if outdata["probelabels"]:
+    #if outdata["probelabels"]:
+    if False:
         #if len(set(map(len, outdata['probelabels'].values()))) != 1:
         #    maxvalues = max(outdata['probelabels'].items(), key = lambda x: len(set(x[1])))
         #    if maxvalues:
@@ -256,7 +257,7 @@ def custom_serializer(data, cameras=None):
                         label_new_ind = longest_labels.index(lab)
                         app.logger.debug(["DATA1", newdata])
                         app.logger.debug(["DATA2", outdata['data'][dk]])
-                        app.logger.debug(["DATA3", dk, label_old_ind, label_new_ind, len(orig_labels), len(outdata['data'][dk]), orig_labels[label_old_ind]])
+                        app.logger.debug(["DATA3", k, dk, label_old_ind, label_new_ind, len(orig_labels), len(outdata['data'][dk]), orig_labels[label_old_ind]])
                         app.logger.debug(["DATA4", outdata['data'][dk][label_old_ind]])
                         
                         newdata[label_new_ind] = outdata['data'][dk][label_old_ind]
