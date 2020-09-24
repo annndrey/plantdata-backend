@@ -2718,6 +2718,8 @@ class DataAPI(Resource):
             for p in s.probes:
                 for d in p.data:
                     app.logger.debug(["Deleting data", p.data])
+        return 204
+
     
     @token_required
     @cross_origin()
