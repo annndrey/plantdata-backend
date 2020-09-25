@@ -2649,7 +2649,7 @@ class DataAPI(Resource):
             if sensor.user != user:
                 abort(403)
             ts = request.json.get("ts")
-            app.logger.debug(['TS', ts])
+            app.logger.debug(['NEW DATA TS', ts])
             newdata = Data(sensor_id=sensor.id,
                            ts = ts
             )
@@ -2672,7 +2672,7 @@ class DataAPI(Resource):
                     # these coords would be coming from the linked probe
                     # it's intended to track coords changes
                     
-                    app.logger.debug(['PROBEDATA', [probe.x, probe.y, probe.z]])
+                    app.logger.debug(['PROBEDATA', ts, probe_uuid, [probe.x, probe.y, probe.z]])
                     
                     if all([True if c is not None else False for c in [probe.x, probe.y, probe.z]]):
                         newprobedata.x = float(probe.x)
