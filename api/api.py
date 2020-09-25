@@ -2668,6 +2668,15 @@ class DataAPI(Resource):
                 for pd in pr['data']:
                     prtype = db.session.query(SensorType).filter(SensorType.ptype==pd['ptype']).first()
                     newprobedata = ProbeData(probe=probe, value=pd['value'], label=pd['label'], ptype=pd['ptype'])
+                    # Now we're moving to the one-probe-per-datarecord model
+                    # these coords would be coming from the linked probe
+                    # it's intended to track coords changes
+                    
+                    if all([probe.x, probe.y, probe.z]):
+                        newprobedata.x = float(probe.x)
+                        newprobedata.y = float(probe.y)
+                        newprobedata.z = float(probe.z)
+                    
                     if prtype:
                         newprobedata.prtype = prtype
 

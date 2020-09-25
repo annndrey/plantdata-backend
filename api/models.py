@@ -101,7 +101,13 @@ class ProbeData(db.Model):
     label = db.Column(db.String(200))
     prtype_id = db.Column(db.Integer, ForeignKey('sensor_type.id'))
     prtype = relationship("SensorType", backref=backref("values", uselist=True))
-
+    # Now we're moving to the one-probe-per-datarecord model
+    # these coords would be coming from the linked probe
+    # it's intended to track coords changes
+    x = db.Column(db.Float)
+    y = db.Column(db.Float)
+    z = db.Column(db.Float)
+    
 
 class Probe(db.Model):
     id = db.Column(db.Integer, primary_key=True)
