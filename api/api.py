@@ -2671,8 +2671,10 @@ class DataAPI(Resource):
                     # Now we're moving to the one-probe-per-datarecord model
                     # these coords would be coming from the linked probe
                     # it's intended to track coords changes
+                    
                     app.logger.debug(['PROBEDATA', [probe.x, probe.y, probe.z]])
-                    if all([probe.x, probe.y, probe.z]):
+                    
+                    if all([True if c is not None else False for c in [probe.x, probe.y, probe.z]]):
                         newprobedata.x = float(probe.x)
                         newprobedata.y = float(probe.y)
                         newprobedata.z = float(probe.z)
