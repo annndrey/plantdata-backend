@@ -2649,7 +2649,7 @@ class DataAPI(Resource):
             if sensor.user != user:
                 abort(403)
             ts = request.json.get("ts")
-            app.logger.debug(['NEW DATA TS', ts, request.json])
+            app.logger.debug(['NEW DATA TS', ts])
             newdata = Data(sensor_id=sensor.id,
                            ts = ts
             )
@@ -2672,7 +2672,7 @@ class DataAPI(Resource):
                     # these coords would be coming from the linked probe
                     # it's intended to track coords changes
                     
-                    app.logger.debug(['PROBEDATA', ts, probe_uuid, [probe.x, probe.y, probe.z]])
+                    #app.logger.debug(['PROBEDATA', ts, probe_uuid, [probe.x, probe.y, probe.z]])
                     
                     if all([True if c is not None else False for c in [probe.x, probe.y, probe.z]]):
                         newprobedata.x = float(probe.x)
@@ -2683,15 +2683,15 @@ class DataAPI(Resource):
                         newprobedata.prtype = prtype
 
                     if probe.sensor.limits:
-                        app.logger.debug(["Checking sensor limits for", probe.sensor.uuid, probe.sensor.user.login])
+                        #app.logger.debug(["Checking sensor limits for", probe.sensor.uuid, probe.sensor.user.login])
                         for l in probe.sensor.limits:
                             if l.prtype.ptype == pd['ptype']:
                                 if not l.minvalue < pd['value'] < l.maxvalue:
-                                    app.logger.debug(["Current value is out of limits, sending notification", pd['ptype'], pd['label'], pd['value'], "limits", l.minvalue, l.maxvalue])
+                                    #app.logger.debug(["Current value is out of limits, sending notification", pd['ptype'], pd['label'], pd['value'], "limits", l.minvalue, l.maxvalue])
                                     prev_three_values = db.session.query(ProbeData).join(Probe).join(Sensor).order_by(ProbeData.id.desc()).filter(ProbeData.ptype==pd['ptype']).filter(ProbeData.label==pd['label']).filter(Probe.uuid==probe_uuid).filter(Sensor.uuid==sensor.uuid).limit(3).offset(1)
                                     
                                     if not all([l.minvalue < v.value < l.maxvalue for v in prev_three_values]):
-                                        app.logger.debug("Prev values are out of limits")
+                                        #app.logger.debug("Prev values are out of limits")
                                         
                                         pd['ts'] = newdata.ts.strftime("%d-%m-%Y %H:%M:%S")
                                         pd['uuid'] = pr['puuid']
@@ -2700,7 +2700,7 @@ class DataAPI(Resource):
                                         pd['min'] = l.minvalue
                                         pd['max'] = l.maxvalue
                                         pd['suuid'] = probe.sensor.uuid
-                                        app.logger.debug(pd)
+                                        #app.logger.debug(pd)
                                         newnotification = Notification(user=sensor.user, text=json.dumps(pd), ntype='sensors')
                                         db.session.add(newnotification)
                                         db.session.commit()
