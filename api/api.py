@@ -1824,10 +1824,23 @@ class LocationWarningsAPI(Resource):
         
         #app.logger.debug([(c[0].data.ts, c[1].posx, c[1].posy, c[1].posz, c[1].camlabel, c[0].numwarnings) for c in outdata])
         for c in outdata:
+            if c[0].x:
+                x = c[0].x
+            else:
+                x = c[1].posx
+            if c[0].y:
+                y = c[0].x
+            else:
+                y = c[1].posy
+            if c[0].z:
+                z = c[0].z
+            else:
+                z = c[1].posz
+                
             outdict = {"ts": c[0].data.ts,
-                       "x": c[1].posx,
-                       "y": c[1].posy,
-                       "z": c[1].posz,
+                       "x": x,
+                       "y": c[0].y,
+                       "z": c[0].z,
                        "numwarnings":c[0].numwarnings,
                        "camlabel": c[1].camlabel,
                        "camid": c[0].id,
