@@ -2710,7 +2710,7 @@ class DataAPI(Resource):
                     newdata.records.append(newprobedata)
                     db.session.add(newdata)
                     db.session.commit()
-
+        
             app.logger.debug(["New data saved", newdata.id])
 
         return jsonify(self.schema.dump(newdata).data), 201
@@ -2898,9 +2898,16 @@ class DataAPI(Resource):
                 abort(403)
             # Surely there's no camera for data.id. We should replace data.id with a sensor id.
             # TODO: >>> Fix
+            camlocation = db.session.query(CameraLocation).filter(CameraLocation.camlabel==camname).filter(CameraLocation.location==sensor.location).first()
             camera = db.session.query(Camera).join(Data).filter(Data.id == data.id).filter(Camera.camlabel == camname).first()
             if not camera:
                 camera = Camera(data=data, camlabel=camname)
+                
+                if camlocation:
+                    camera.x = camlocation.posx
+                    camera.y = camlocation.posy
+                    camera.z = camlocation.posz
+                    
                 db.session.add(camera)
                 db.session.commit()
 

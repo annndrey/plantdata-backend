@@ -242,6 +242,9 @@ class Camera(db.Model):
     data = relationship("Data", backref=backref("cameras", uselist=True))
     camlabel = db.Column(db.Text())
     url = db.Column(db.Text())
+    x = db.Column(db.Float)
+    y = db.Column(db.Float)
+    z = db.Column(db.Float)
 
     @hybrid_property
     def warnings(self):
