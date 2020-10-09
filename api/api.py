@@ -2917,7 +2917,7 @@ class DataAPI(Resource):
                 db.session.add(camera_position)
                 db.session.commit()
 
-            app.logger.debug(["DB CAMERA", camera.camlabel, camera_position.poslabel])
+            app.logger.debug(["DB CAMERA", camera.camlabel, camera_position.poslabel, camera.x, camera.y, camera.z])
             # data.cameras.append(camera)
             app.logger.debug(["RECOGNIZE", recognize])
             # To be sure to consume request data
