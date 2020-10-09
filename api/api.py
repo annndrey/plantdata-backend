@@ -1969,6 +1969,10 @@ class SensorsStatsAPI(Resource):
         else:
             output = {"health":0, "spikes": 0, "diseased_zones": 0}
             
+        output['locdimensions'] = {}
+        for s in user.sensors:
+            output['locdimensions'][s.uuid] = {"x": s.location.dimx, "y": s.location.dimy, "z": s.location.dimz}
+        
         # if no suuid provided, collect stats for all user's sensors
         # if no ts_from or/and ts_to provided, collect stats for today's day
         
