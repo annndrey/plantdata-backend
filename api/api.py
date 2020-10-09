@@ -1841,8 +1841,8 @@ class LocationWarningsAPI(Resource):
                 
             outdict = {"ts": c[0].data.ts,
                        "x": x,
-                       "y": c[0].y,
-                       "z": c[0].z,
+                       "y": y,
+                       "z": z,
                        "numwarnings":c[0].numwarnings,
                        "camlabel": c[1].camlabel,
                        "camid": c[0].id,
