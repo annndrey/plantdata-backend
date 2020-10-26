@@ -1810,9 +1810,9 @@ class LocationWarningsAPI(Resource):
             ts_to = int(ts_to)
             ts_to = datetime.datetime.fromtimestamp(ts_to).replace(hour=23, minute=59, second=59)
             
-        app.logger.debug([ts_from, ts_to])
+        app.logger.debug(["DATETIME", ts_from, ts_to])
 
-        warnings_query = db.session.query(Camera, CameraLocation).join(Data).join(Sensor).join(Location).join(CameraLocation, Camera.camlabel==CameraLocation.camlabel).filter(Data.ts >= ts_from).filter(Data.ts <= ts_to)
+        warnings_query = db.session.query(Camera, CameraLocation).join(Data).join(Sensor).join(Location).join(CameraLocation, Camera.camlabel==CameraLocation.camlabel).filter(Data.ts <= ts_to).filter(Data.ts >= ts_from)
         
         if suuid == 'all':
             warnings_query = warnings_query.filter(Sensor.id.in_([s.id for s in user.sensors]))
@@ -1822,7 +1822,7 @@ class LocationWarningsAPI(Resource):
             
         outdata = warnings_query.all()
         
-        #app.logger.debug([(c[0].data.ts, c[1].posx, c[1].posy, c[1].posz, c[1].camlabel, c[0].numwarnings) for c in outdata])
+        app.logger.debug([(c[0].data.ts, c[1].posx, c[1].posy, c[1].posz, c[1].camlabel, c[0].numwarnings) for c in outdata])
         for c in outdata:
             if c[0].x is not None:
                 x = c[0].x
