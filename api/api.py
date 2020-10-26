@@ -1812,7 +1812,7 @@ class LocationWarningsAPI(Resource):
             
         app.logger.debug(["DATETIME", ts_from, ts_to])
 
-        warnings_query = db.session.query(Camera, CameraLocation).join(Data).join(Sensor).join(Location).join(CameraLocation, Camera.camlabel==CameraLocation.camlabel).filter(Data.ts <= ts_to).filter(Data.ts >= ts_from)
+        warnings_query = db.session.query(Camera, CameraLocation).join(Data).join(Sensor).join(Location).join(CameraLocation, Camera.camlabel==CameraLocation.camlabel).filter(Data.ts.between(ts_from, ts_to))# <= ts_to).filter(Data.ts >= ts_from)
         
         if suuid == 'all':
             warnings_query = warnings_query.filter(Sensor.id.in_([s.id for s in user.sensors]))
