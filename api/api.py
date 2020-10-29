@@ -2493,16 +2493,16 @@ class DataAPI(Resource):
                         app.logger.debug("FULL DATA 4")
                         data = self.f_schema.dump(sensordata).data
                     else:
-                        if query_count > 1000:
-                            proportion = int(query_count/1000)
-                            # Issue #84 pass all_cameras to show all photos
-                            #all_cameras = [c.cameras for c in sensordata if c.cameras]
-                            sensordata = list(islice(sensordata, 0, query_count, proportion))
-                            app.logger.debug("SHORT DATA 4 RESAMPLE")
-                            data = custom_serializer(sensordata)#, cameras=all_cameras)
-                        else:
-                            app.logger.debug("SHORT DATA 4")
-                            data = custom_serializer(sensordata)
+                        #if query_count > 1000:
+                        #    proportion = int(query_count/1000)
+                        #    # Issue #84 pass all_cameras to show all photos
+                        #    #all_cameras = [c.cameras for c in sensordata if c.cameras]
+                        #    sensordata = list(islice(sensordata, 0, query_count, proportion))
+                        #    app.logger.debug("SHORT DATA 4 RESAMPLE")
+                        #    data = custom_serializer(sensordata)#, cameras=all_cameras)
+                        #else:
+                        app.logger.debug("SHORT DATA 4")
+                        data = custom_serializer(sensordata)
                             
                     app.logger.debug("GET DATA 5")
 
