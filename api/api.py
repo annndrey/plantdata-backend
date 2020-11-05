@@ -1981,8 +1981,10 @@ class SensorsStatsAPI(Resource):
                 output['spikes'] = 0
             if 'diseased_zones' in output_params:
                 output['diseased_zones'] = 0
+            if 'basicstats' in output_params:
+                output['basic_stats'] = 0
         else:
-            output = {"health":0, "spikes": 0, "diseased_zones": 0}
+            output = {"health":0, "spikes": 0, "diseased_zones": 0, 'basic_stats': 0}
             
         output['locdimensions'] = {}
         for s in user.sensors:
@@ -2108,6 +2110,7 @@ class SensorsStatsAPI(Resource):
 
 
             # Data stats: min, max, mean
+        if ( output_params and 'basicstats' in output_params ) or not output_params:                
             probe_data = db.session.query(ProbeData).join(Data).join(Probe).join(Sensor).filter(Data.ts >= grouped_ts_from).filter(Data.ts < ts_to)
             if suuid == 'all':
                 probe_data = probe_data.filter(Sensor.uuid.in_([s.uuid for s in user.sensors]))
@@ -2133,9 +2136,9 @@ class SensorsStatsAPI(Resource):
                 for p in probe_data_output[k].keys():
                     data_array = probe_data_output[k][p]
                     probe_data_output[k][p] = {"min": round(min(data_array), 2), "max": round(max(data_array), 2), "mean": round(mean(data_array), 2)}
-            app.logger.debug("ProbeData")
-            app.logger.debug(probe_data_output)
-            
+            #app.logger.debug("ProbeData")
+            #app.logger.debug(probe_data_output)
+            output['basic_stats'] = probe_data_output
             #app.logger.debug(["ProbeData", [(d.data.ts.strftime('%d-%m-%Y'), d.prtype.ptype, d.value, d.ptype, d.label) for d in probe_data.all()]])
             
         output["ts_from"] = ts_from
