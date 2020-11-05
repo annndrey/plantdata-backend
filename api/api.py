@@ -2108,7 +2108,7 @@ class SensorsStatsAPI(Resource):
 
 
             # Data stats: min, max, mean
-            probe_data = db.session.query(ProbeData).join(Data).join(Probe).join(Sensor).filter(Data.ts >= grouped_ts_from).filter(Data.ts < ts_to)
+            probe_data = db.session.query(func.min(ProbeData.value)).join(Data).join(Probe).join(Sensor).filter(Data.ts >= grouped_ts_from).filter(Data.ts < ts_to)
             if suuid == 'all':
                 probe_data = probe_data.filter(Sensor.uuid.in_([s.uuid for s in user.sensors]))
             else:
