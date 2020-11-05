@@ -2031,7 +2031,9 @@ class SensorsStatsAPI(Resource):
             grouped_zones = db.session.query(PictureZone.ts, func.count(PictureZone.id)).join(DataPicture).join(Data).join(Sensor).filter(PictureZone.results.like('%unhealthy%')).filter(PictureZone.ts >= grouped_ts_from).filter(PictureZone.ts <= ts_to)
         
             all_zones = db.session.query(func.count(PictureZone.id)).join(DataPicture).join(Data).join(Sensor).filter(PictureZone.ts >= ts_from).filter(PictureZone.ts <= ts_to)
-        
+
+            
+            
             if suuid == 'all':
                 app.logger.debug(["STATS suuid", [s.uuid for s in user.sensors]])
                 all_unhealthy_zones = all_unhealthy_zones.filter(Sensor.uuid.in_([s.uuid for s in user.sensors]))
@@ -2105,6 +2107,16 @@ class SensorsStatsAPI(Resource):
             output['spikes'] = numspikes
             app.logger.debug(["TOTAL SPIKES", numspikes])
 
+
+            # Data stats: min, max, mean
+            probe_data = db.session.query(ProbeData).join(Data).join(Probe).join(Sensor).filter(Data.ts >= grouped_ts_from).filter(Data.ts < ts_to)
+            if suuid == 'all':
+                probe_data = probe_data.filter(Sensor.uuid.in_([s.uuid for s in user.sensors]))
+            else:
+                probe_data = probe_datafilter(Sensor.uuid == suuid)
+                
+            app.logger.debug(["ProbeData", [d for d in probe_data.all()]])
+            
         output["ts_from"] = ts_from
         output["ts_to"] = ts_to
         app.logger.debug(["STATS", {"overall_health": overall_health, "unhealthy_zones": all_unhealthy_zones, "all zones": all_zones}])
