@@ -2115,7 +2115,7 @@ class SensorsStatsAPI(Resource):
             else:
                 probe_data = probe_datafilter(Sensor.uuid == suuid)
                 
-            app.logger.debug(["ProbeData", [d for d in probe_data.all()]])
+            app.logger.debug(["ProbeData", [(d.prtype.ptype, d.value, d.ptype, d.label) for d in probe_data.all()]])
             
         output["ts_from"] = ts_from
         output["ts_to"] = ts_to
