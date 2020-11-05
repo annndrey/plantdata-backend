@@ -1896,7 +1896,7 @@ class SensorsStatsAPI(Resource):
            type: array
            items:
              type: string
-             enum: [diseased_zones, health, spikes]
+             enum: [diseased_zones, health, spikes, basic_stats]
            required: false
            description: A list of output parameters. If nothing provided, all values are returned
          - in: query
@@ -2077,7 +2077,7 @@ class SensorsStatsAPI(Resource):
             if ( output_params and 'diseased_zones' in output_params ) or not output_params:
                 output['diseased_zones'] = grouped_zones #all_unhealthy_zones
         
-            app.logger.debug(["STATS", {"overall_health": overall_health, "unhealthy_zones": all_unhealthy_zones, "all zones": all_zones}])
+            ##app.logger.debug(["STATS", {"overall_health": overall_health, "unhealthy_zones": all_unhealthy_zones, "all zones": all_zones}])
 
         
         if ( output_params and 'spikes' in output_params ) or not output_params:                
@@ -2146,7 +2146,7 @@ class SensorsStatsAPI(Resource):
             
         output["ts_from"] = ts_from
         output["ts_to"] = ts_to
-        app.logger.debug(["STATS", {"overall_health": overall_health, "unhealthy_zones": all_unhealthy_zones, "all zones": all_zones}])
+        #app.logger.debug(["STATS", {"overall_health": overall_health, "unhealthy_zones": all_unhealthy_zones, "all zones": all_zones}])
         
         return jsonify(output), 200
 
