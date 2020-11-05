@@ -2050,7 +2050,6 @@ class SensorsStatsAPI(Resource):
             
             app.logger.debug(["GROUPED ZONES00", [g[0].strftime('%d-%m-%Y') for g in grouped_zones], [d.strftime( '%d-%m-%Y') for d in date_range]])
             
-            grouped_zones_output = {}
             for d in date_range:
                 if d.strftime('%d-%m-%Y') not in [g[0].strftime('%d-%m-%Y') for g in grouped_zones]:
                     grouped_zones.append((d, 0))
@@ -2115,7 +2114,9 @@ class SensorsStatsAPI(Resource):
             else:
                 probe_data = probe_datafilter(Sensor.uuid == suuid)
                 
-            app.logger.debug(["ProbeData", [(d.data.ts.strftime('%d-%m-%Y'), d.prtype.ptype, d.value, d.ptype, d.label) for d in probe_data.all()]])
+            probe_data_output = []
+            
+            app.logger.debug(["ProbeData", [(d.data.ts.strftime('%d-%m-%Y'), d.prtype.ptype, d.value, d.ptype, d.label) for d in probe_data.group_by(func.year(Data.ts), func.month(Data.ts), func.day(Data.ts)).all()]])
             
         output["ts_from"] = ts_from
         output["ts_to"] = ts_to
