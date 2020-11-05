@@ -2132,7 +2132,7 @@ class SensorsStatsAPI(Resource):
             for k in probe_data_output.keys():
                 for p in probe_data_output[k].keys():
                     data_array = probe_data_output[k][p]
-                    probe_data_output[k][p] = {"min": min(data_arrray), "max": max(data_array), "mean": mean(data_array)}
+                    probe_data_output[k][p] = {"min": min(data_array), "max": max(data_array), "mean": mean(data_array)}
             app.logger.debug("ProbeData")
             app.logger.debug(probe_data_output)
             
