@@ -2108,7 +2108,7 @@ class SensorsStatsAPI(Resource):
 
 
             # Data stats: min, max, mean
-            probe_data = db.session.query(func.min(ProbeData.value)).join(Data).join(Probe).join(Sensor).filter(Data.ts >= grouped_ts_from).filter(Data.ts < ts_to)
+            probe_data = db.session.query(ProbeData).join(Data).join(Probe).join(Sensor).filter(Data.ts >= grouped_ts_from).filter(Data.ts < ts_to)
             if suuid == 'all':
                 probe_data = probe_data.filter(Sensor.uuid.in_([s.uuid for s in user.sensors]))
             else:
@@ -2116,7 +2116,7 @@ class SensorsStatsAPI(Resource):
                 
             probe_data_output = []
             
-            app.logger.debug(["ProbeData", [(d.data.ts.strftime('%d-%m-%Y'), d.prtype.ptype, d.value, d.ptype, d.label) for d in probe_data.group_by(func.year(Data.ts), func.month(Data.ts), func.day(Data.ts)).all()]])
+            app.logger.debug(["ProbeData", [d for d in probe_data.group_by(func.year(Data.ts), func.month(Data.ts), func.day(Data.ts), ProbeData.ptype).all()]])
             
         output["ts_from"] = ts_from
         output["ts_to"] = ts_to
