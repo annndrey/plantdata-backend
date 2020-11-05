@@ -2129,6 +2129,9 @@ class SensorsStatsAPI(Resource):
                     else:
                         probe_data_output[date_key][d.prtype.ptype].append(d.value)
 
+            for k in probe_data_output.keys():
+                for p in probe_data_output[k].keys():
+                    probe_data_output[k][p] = min(probe_data_output[k][p])
             app.logger.debug("ProbeData")
             app.logger.debug(probe_data_output)
             
