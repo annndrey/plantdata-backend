@@ -2138,7 +2138,7 @@ class SensorsStatsAPI(Resource):
                 for p in probe_data_output[k].keys():
                     data_array = probe_data_output[k][p]
                     param_output.append({"min": round(min(data_array), 2), "max": round(max(data_array), 2), "mean": round(mean(data_array), 2), "name": p})
-                probe_data_list_output.append(["name": k, "values": param_output])
+                probe_data_list_output.append({"name": k, "values": param_output})
             #app.logger.debug("ProbeData")
             #app.logger.debug(probe_data_output)
             output['basic_stats'] = probe_data_list_output
