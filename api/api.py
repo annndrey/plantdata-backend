@@ -2056,7 +2056,7 @@ class SensorsStatsAPI(Resource):
                 if d.strftime('%d-%m-%Y') not in [g[0].strftime('%d-%m-%Y') for g in grouped_zones]:
                     grouped_zones.append((d, 0))
             # >>>>> Stopped here
-            [g[0] for g in grouped_zones]
+            #[g[0] for g in grouped_zones]
             app.logger.debug(["GROUPED ZONES0", grouped_zones])
             grouped_zones = sorted(grouped_zones, key=lambda tup: tup[0])
             grouped_zones = [{"name":g[0], "amount":g[1]} for g in grouped_zones]
@@ -2138,7 +2138,7 @@ class SensorsStatsAPI(Resource):
                     probe_data_output[k][p] = {"min": round(min(data_array), 2), "max": round(max(data_array), 2), "mean": round(mean(data_array), 2)}
             #app.logger.debug("ProbeData")
             #app.logger.debug(probe_data_output)
-            output['basic_stats'] = probe_data_output
+            #output['basic_stats'] = probe_data_output
             #app.logger.debug(["ProbeData", [(d.data.ts.strftime('%d-%m-%Y'), d.prtype.ptype, d.value, d.ptype, d.label) for d in probe_data.all()]])
             
         output["ts_from"] = ts_from
