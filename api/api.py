@@ -2114,9 +2114,25 @@ class SensorsStatsAPI(Resource):
             else:
                 probe_data = probe_datafilter(Sensor.uuid == suuid)
                 
-            probe_data_output = []
+            probe_data_output = {}
+            for d in probe_data.all():
+                date_key = d.data.ts.replace(hour=0, minute=0, second=0)
+                if date_key not in probe_data_output.keys():
+                    probe_data_output[date_key] = {}
+                    if not d.prtype.ptype in probe_data_output[date_key].keys():
+                        probe_data_output[date_key][d.prtype.ptype] = [d.value, ]
+                    else:
+                        probe_data_output[date_key][d.prtype.ptype].append(d.value)
+                else:
+                    if not d.prtype.ptype in probe_data_output[date_key].keys():
+                        probe_data_output[date_key][d.prtype.ptype] = [d.value, ]
+                    else:
+                        probe_data_output[date_key][d.prtype.ptype].append(d.value)
+
+            app.logger.debug("ProbeData")
+            app.logger.debug(probe_data_output)
             
-            app.logger.debug(["ProbeData", [(d.data.ts.strftime('%d-%m-%Y'), d.prtype.ptype, d.value, d.ptype, d.label) for d in probe_data.all()]])
+            #app.logger.debug(["ProbeData", [(d.data.ts.strftime('%d-%m-%Y'), d.prtype.ptype, d.value, d.ptype, d.label) for d in probe_data.all()]])
             
         output["ts_from"] = ts_from
         output["ts_to"] = ts_to
