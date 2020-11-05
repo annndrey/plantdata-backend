@@ -1868,7 +1868,7 @@ class SensorsStatsAPI(Resource):
 
     @token_required
     @cross_origin()
-    #@cache.cached(timeout=300, key_prefix=cache_key)
+    @cache.cached(timeout=300, key_prefix=cache_key)
     def get(self):
         """
         GET Get sensors stats. In case of no sensor UUID provided 
