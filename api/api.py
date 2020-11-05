@@ -2131,14 +2131,17 @@ class SensorsStatsAPI(Resource):
                         probe_data_output[date_key][d.prtype.ptype] = [d.value, ]
                     else:
                         probe_data_output[date_key][d.prtype.ptype].append(d.value)
-
+            probe_data_list_output = []
+            
             for k in probe_data_output.keys():
+                param_output = []
                 for p in probe_data_output[k].keys():
                     data_array = probe_data_output[k][p]
-                    probe_data_output[k][p] = {"min": round(min(data_array), 2), "max": round(max(data_array), 2), "mean": round(mean(data_array), 2)}
+                    param_output.append({"min": round(min(data_array), 2), "max": round(max(data_array), 2), "mean": round(mean(data_array), 2, "name": p)})
+                probe_data_list_output.append(["name": k, "values": param_output])
             #app.logger.debug("ProbeData")
             #app.logger.debug(probe_data_output)
-            #output['basic_stats'] = probe_data_output
+            output['basic_stats'] = probe_data_list_output
             #app.logger.debug(["ProbeData", [(d.data.ts.strftime('%d-%m-%Y'), d.prtype.ptype, d.value, d.ptype, d.label) for d in probe_data.all()]])
             
         output["ts_from"] = ts_from
