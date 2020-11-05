@@ -2116,7 +2116,7 @@ class SensorsStatsAPI(Resource):
                 
             probe_data_output = []
             
-            app.logger.debug(["ProbeData", [d for d in probe_data.group_by(func.year(Data.ts), func.month(Data.ts), func.day(Data.ts), ProbeData.ptype).all()]])
+            app.logger.debug(["ProbeData", [(d.data.ts.strftime('%d-%m-%Y'), d.prtype.ptype, d.value, d.ptype, d.label) for d in probe_data.all()]])
             
         output["ts_from"] = ts_from
         output["ts_to"] = ts_to
