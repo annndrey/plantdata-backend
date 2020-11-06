@@ -1868,7 +1868,7 @@ class SensorsStatsAPI(Resource):
 
     @token_required
     @cross_origin()
-    #@cache.cached(timeout=300, key_prefix=cache_key)
+    @cache.cached(timeout=300, key_prefix=cache_key)
     def get(self):
         """
         GET Get sensors stats. In case of no sensor UUID provided 
@@ -2119,7 +2119,7 @@ class SensorsStatsAPI(Resource):
                 
             probe_data_output = {}
             for d in probe_data.all():
-                app.logger.debug(["PDATA", d.data.ts, d.ptype, d.value])
+                #app.logger.debug(["PDATA", d.data.ts, d.ptype, d.value])
                 date_key = d.data.ts.replace(hour=0, minute=0, second=0)
                 if date_key not in probe_data_output.keys():
                     probe_data_output[date_key] = {}
