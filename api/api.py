@@ -2120,7 +2120,13 @@ class SensorsStatsAPI(Resource):
             probe_data_output = {}
             for d in probe_data.all():
                 #app.logger.debug(["PDATA", d.data.ts, d.ptype, d.value])
+                # TODO Split bythe  day/night time
+                timeofday = 'night'
+                if 7 <= d.data.ts.hour <= 19:
+                    timeofday = "day"
+                
                 date_key = d.data.ts.replace(hour=0, minute=0, second=0)
+                date_key = "{} {}".format(d.data.ts.strftime('%d-%m-%Y'), timeofday)
                 if date_key not in probe_data_output.keys():
                     probe_data_output[date_key] = {}
                     if not d.prtype.ptype in probe_data_output[date_key].keys():
