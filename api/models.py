@@ -114,6 +114,8 @@ class Probe(db.Model):
     uuid = db.Column(db.Text(), nullable=False)
     sensor_id = db.Column(db.Integer, ForeignKey('sensor.id'))
     sensor = relationship("Sensor", backref=backref("probes", uselist=True))
+    #prtype_id = db.Column(db.Integer, ForeignKey('sensor_type.id'))
+    #prtype = relationship("SensorType", backref=backref("probes", uselist=True))
     x = db.Column(db.Integer)
     y = db.Column(db.Integer)
     z = db.Column(db.Integer)
@@ -138,7 +140,8 @@ class Sensor(db.Model):
     location_id = db.Column(db.Integer, ForeignKey('location.id'))
     location = relationship("Location", backref=backref("sensors"))
     registered = db.Column(db.DateTime, default=datetime.datetime.now)
-
+    #sensortypes = relationship("SensorType", backref="sensor")
+    
     @hybrid_property
     def numrecords(self):
         return len(self.data)
@@ -188,6 +191,8 @@ class SensorType(db.Model):
     minvalue = db.Column(db.Float(), nullable=True)
     maxvalue = db.Column(db.Float(), nullable=True)
     ptype = db.Column(db.String(200))
+    sensor_id = db.Column(db.Integer, ForeignKey('sensor.id'))
+    sensor = relationship("Sensor", backref=backref("sensortypes", uselist=True))
 
 
 class NotificationType(db.Model):
