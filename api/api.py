@@ -2901,7 +2901,7 @@ class DataAPI(Resource):
                                             pd['uuid'] = pr['puuid']
                                             pd['location'] = probe.sensor.location.address
                                             pd['coords'] = "x:{} y:{} z:{}".format(probe.x, probe.y, probe.z)
-                                            pd['localcoords'] = "row: {} column: {}".format(probe.row, probe.col
+                                            pd['localcoords'] = "row: {} column: {}".format(probe.row, probe.col)
                                             pd['min'] = l.minvalue
                                             pd['max'] = l.maxvalue
                                             pd['suuid'] = probe.sensor.uuid
