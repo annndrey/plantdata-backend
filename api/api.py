@@ -2878,8 +2878,8 @@ class DataAPI(Resource):
                         newprobedata.y = float(probe.y)
                         newprobedata.z = float(probe.z)
                     if all([probe.row, probe.col]):
-                        probedata.row = probe.row
-                        probedata.col = probe.col
+                        newprobedata.row = probe.row
+                        newprobedata.col = probe.col
                         
                     if prtype:
                         newprobedata.prtype = prtype
