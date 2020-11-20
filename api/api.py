@@ -1865,6 +1865,7 @@ class SensorLimitsAPI(Resource):
         
         minvalue = request.json.get('minvalue', None)
         maxvalue = request.json.get('maxvalue', None)
+        
         if suuid:
             sensor = db.session.query(Sensor).filter(Sensor.uuid==suuid).first()
 
@@ -2878,24 +2879,26 @@ class DataAPI(Resource):
                         #app.logger.debug(["Checking sensor limits for", probe.sensor.uuid, probe.sensor.user.login])
                         for l in probe.sensor.limits:
                             if l.prtype.ptype == pd['ptype']:
-                                if not l.minvalue < pd['value'] < l.maxvalue:
-                                    #app.logger.debug(["Current value is out of limits, sending notification", pd['ptype'], pd['label'], pd['value'], "limits", l.minvalue, l.maxvalue])
-                                    prev_three_values = db.session.query(ProbeData).join(Probe).join(Sensor).order_by(ProbeData.id.desc()).filter(ProbeData.ptype==pd['ptype']).filter(ProbeData.label==pd['label']).filter(Probe.uuid==probe_uuid).filter(Sensor.uuid==sensor.uuid).limit(3).offset(1)
+                                # If both limits exists
+                                if l.minvalue and l.maxvalue:
+                                    if not l.minvalue < pd['value'] < l.maxvalue:
+                                        #app.logger.debug(["Current value is out of limits, sending notification", pd['ptype'], pd['label'], pd['value'], "limits", l.minvalue, l.maxvalue])
+                                        prev_three_values = db.session.query(ProbeData).join(Probe).join(Sensor).order_by(ProbeData.id.desc()).filter(ProbeData.ptype==pd['ptype']).filter(ProbeData.label==pd['label']).filter(Probe.uuid==probe_uuid).filter(Sensor.uuid==sensor.uuid).limit(3).offset(1)
                                     
-                                    if not all([l.minvalue < v.value < l.maxvalue for v in prev_three_values]):
-                                        #app.logger.debug("Prev values are out of limits")
+                                        if not all([l.minvalue < v.value < l.maxvalue for v in prev_three_values]):
+                                            #app.logger.debug("Prev values are out of limits")
                                         
-                                        pd['ts'] = newdata.ts.strftime("%d-%m-%Y %H:%M:%S")
-                                        pd['uuid'] = pr['puuid']
-                                        pd['location'] = probe.sensor.location.address
-                                        pd['coords'] = "x:{} y:{} z:{}".format(probe.x, probe.y, probe.z)
-                                        pd['min'] = l.minvalue
-                                        pd['max'] = l.maxvalue
-                                        pd['suuid'] = probe.sensor.uuid
-                                        #app.logger.debug(pd)
-                                        newnotification = Notification(user=sensor.user, text=json.dumps(pd), ntype='sensors')
-                                        db.session.add(newnotification)
-                                        db.session.commit()
+                                            pd['ts'] = newdata.ts.strftime("%d-%m-%Y %H:%M:%S")
+                                            pd['uuid'] = pr['puuid']
+                                            pd['location'] = probe.sensor.location.address
+                                            pd['coords'] = "x:{} y:{} z:{}".format(probe.x, probe.y, probe.z)
+                                            pd['min'] = l.minvalue
+                                            pd['max'] = l.maxvalue
+                                            pd['suuid'] = probe.sensor.uuid
+                                            #app.logger.debug(pd)
+                                            newnotification = Notification(user=sensor.user, text=json.dumps(pd), ntype='sensors')
+                                            db.session.add(newnotification)
+                                            db.session.commit()
 
                     db.session.add(newprobedata)
                     db.session.commit()
