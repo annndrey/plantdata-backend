@@ -2809,7 +2809,12 @@ class DataAPI(Resource):
                 
                 #probe.data.append(newdata)
                 for pd in pr['data']:
-                    prtype = db.session.query(SensorType).filter(SensorType.ptype==pd['ptype']).first()
+                    prtype = db.session.query(SensorType).filter(SensorType.ptype==pd['ptype']).filter(SensorType.sensor==sensor).first()
+                    if not prtype:
+                        prtype = SensorType(ptype=pd['ptype'], sensor=sensor)
+                        db.session.add(prtype)
+                        db.session.commit()
+                    
                     newprobedata = ProbeData(probe=probe, value=pd['value'], label=pd['label'], ptype=pd['ptype'])
                     # Now we're moving to the one-probe-per-datarecord model
                     # these coords would be coming from the linked probe
