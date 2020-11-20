@@ -930,7 +930,7 @@ def parse_request_pictures(parent_data, camposition_id, req_file, flabel, user_l
                 img_io = io.BytesIO()
                 original.save(img_io, FORMAT, quality=100)
                 img_io.seek(0)
-                response = requests.post(CF_HOST.format("loadimage"), auth=cf_headers, files = {'croppedfile': img_io})
+                response = requests.post(CF_HOST, auth=cf_headers, files = {'croppedfile': img_io})
                 if response.status_code == 200:
                     cf_result = response.json().get('objtype')
                     classification_results = json.dumps(cf_result)
