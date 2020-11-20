@@ -1264,6 +1264,32 @@ class ProbeDataSchema(ma.ModelSchema):
     probe = ma.Nested("ProbeSchema", many=False, exclude=["data", 'sensor'])
 
 
+
+class SensorTypeAPI(Resource):
+    def __init__(self):
+        self.schema = SensorTypeSchema()
+        self.m_schema = SensorTypeSchema(many=True)
+        self.method_decorators = []
+
+    def options(self, *args, **kwargs):
+        return jsonify([])
+
+    #@token_required
+    @cross_origin()
+    #@cache.cached(timeout=300, key_prefix=cache_key)
+    def get(self):
+        user = User.query.filter_by(login=data['sub']).first()
+        if not user:
+            abort(401)
+        sensors = user.sensors
+        reslist = []
+        for s in sensors:
+            for d in s.datatypes:
+                reslist.append(d.ptype)
+                
+        return jsonify(set(reslist), 200
+
+
 class PictAPI(Resource):
     def __init__(self):
         self.schema = DataPictureSchema()
@@ -3593,6 +3619,7 @@ api.add_resource(DataAPI, '/data', '/data/<int:id>', endpoint='savedata')
 api.add_resource(SensorAPI, '/sensors', '/sensors/<int:id>', endpoint='sensors')
 api.add_resource(SensorsStatsAPI, '/stats', endpoint='stats')
 api.add_resource(SensorLimitsAPI, '/sensorlimits',  endpoint='sensorlimits')
+api.add_resource(SensorTypeAPI, '/sensortypes',  endpoint='sensortypes')                       
 api.add_resource(LocationWarningsAPI, '/locationwarnings', endpoint='locationwarnings')
 api.add_resource(ProbeAPI, '/probes', '/probes/<int:id>', endpoint='probes')
 api.add_resource(ProbeDataAPI, '/probedata', '/probedata/<int:id>', endpoint='probedata')
