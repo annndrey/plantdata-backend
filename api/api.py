@@ -1287,7 +1287,8 @@ class SensorTypeAPI(Resource):
         sensors = user.sensors
         reslist = []
         for s in sensors:
-            app.logger.debug([s.limits, s.id, s.sensortypes])
+            app.logger.debug([s.limits, s.id])
+            app.logger.debug(dir(s))
             #for d in s.sensortypes:
             #    reslist.append(d.ptype)
                 
