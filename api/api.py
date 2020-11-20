@@ -1305,7 +1305,7 @@ class SensorTypeAPI(Resource):
             rec = {"suuid": s.uuid, "values": [], "limits": {}}
             for d in s.sensortypes:
                 rec["values"].append(d.ptype)
-                slimit = db.session.query(SensorLimit).filter(SensorLimit.sensor==s).filter(SensorLimit.prtype==d).first()
+                slimit = db.session.query(SensorLimit).filter(SensorLimit.sensor_id==s.id).filter(SensorLimit.prtype_id==d.id).first()
                 app.logger.debug([slimit, s, d])
                 if slimit:
                     rec["limits"][d.ptype] = {"minvalue":slimit.minvalue, "maxvalue":slimit.maxvalue}
