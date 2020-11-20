@@ -2876,7 +2876,7 @@ class DataAPI(Resource):
                         newprobedata.prtype = prtype
 
                     if probe.sensor.limits:
-                        #app.logger.debug(["Checking sensor limits for", probe.sensor.uuid, probe.sensor.user.login])
+                        app.logger.debug(["Checking sensor limits for", probe.sensor.uuid, probe.sensor.user.login])
                         for l in probe.sensor.limits:
                             if l.prtype.ptype == pd['ptype']:
                                 # If both limits exists
@@ -2895,7 +2895,7 @@ class DataAPI(Resource):
                                             pd['min'] = l.minvalue
                                             pd['max'] = l.maxvalue
                                             pd['suuid'] = probe.sensor.uuid
-                                            #app.logger.debug(pd)
+                                            app.logger.debug(["CREATE_NOTIFIACTION", pd])
                                             newnotification = Notification(user=sensor.user, text=json.dumps(pd), ntype='sensors')
                                             db.session.add(newnotification)
                                             db.session.commit()
