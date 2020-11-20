@@ -1287,9 +1287,9 @@ class SensorTypeAPI(Resource):
         sensors = user.sensors
         reslist = []
         for s in sensors:
-            app.logger.debug([s.limits, s.id])
-            for d in s.datatypes:
-                reslist.append(d.ptype)
+            app.logger.debug([s.limits, s.id, s.sensortypes])
+            #for d in s.sensortypes:
+            #    reslist.append(d.ptype)
                 
         return jsonify(set(reslist)), 200
 
@@ -1856,14 +1856,19 @@ class SensorLimitsAPI(Resource):
         
         minvalue = request.json.get('minvalue', None)
         maxvalue = request.json.get('maxvalue', None)
-        if ptype:
-            sensortype = db.session.query(SensorType).filter(SensorType.ptype==ptype).first()
         if suuid:
             sensor = db.session.query(Sensor).filter(Sensor.uuid==suuid).first()
 
         if sensor and not sensor in user.sensors:
             abort(403)
             
+
+        if ptype:
+            sensortype = db.session.query(SensorType).filter(SensorType.ptype==ptype).filter(SensorType.sensor==sensor).first()
+            if not sensortype:
+                sensortype = SensorType(ptype=ptype, sensor=sensor)
+                db.session.add(sensortype)
+                db.session.commit()
         if sensortype and sensor:
             sensorlimit = db.session.query(SensorLimit).filter(SensorLimit.sensor==sensor).filter(SensorLimit.prtype==sensortype).first()
         if not sensorlimit:
