@@ -1285,14 +1285,16 @@ class SensorTypeAPI(Resource):
         if not user:
             abort(401)
         sensors = user.sensors
-        reslist = []
+        resp = {}
         for s in sensors:
             #app.logger.debug([s.limits, s.id])
             #app.logger.debug(dir(s))
+            resp[s.uuid] = []
             for d in s.sensortypes:
-                reslist.append(d.ptype)
+                resp[s.uuid].append(d.ptype)
+                #reslist.append(d.ptype)
                 
-        return jsonify(list(set(reslist))), 200
+        return jsonify(resp), 200
 
 
 class PictAPI(Resource):
