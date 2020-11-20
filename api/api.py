@@ -1278,7 +1278,10 @@ class SensorTypeAPI(Resource):
     @cross_origin()
     #@cache.cached(timeout=300, key_prefix=cache_key)
     def get(self):
-        user = User.query.filter_by(login=data['sub']).first()
+        auth_headers = request.headers.get('Authorization', '').split()
+        token = auth_headers[1]
+        udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
+        user = User.query.filter_by(login=udata['sub']).first()
         if not user:
             abort(401)
         sensors = user.sensors
