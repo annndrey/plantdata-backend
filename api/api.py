@@ -1285,15 +1285,16 @@ class SensorTypeAPI(Resource):
         if not user:
             abort(401)
         sensors = user.sensors
-        resp = {}
+        resp = []
         for s in sensors:
             #app.logger.debug([s.limits, s.id])
             #app.logger.debug(dir(s))
-            resp[s.uuid] = []
+            #resp[s.uuid] = []
+            rec = {"suuid": s.uuid, "values": []}
             for d in s.sensortypes:
-                resp[s.uuid].append(d.ptype)
+                rec["values"].append(d.ptype)
                 #reslist.append(d.ptype)
-                
+            resp.append(rec)
         return jsonify(resp), 200
 
 
