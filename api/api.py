@@ -25,7 +25,7 @@ from marshmallow import fields, pre_dump, post_dump
 from marshmallow_enum import EnumField
 from itertools import groupby, islice, accumulate
 from statistics import mean
-from models import db, User, Sensor, Location, Data, DataPicture, Camera, CameraPosition, CameraLocation, Probe, ProbeData, PictureZone, SensorType, data_probes, Notification
+from models import db, User, Sensor, Location, Data, DataPicture, Camera, CameraPosition, CameraLocation, Probe, ProbeData, PictureZone, SensorType, data_probes, Notification, SensorLimit
 import logging
 import os
 import copy
@@ -402,7 +402,6 @@ def check_colors(imgfile):
     pixels = image.getdata()
     n = len(set(pixels))
     return n
-
 
 
 def send_subzones(zone, zonelabel, file_format, pict, allowed_values=False):
@@ -1185,7 +1184,7 @@ class DataSchema(ma.ModelSchema):
                             #                    if p.value > p.prtype.maxvalue:
                             #                        p.value = p.prtype.maxvalue
 
-    
+ 
 
     @post_dump(pass_many=True)
     def flattern_data(self, data, many, **kwargs):
@@ -1484,10 +1483,7 @@ class CameraAPI(Resource):
         camname = request.json.get("camlabel")
         camposition = request.json.get("camposition")
         
-        
-    
-
-    
+   
 
 class ImagesAPI(Resource):
     def __init__(self):
@@ -1767,6 +1763,56 @@ class ProbeAPI(Resource):
 # example:
 # [(c[0].data.ts.strftime("%d-%m-%y %H:%M"), c[1].posx, c[1].posy, c[1].posz, c[1].camlabel, c[0].numwarnings) for c in db.session.query(Camera, CameraLocation).join(Data).join(Sensor).join(Location).join(CameraLocation, Camera.camlabel==CameraLocation.camlabel).filter(Data.ts > ts_from).filter(Location.id == 3).all()]
 
+
+class SensorLimitsAPI(Resource):
+    def __init__(self):
+        self.method_decorators = []
+
+    def options(self, *args, **kwargs):
+        return jsonify([])
+
+
+    @token_required
+    @cross_origin()
+    #@cache.cached(timeout=300, key_prefix=cache_key)
+    def get(self):
+        auth_headers = request.headers.get('Authorization', '').split()
+        token = auth_headers[1]
+        udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
+        
+        user = User.query.filter_by(login=udata['sub']).first()
+        if not user:
+            abort(403)
+        suuid = request.args.get('suuid', None)
+        ptype = request.args.get('ptype', None)
+        if ptype:
+            sensortype = db.session.query(SensorType).filter(SensorType.ptype==ptype).first()
+        if suuid:
+            sensor = db.session.query(Sensor).filter(Sensor.uuid==suuid).first()
+        if sensortype and sensor:
+            sensorlimit = db.session.query(SensorLimit).filter(SensorLimit.sensor==sensor).filter(SensorLimit.prtype==ptype).first()
+        response = {"min": None, "max": None, "ptype": ptype}
+        if sensorlimit:
+            response['min'] = sensorlimit.minvalue
+            response['max'] = sensorlimit.maxvalue
+        return jsonify(response), 200
+            
+    @token_required
+    @cross_origin()
+    #@cache.cached(timeout=300, key_prefix=cache_key)
+    def post(self):
+        auth_headers = request.headers.get('Authorization', '').split()
+        token = auth_headers[1]
+        udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
+        
+        user = User.query.filter_by(login=udata['sub']).first()
+        if not user:
+            abort(403)
+        suuid = request.json.get('suuid', None)
+        ptype = request.json.get('ptype', None)
+        minvalue = request.json.get('minvalue', None)
+        maxvalue = request.json.get('maxvalue', None)
+        
 
 class LocationWarningsAPI(Resource):
     def __init__(self):
@@ -2156,7 +2202,6 @@ class SensorsStatsAPI(Resource):
         #app.logger.debug(["STATS", {"overall_health": overall_health, "unhealthy_zones": all_unhealthy_zones, "all zones": all_zones}])
         
         return jsonify(output), 200
-
         
 
 class ProbeDataAPI(Resource):
@@ -2948,6 +2993,7 @@ class DataAPI(Resource):
         camposition = request.form.get("camposition")
         
         flabel = request.form.get("flabel")
+        # TODO Add a per-user classificator API here
         recognize = request.form.get("recognize", False)
         camera_position = None
         app.logger.debug(["CAMERA DB:", camname, camposition, recognize])
@@ -3508,6 +3554,7 @@ api.add_resource(CameraAPI, '/cameras/<int:id>', endpoint='cameras')
 api.add_resource(DataAPI, '/data', '/data/<int:id>', endpoint='savedata')
 api.add_resource(SensorAPI, '/sensors', '/sensors/<int:id>', endpoint='sensors')
 api.add_resource(SensorsStatsAPI, '/stats', endpoint='stats')
+api.add_resource(SensorLimitsAPI, '/sensorlimits',  endpoint='sensorlimits')
 api.add_resource(LocationWarningsAPI, '/locationwarnings', endpoint='locationwarnings')
 api.add_resource(ProbeAPI, '/probes', '/probes/<int:id>', endpoint='probes')
 api.add_resource(ProbeDataAPI, '/probedata', '/probedata/<int:id>', endpoint='probedata')
