@@ -1817,13 +1817,23 @@ class SensorLimitsAPI(Resource):
         if not user:
             abort(403)
         suuid = request.json.get('suuid', None)
+        if not suuid:
+            return make_response(jsonify({'error': 'No suuid provided'}), 400)
+        
         ptype = request.json.get('ptype', None)
+        if not ptype:
+            return make_response(jsonify({'error': 'No ptype provided'}), 400)
+        
         minvalue = request.json.get('minvalue', None)
         maxvalue = request.json.get('maxvalue', None)
         if ptype:
             sensortype = db.session.query(SensorType).filter(SensorType.ptype==ptype).first()
         if suuid:
             sensor = db.session.query(Sensor).filter(Sensor.uuid==suuid).first()
+
+        if sensor and not sensor in user.sensors:
+            abort(403)
+            
         if sensortype and sensor:
             sensorlimit = db.session.query(SensorLimit).filter(SensorLimit.sensor==sensor).filter(SensorLimit.prtype==sensortype).first()
         if not sensorlimit:
