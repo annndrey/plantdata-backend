@@ -1820,8 +1820,23 @@ class SensorLimitsAPI(Resource):
         ptype = request.json.get('ptype', None)
         minvalue = request.json.get('minvalue', None)
         maxvalue = request.json.get('maxvalue', None)
+        if ptype:
+            sensortype = db.session.query(SensorType).filter(SensorType.ptype==ptype).first()
+        if suuid:
+            sensor = db.session.query(Sensor).filter(Sensor.uuid==suuid).first()
+        if sensortype and sensor:
+            sensorlimit = db.session.query(SensorLimit).filter(SensorLimit.sensor==sensor).filter(SensorLimit.prtype==sensortype).first()
+        if not sensorlimit:
+            sensorlimit = SensorLimit(sensor=sensor, prtype=sensortype)
+            
+        sensorlimit.minvalue = minvalue
+        sensorlimit.maxvalue = maxvalue
+        db.session.add(sensorlimit)
+        db.session.commit()
+        response = {"min": sensorlimit.minvalue, "max": sensorlimit.maxvalue, "ptype": ptype, "suuid":suuid}
+        return jsonify(response), 201
+    
         
-
 class LocationWarningsAPI(Resource):
     def __init__(self):
         #self.schema = ProbeDataSchema()
