@@ -1295,7 +1295,7 @@ class SensorTypeAPI(Resource):
                 rec["values"].append(d.ptype)
                 slimit = db.session.query(SensorLimit).filter(SensorLimit.sensor==s).filter(SensorLimit.prtype==d).first()
                 if slimit:
-                    rec["limits"][d.ptype] = {"minvalue":slimit.minvalue, "maxvalue":slimit.minvalue}
+                    rec["limits"][d.ptype] = {"minvalue":slimit.minvalue, "maxvalue":slimit.maxvalue}
                 else:
                     rec["limits"][d.ptype] = {"minvalue": None, "maxvalue": None}
                 #reslist.append(d.ptype)
