@@ -1287,7 +1287,7 @@ class SensorTypeAPI(Resource):
             for d in s.datatypes:
                 reslist.append(d.ptype)
                 
-        return jsonify(set(reslist), 200
+        return jsonify(set(reslist)), 200
 
 
 class PictAPI(Resource):
