@@ -1776,6 +1776,10 @@ class SensorLimitsAPI(Resource):
     @cross_origin()
     #@cache.cached(timeout=300, key_prefix=cache_key)
     def get(self):
+        """
+        Sensor Limits
+        TODO Fix description
+        """
         auth_headers = request.headers.get('Authorization', '').split()
         token = auth_headers[1]
         udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
@@ -1790,7 +1794,7 @@ class SensorLimitsAPI(Resource):
         if suuid:
             sensor = db.session.query(Sensor).filter(Sensor.uuid==suuid).first()
         if sensortype and sensor:
-            sensorlimit = db.session.query(SensorLimit).filter(SensorLimit.sensor==sensor).filter(SensorLimit.prtype==ptype).first()
+            sensorlimit = db.session.query(SensorLimit).filter(SensorLimit.sensor==sensor).filter(SensorLimit.prtype==sensortype).first()
         response = {"min": None, "max": None, "ptype": ptype}
         if sensorlimit:
             response['min'] = sensorlimit.minvalue
@@ -1801,6 +1805,10 @@ class SensorLimitsAPI(Resource):
     @cross_origin()
     #@cache.cached(timeout=300, key_prefix=cache_key)
     def post(self):
+        """
+        Sensor Limits
+        TODO Fix description
+        """
         auth_headers = request.headers.get('Authorization', '').split()
         token = auth_headers[1]
         udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
