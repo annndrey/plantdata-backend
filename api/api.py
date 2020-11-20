@@ -158,8 +158,9 @@ swagger = Swagger(app, config=swagger_config, template=swtemplate)
 
 CF_LOGIN = app.config['CF_LOGIN']
 CF_PASSWORD = app.config['CF_PASSWORD']
-CF_HOST = app.config['CF_HOST']
-CF_TOKEN = None
+#CF_HOST = app.config['CF_HOST']
+CF_HOST = "https://regions.fermata.tech:5777/api/v1/loadimage"
+CF_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZW1vdXNlckBmZXJtYXRhLnRlY2giLCJpYXQiOjE2MDUwNzgxNTEsImV4cCI6MTYwODY3ODE1MX0.wqR13DQI9oXQImvPnH8qOcc7borNEIo5dRFYe9TK1eE"
 FONT = app.config['FONT']
 FONTSIZE = app.config['FONTSIZE']
 
@@ -178,12 +179,12 @@ COLOR_THRESHOLD = 75000
 JSONIFY_PRETTYPRINT_REGULAR=False
 
 
-if CLASSIFY_ZONES:
-    with open("cropsettings.yaml", 'r') as stream:
-        try:
-            CROP_SETTINGS = yaml.safe_load(stream)
-        except yaml.YAMLError as exc:
-            app.logger.debug(exc)
+#if CLASSIFY_ZONES:
+#    with open("cropsettings.yaml", 'r') as stream:
+#        try:
+#            CROP_SETTINGS = yaml.safe_load(stream)
+#        except yaml.YAMLError as exc:
+#            app.logger.debug(exc)
 
 
 class SQLAlchemyNoPool(SQLAlchemy):
@@ -924,49 +925,60 @@ def parse_request_pictures(parent_data, camposition_id, req_file, flabel, user_l
         if recognize:
             if CLASSIFY_ZONES:# and CF_TOKEN:
                 # zones = CROP_SETTINGS.get(uplname, None)
-                zones = get_zones(original, 3, 4)
-                cf_headers = None #= {'Authorization': 'Bearer ' + CF_TOKEN}
-                # 2592x1944
-                celery_logger.info(["ZONES", zones])
-                if zones:
-                    responses = []
-                    newzones = []
-                    argslist = []
-                    zones_ids = []
-                    dr = ImageDraw.Draw(original)
-                    for z in zones.keys():
-                        dr.rectangle((zones[z]['left'], zones[z]['top'], zones[z]['right'], zones[z]['bottom']), outline = '#fbb040', width=3)
-                        dr.text((zones[z]['left']+2, zones[z]['top']+2), z, font=zonefont)
-                        allowed_values = data.sensor.location.cf_values
-                        if allowed_values:
-                            zone_id = send_zones(zones[z], z, fuuid, FORMAT, fpath, user_login, sensor_uuid, cf_headers, original, allowed_values=allowed_values)
-                        else:
-                            zone_id = send_zones(zones[z], z, fuuid, FORMAT, fpath, user_login, sensor_uuid, cf_headers, original)
-                            
-                        zones_ids.append(zone_id)
-                    celery_logger.info(["SAVED ZONES", [zones_ids]])
-                    db.session.commit()
+                #zones = get_zones(original, 3, 4)
+                cf_headers = {'Authorization': 'Bearer ' + CF_TOKEN}
+                img_io = io.BytesIO()
+                original.save(img_io, FORMAT, quality=100)
+                img_io.seek(0)
+                response = requests.post(CF_HOST.format("loadimage"), auth=cf_headers, files = {'croppedfile': img_io}, data=cf_request_data)
+                if response.status_code == 200:
+                    cf_result = response.json().get('objtype')
+                    classification_results = json.dumps(cf_result)
+                    app.logger.debug(f"CF RESULTS {cf_result}")
+                else:
+                    classification_results = None
 
-                    if zones_ids:
-                        newzones = db.session.query(PictureZone).filter(PictureZone.id.in_(zones_ids)).all()
-                        celery_logger.info(["NEWZONES", [(n.id, n.results) for n in newzones]])
-                        # Draw a red rectangle around the unhealthy zone
-                        for nzone in newzones:
-                            if "unhealthy" in nzone.results:
-                                # split zone into 4 subzones & check it again.
-                                # if any subzone is reported as unhealthy,
-                                # the zone result is confirmed
-                                dr.rectangle((zones[nzone.zone]['left'], zones[nzone.zone]['top'], zones[nzone.zone]['right'], zones[nzone.zone]['bottom']), outline = '#ff0000', width=10)
-                        class_results = ["{}: {}".format(z.zone, process_result(z.results)) for z in sorted(newzones, key=lambda x: int(x.zone[4:]))]
-                        classification_results = "Results: {}".format(", ".join(class_results))
-                    else:
-                        celery_logger.info(["NO ZONES", newzones])
-                        newzones = None
-                        classification_results = ""
+                # 2592x1944
+                #celery_logger.info(["ZONES", zones])
+                #if zones:
+                #    responses = []
+                #    newzones = []
+                #    argslist = []
+                #    zones_ids = []
+                #    dr = ImageDraw.Draw(original)
+                #    for z in zones.keys():
+                #        dr.rectangle((zones[z]['left'], zones[z]['top'], zones[z]['right'], zones[z]['bottom']), outline = '#fbb040', width=3)
+                #        dr.text((zones[z]['left']+2, zones[z]['top']+2), z, font=zonefont)
+                #        allowed_values = data.sensor.location.cf_values
+                #        if allowed_values:
+                #            zone_id = send_zones(zones[z], z, fuuid, FORMAT, fpath, user_login, sensor_uuid, cf_headers, original, allowed_values=allowed_values)
+                #        else:
+                #            zone_id = send_zones(zones[z], z, fuuid, FORMAT, fpath, user_login, sensor_uuid, cf_headers, original)
+                            
+                #        zones_ids.append(zone_id)
+                #    celery_logger.info(["SAVED ZONES", [zones_ids]])
+                #    db.session.commit()
+
+                #    if zones_ids:
+                #        newzones = db.session.query(PictureZone).filter(PictureZone.id.in_(zones_ids)).all()
+                #        celery_logger.info(["NEWZONES", [(n.id, n.results) for n in newzones]])
+                #        # Draw a red rectangle around the unhealthy zone
+                #        for nzone in newzones:
+                #            if "unhealthy" in nzone.results:
+                #                # split zone into 4 subzones & check it again.
+                #                # if any subzone is reported as unhealthy,
+                #                # the zone result is confirmed
+                #                dr.rectangle((zones[nzone.zone]['left'], zones[nzone.zone]['top'], zones[nzone.zone]['right'], zones[nzone.zone]['bottom']), outline = '#ff0000', width=10)
+                #        class_results = ["{}: {}".format(z.zone, process_result(z.results)) for z in sorted(newzones, key=lambda x: int(x.zone[4:]))]
+                #        classification_results = "Results: {}".format(", ".join(class_results))
+                #    else:
+                #        celery_logger.info(["NO ZONES", newzones])
+                #        newzones = None
+                #        classification_results = ""
                 # Picture with zones
-                original.save(fullpath)#, quality=100, subsampling=0)
-                celery_logger.info(["IMGLABEL", imglabel, classification_results])
-                imglabel = imglabel + " " + classification_results
+                # original.save(fullpath)#, quality=100, subsampling=0)
+                #celery_logger.info(["IMGLABEL", imglabel, classification_results])
+                #imglabel = imglabel + " " + classification_results
         # Thumbnails
         original.thumbnail((300, 300), Image.ANTIALIAS)
         original.save(thumbpath, FORMAT, quality=90)
@@ -977,8 +989,8 @@ def parse_request_pictures(parent_data, camposition_id, req_file, flabel, user_l
                                  original=partorigpath,
                                  results=classification_results,
         )
-        if newzones:
-            newpicture.zones = newzones
+        #if newzones:
+        #    newpicture.zones = newzones
         db.session.add(newpicture)
         camposition.pictures.append(newpicture)
         db.session.commit()
