@@ -1774,7 +1774,8 @@ class ProbeAPI(Resource):
         x  = request.form.get('x', None)
         y  = request.form.get('y', None)
         z  = request.form.get('z', None)
-        
+        row = request.form.get('row', None)
+        col = request.form.get('col', None)
         if sensor:
             if sensor.user != user:
                 abort(403)
@@ -1788,6 +1789,11 @@ class ProbeAPI(Resource):
                 newprobe.y = y
             if z:
                 newprobe.z = z
+            if row:
+                newprobe.row = row
+            if col:
+                newprobe.row = col
+
                 
             db.session.add(newprobe)
             db.session.commit()
@@ -1945,7 +1951,7 @@ class LocationWarningsAPI(Resource):
             warnings_query = warnings_query.filter(Sensor.uuid == suuid)
             
         outdata = warnings_query.all()
-        
+        # TODO Local coords system
         app.logger.debug([(c[0].data.ts, c[1].posx, c[1].posy, c[1].posz, c[1].camlabel, c[0].numwarnings) for c in outdata])
         for c in outdata:
             if c[0].x is not None:
@@ -2871,7 +2877,10 @@ class DataAPI(Resource):
                         newprobedata.x = float(probe.x)
                         newprobedata.y = float(probe.y)
                         newprobedata.z = float(probe.z)
-                    
+                    if all([probe.row, probe.col]):
+                        probedata.row = probe.row
+                        probedata.col = probe.col
+                        
                     if prtype:
                         newprobedata.prtype = prtype
 
@@ -2892,6 +2901,7 @@ class DataAPI(Resource):
                                             pd['uuid'] = pr['puuid']
                                             pd['location'] = probe.sensor.location.address
                                             pd['coords'] = "x:{} y:{} z:{}".format(probe.x, probe.y, probe.z)
+                                            pd['localcoords'] = "row: {} column: {}".format(probe.row, probe.col
                                             pd['min'] = l.minvalue
                                             pd['max'] = l.maxvalue
                                             pd['suuid'] = probe.sensor.uuid
