@@ -107,7 +107,8 @@ class ProbeData(db.Model):
     x = db.Column(db.Float)
     y = db.Column(db.Float)
     z = db.Column(db.Float)
-    
+    row = db.Column(db.String(200))
+    col = db.Column(db.String(200))
 
 class Probe(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -119,6 +120,8 @@ class Probe(db.Model):
     x = db.Column(db.Integer)
     y = db.Column(db.Integer)
     z = db.Column(db.Integer)
+    row = db.Column(db.String(200))
+    col = db.Column(db.String(200))
 
     
 # Notifications
