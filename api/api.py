@@ -633,7 +633,7 @@ def send_images_email_notification(email, pict_status_list):
     s = smtplib.SMTP('smtp.gmail.com', 587)
     s.ehlo()
     s.starttls()
-    ##print([MAILUSER, MAILPASS])
+    #print([MAILUSER, MAILPASS])
     s.login(MAILUSER, MAILPASS)
     s.sendmail(sender, email, msg.as_string())
     s.quit()
