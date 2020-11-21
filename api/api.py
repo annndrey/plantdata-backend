@@ -102,7 +102,8 @@ CACHE_DB = app.config.get('CACHE_DB', 1)
 BASEDIR = app.config.get('FILE_PATH')
 MAILUSER = app.config.get('MAILUSER')
 MAILPASS = app.config.get('MAILPASS')
-
+SMTP_SERVER = 'smtp.gmail.com'
+SMTP_PORT = 587
 
 DB_CONNECT = app.config.get('SQLALCHEMY_DATABASE_URI')
 
@@ -630,7 +631,7 @@ def send_images_email_notification(email, pict_status_list):
 
     # FIX 
     print("mail ready to be sent")
-    s = smtplib.SMTP('smtp.gmail.com', 587)
+    s = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
     s.ehlo()
     s.starttls()
     #print([MAILUSER, MAILPASS])
@@ -676,7 +677,7 @@ def send_sensors_email_notification(email, status_list):
     msg.attach(message_text)
 
     print("mail ready to be sent")
-    s = smtplib.SMTP('smtp.yandex.ru', 587)
+    s = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
     s.ehlo()
     s.starttls()
     print([MAILUSER, MAILPASS])
