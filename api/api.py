@@ -524,7 +524,7 @@ def setup_periodic_tasks(sender, **kwargs):
         check_pending_image_notifications.s(),
     )
     sender.add_periodic_task(
-        crontab(minute=0, hour='*/2'),
+        crontab(minute=0, hour='*/1'),
         check_pending_sensor_notifications.s(),
     )
 
@@ -628,11 +628,12 @@ def send_images_email_notification(email, pict_status_list):
     for img in email_images:
         msg.attach(img)
 
+    # FIX 
     print("mail ready to be sent")
-    s = smtplib.SMTP('smtp.yandex.ru', 587)
+    s = smtplib.SMTP('smtp.gmail.com', 587)
     s.ehlo()
     s.starttls()
-    print([MAILUSER, MAILPASS])
+    ##print([MAILUSER, MAILPASS])
     s.login(MAILUSER, MAILPASS)
     s.sendmail(sender, email, msg.as_string())
     s.quit()
