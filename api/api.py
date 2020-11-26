@@ -2177,7 +2177,7 @@ class SensorsStatsAPI(Resource):
             # Fixed for new results
             all_unhealthy_zones = db.session.query(func.count(DataPicture.id)).join(Data).join(Sensor).filter(DataPicture.results.like('%unhealthy%')).filter(DataPicture.ts >= ts_from).filter(DataPicture.ts <= ts_to)
             # Fixed for new results
-            grouped_zones = db.session.query(DataPicture.ts, func.count(DataPicture.id))..join(Data).join(Sensor).filter(DataPicture.results.like('%unhealthy%')).filter(DataPicture.ts >= grouped_ts_from).filter(DataPicture.ts <= ts_to)
+            grouped_zones = db.session.query(DataPicture.ts, func.count(DataPicture.id)).join(Data).join(Sensor).filter(DataPicture.results.like('%unhealthy%')).filter(DataPicture.ts >= grouped_ts_from).filter(DataPicture.ts <= ts_to)
         
             all_zones = db.session.query(func.count(DataPicture.id)).join(Data).join(Sensor).filter(DataPicture.ts >= ts_from).filter(DataPicture.ts <= ts_to)
 
