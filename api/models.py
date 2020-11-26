@@ -261,10 +261,12 @@ class Camera(db.Model):
         warning = ""
         for pos in self.positions:
             for pict in pos.pictures:
-                for zone in pict.zones:
-                    if "unhealthy" in zone.results:
-                        # Here is the exclamation sign (triangle)
-                        warning = "⚠️"
+                cnt = pict.results.count("unhealthy")
+                #for zone in pict.zones:
+                #if "unhealthy" in zone.results:
+                # Here is the exclamation sign (triangle)
+                if cnt > 0:        
+                    warning = "⚠️"
         return warning
 
     @hybrid_property
@@ -272,9 +274,10 @@ class Camera(db.Model):
         numwarning = 0
         for pos in self.positions:
             for pict in pos.pictures:
-                for zone in pict.zones:
-                    if "unhealthy" in zone.results:
-                        numwarning = numwarning + 1
+                #for zone in pict.zones:
+                #if "unhealthy" in zone.results:
+                cnt = pict.results.count("unhealthy")
+                numwarning = numwarning + cnt
         return numwarning
 
     
