@@ -3129,7 +3129,8 @@ class DataAPI(Resource):
                     camera.x = camlocation.posx
                     camera.y = camlocation.posy
                     camera.z = camlocation.posz
-                    
+                    camera.row = camlocation.row
+                    camera.col = camlocation.col
                 db.session.add(camera)
                 db.session.commit()
 
