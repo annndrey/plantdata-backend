@@ -2176,10 +2176,10 @@ class SensorsStatsAPI(Resource):
             ## Overall health
             # Fixed for new results
             all_unhealthy_zones = db.session.query(func.count(DataPicture.id)).join(Data).join(Sensor).filter(DataPicture.results.like('%unhealthy%')).filter(DataPicture.ts >= ts_from).filter(DataPicture.ts <= ts_to)
-            # 
-            grouped_zones = db.session.query(PictureZone.ts, func.count(PictureZone.id)).join(DataPicture).join(Data).join(Sensor).filter(PictureZone.results.like('%unhealthy%')).filter(PictureZone.ts >= grouped_ts_from).filter(PictureZone.ts <= ts_to)
+            # Fixed for new results
+            grouped_zones = db.session.query(DataPicture.ts, func.count(DataPicture.id))..join(Data).join(Sensor).filter(DataPicture.results.like('%unhealthy%')).filter(DataPicture.ts >= grouped_ts_from).filter(DataPicture.ts <= ts_to)
         
-            all_zones = db.session.query(func.count(PictureZone.id)).join(DataPicture).join(Data).join(Sensor).filter(PictureZone.ts >= ts_from).filter(PictureZone.ts <= ts_to)
+            all_zones = db.session.query(func.count(DataPicture.id)).join(Data).join(Sensor).filter(DataPicture.ts >= ts_from).filter(DataPicture.ts <= ts_to)
 
             
             
@@ -2193,7 +2193,7 @@ class SensorsStatsAPI(Resource):
                 grouped_zones = grouped_zones.filter(Sensor.uuid == suuid)
                 all_zones = all_zones.filter(Sensor.uuid == suuid)
             
-            grouped_zones = [(g[0].replace(hour=0, minute=0, second=0), g[1]) for g in grouped_zones.group_by(func.year(PictureZone.ts), func.month(PictureZone.ts), func.day(PictureZone.ts)).all()]
+            grouped_zones = [(g[0].replace(hour=0, minute=0, second=0), g[1]) for g in grouped_zones.group_by(func.year(DataPicture.ts), func.month(DataPicture.ts), func.day(DataPicture.ts)).all()]
             app.logger.debug(["GROUPED ZONES", grouped_zones])
             date_range = [ts_to.replace(hour=0, minute=0, second=0) - datetime.timedelta(days=x) for x in range(numentries)][::-1]
             
