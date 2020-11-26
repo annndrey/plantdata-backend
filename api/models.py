@@ -283,7 +283,7 @@ class CameraPosition(db.Model):
     camera_id = db.Column(db.Integer, ForeignKey('camera.id'))
     camera = relationship("Camera", backref=backref("positions", uselist=True))
     poslabel = db.Column(db.Integer)
-    url = db.Column(db.Text())
+    #url = db.Column(db.Text())
     x = db.Column(db.Float)
     y = db.Column(db.Float)
     z = db.Column(db.Float)
@@ -298,6 +298,19 @@ class CameraLocation(db.Model):
     #camera_id = db.Column(db.Integer, ForeignKey('camera.id'))
     camlabel = db.Column(db.Text())
     locname = db.Column(db.Text())
+    posx = db.Column(db.Integer)
+    posy = db.Column(db.Integer)
+    posz = db.Column(db.Integer)
+    row = db.Column(db.String(200))
+    col = db.Column(db.String(200))
+
+## STOPPED HERE ->>>
+class CameraPositionLocation(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    location_id = db.Column(db.Integer, ForeignKey('location.id'))
+    location = relationship("Location", backref=backref("camposlocations"))
+    camlabel = db.Column(db.Text())
+    poslabel = db.Column(db.Text())
     posx = db.Column(db.Integer)
     posy = db.Column(db.Integer)
     posz = db.Column(db.Integer)

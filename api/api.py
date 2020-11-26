@@ -25,7 +25,7 @@ from marshmallow import fields, pre_dump, post_dump
 from marshmallow_enum import EnumField
 from itertools import groupby, islice, accumulate
 from statistics import mean
-from models import db, User, Sensor, Location, Data, DataPicture, Camera, CameraPosition, CameraLocation, Probe, ProbeData, PictureZone, SensorType, data_probes, Notification, SensorLimit
+from models import db, User, Sensor, Location, Data, DataPicture, Camera, CameraPosition, CameraLocation, CameraPositionLocation, Probe, ProbeData, PictureZone, SensorType, data_probes, Notification, SensorLimit
 import logging
 import os
 import copy
@@ -2175,6 +2175,7 @@ class SensorsStatsAPI(Resource):
                 
             ## Overall health
             # Fixed for new results
+            # TODO: add count unhealthy results for a particular picture
             all_unhealthy_zones = db.session.query(func.count(DataPicture.id)).join(Data).join(Sensor).filter(DataPicture.results.like('%unhealthy%')).filter(DataPicture.ts >= ts_from).filter(DataPicture.ts <= ts_to)
             # Fixed for new results
             grouped_zones = db.session.query(DataPicture.ts, func.count(DataPicture.id)).join(Data).join(Sensor).filter(DataPicture.results.like('%unhealthy%')).filter(DataPicture.ts >= grouped_ts_from).filter(DataPicture.ts <= ts_to)
@@ -3120,7 +3121,6 @@ class DataAPI(Resource):
             if sensor.user != user:
                 abort(403)
             # Surely there's no camera for data.id. We should replace data.id with a sensor id.
-            # TODO: >>> Fix
             camlocation = db.session.query(CameraLocation).filter(CameraLocation.camlabel==camname).filter(CameraLocation.location==sensor.location).first()
             camera = db.session.query(Camera).join(Data).filter(Data.id == data.id).filter(Camera.camlabel == camname).first()
             if not camera:
