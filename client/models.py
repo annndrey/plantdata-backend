@@ -11,6 +11,7 @@ class Probe(Base):
     __tablename__ = 'probe'
     id = Column(Integer, primary_key=True)
     uuid = Column(Text(), nullable=False)
+    plabel = Column(Text(), nullable=False)
     bs_id = Column(Integer, ForeignKey('bsdata.id'))
     values = relationship("ProbeData", backref="probe", cascade="all,delete")
                        
@@ -33,7 +34,7 @@ class BaseStationData(Base):
     photos = relationship("Photo", backref="bs", cascade="all,delete")
     probes = relationship("Probe", backref="bs", cascade="all,delete")
     uploaded = Column(Boolean, default=False)
-    #probes = relationship("Probe", secondary=data_probes, backref="data")
+
     
 class Photo(Base):
     __tablename__ = 'photo'
