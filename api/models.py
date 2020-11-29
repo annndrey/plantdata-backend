@@ -261,7 +261,10 @@ class Camera(db.Model):
         warning = ""
         for pos in self.positions:
             for pict in pos.pictures:
-                cnt = pict.results.count("unhealthy")
+                if pict.results:
+                    cnt = pict.results.count("unhealthy")
+                else:
+                    cnt = 0
                 #for zone in pict.zones:
                 #if "unhealthy" in zone.results:
                 # Here is the exclamation sign (triangle)
