@@ -1791,13 +1791,14 @@ class ProbeAPI(Resource):
         z  = request.form.get('z', None)
         row = request.form.get('row', None)
         col = request.form.get('col', None)
+        plabel = request.form.get('plabel', None)
         if sensor:
             if sensor.user != user:
                 abort(403)
 
         probe = db.session.query(Probe).filter(Probe.uuid == puuid).first()
         if not probe:
-            newprobe = Probe(sensor=sensor, uuid=puuid, data=datarecord)
+            newprobe = Probe(sensor=sensor, uuid=puuid, data=datarecord, label=plabel)
             if x:
                 newprobe.x = x
             if y:
@@ -2869,9 +2870,13 @@ class DataAPI(Resource):
             db.session.commit()
             for pr in probes:
                 probe_uuid = pr['puuid']
+                plabel = pr.get('plabel', None)
+                
                 probe = db.session.query(Probe).filter(Probe.uuid==probe_uuid).first()
                 if not probe:
                     probe = Probe(sensor=sensor, uuid=pr['puuid'])#, data=newdata)
+                    if plabel:
+                        probe.label = plabel
                     db.session.add(probe)
                     db.session.commit()
                 newdata.probes.append(probe)
@@ -2898,10 +2903,11 @@ class DataAPI(Resource):
                     if all([probe.row, probe.col]):
                         newprobedata.row = probe.row
                         newprobedata.col = probe.col
-                        
+                    if probe.label:
+                        newprobedata.plabel = probe.label
                     if prtype:
                         newprobedata.prtype = prtype
-
+                        
                     if probe.sensor.limits:
                         app.logger.debug(["Checking sensor limits for", probe.sensor.uuid, probe.sensor.user.login])
                         for l in probe.sensor.limits:
