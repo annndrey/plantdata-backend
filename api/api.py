@@ -216,23 +216,24 @@ def custom_serializer(data, cameras=None):
             if len(d.cameras) > 0:
                 outdata['cameras'].append([{"camlabel":c.camlabel, "id":c.id, "warnings":c.warnings} for c in d.cameras])
         for r in d.records:
-            probelabel = "{} {} {}".format(r.probe.uuid, r.probe.sensor.uuid, r.probe.label)
-            datalabel = "{} {} {} {}".format(r.label, r.probe.uuid, r.probe.sensor.uuid, r.probe.label)
+            if r.probe.id not in [362, 356]:
+                probelabel = "{} {} {}".format(r.probe.uuid, r.probe.sensor.uuid, r.probe.label)
+                datalabel = "{} {} {} {}".format(r.label, r.probe.uuid, r.probe.sensor.uuid, r.probe.label)
             
-            if r.probe.uuid not in outdata['locdimensions'].keys():
-                data_loc = r.probe.sensor.location
-                outdata['locdimensions'][r.probe.sensor.uuid] = {"x":data_loc.dimx, "y":data_loc.dimy, "z":data_loc.dimz}
+                if r.probe.uuid not in outdata['locdimensions'].keys():
+                    data_loc = r.probe.sensor.location
+                    outdata['locdimensions'][r.probe.sensor.uuid] = {"x":data_loc.dimx, "y":data_loc.dimy, "z":data_loc.dimz}
                 
-            if datalabel not in outdata['data'].keys():
-                outdata['data'][datalabel] = [r.value]
-            else:
-                outdata['data'][datalabel].append(r.value)
+                if datalabel not in outdata['data'].keys():
+                    outdata['data'][datalabel] = [r.value]
+                else:
+                    outdata['data'][datalabel].append(r.value)
                 
-            if probelabel not in outdata['probelabels'].keys():
-                outdata['probelabels'][probelabel] = [d.ts]
-            else:
-                if d.ts not in outdata['probelabels'][probelabel]:
-                    outdata['probelabels'][probelabel].append(d.ts)
+                if probelabel not in outdata['probelabels'].keys():
+                    outdata['probelabels'][probelabel] = [d.ts]
+                else:
+                    if d.ts not in outdata['probelabels'][probelabel]:
+                        outdata['probelabels'][probelabel].append(d.ts)
                     
     # fix missing data
     # find longest probelabel
