@@ -216,7 +216,7 @@ def custom_serializer(data, cameras=None):
             if len(d.cameras) > 0:
                 outdata['cameras'].append([{"camlabel":c.camlabel, "id":c.id, "warnings":c.warnings} for c in d.cameras])
         for r in d.records:
-            if r.probe.id not in [362, 356]:
+            if r.probe.id:# not in [362, 356]:
                 probelabel = "{} {} {}".format(r.probe.uuid, r.probe.sensor.uuid, r.probe.label)
                 datalabel = "{} {} {} {}".format(r.label, r.probe.uuid, r.probe.sensor.uuid, r.probe.label)
             
