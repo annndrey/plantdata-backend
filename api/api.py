@@ -900,7 +900,6 @@ def parse_request_pictures(parent_data, camposition_id, req_file, flabel, user_l
         imgbytes = io.BytesIO(fdata)
         imgbytes.seek(0)
         original = Image.open(imgbytes)
-        
         FORMAT = original.format
         fuuid = str(uuid.uuid4())
         fname = fuuid + "." + FORMAT.lower()
@@ -924,6 +923,9 @@ def parse_request_pictures(parent_data, camposition_id, req_file, flabel, user_l
         celery_logger.info("FILE SAVED")
         newzones = []
 
+        # Don't recognize if picture is BW
+        unique_colors = set()
+                
         if recognize:
             if CLASSIFY_ZONES:# and CF_TOKEN:
                 # zones = CROP_SETTINGS.get(uplname, None)
@@ -940,47 +942,6 @@ def parse_request_pictures(parent_data, camposition_id, req_file, flabel, user_l
                 else:
                     classification_results = None
 
-                # 2592x1944
-                #celery_logger.info(["ZONES", zones])
-                #if zones:
-                #    responses = []
-                #    newzones = []
-                #    argslist = []
-                #    zones_ids = []
-                #    dr = ImageDraw.Draw(original)
-                #    for z in zones.keys():
-                #        dr.rectangle((zones[z]['left'], zones[z]['top'], zones[z]['right'], zones[z]['bottom']), outline = '#fbb040', width=3)
-                #        dr.text((zones[z]['left']+2, zones[z]['top']+2), z, font=zonefont)
-                #        allowed_values = data.sensor.location.cf_values
-                #        if allowed_values:
-                #            zone_id = send_zones(zones[z], z, fuuid, FORMAT, fpath, user_login, sensor_uuid, cf_headers, original, allowed_values=allowed_values)
-                #        else:
-                #            zone_id = send_zones(zones[z], z, fuuid, FORMAT, fpath, user_login, sensor_uuid, cf_headers, original)
-                            
-                #        zones_ids.append(zone_id)
-                #    celery_logger.info(["SAVED ZONES", [zones_ids]])
-                #    db.session.commit()
-
-                #    if zones_ids:
-                #        newzones = db.session.query(PictureZone).filter(PictureZone.id.in_(zones_ids)).all()
-                #        celery_logger.info(["NEWZONES", [(n.id, n.results) for n in newzones]])
-                #        # Draw a red rectangle around the unhealthy zone
-                #        for nzone in newzones:
-                #            if "unhealthy" in nzone.results:
-                #                # split zone into 4 subzones & check it again.
-                #                # if any subzone is reported as unhealthy,
-                #                # the zone result is confirmed
-                #                dr.rectangle((zones[nzone.zone]['left'], zones[nzone.zone]['top'], zones[nzone.zone]['right'], zones[nzone.zone]['bottom']), outline = '#ff0000', width=10)
-                #        class_results = ["{}: {}".format(z.zone, process_result(z.results)) for z in sorted(newzones, key=lambda x: int(x.zone[4:]))]
-                #        classification_results = "Results: {}".format(", ".join(class_results))
-                #    else:
-                #        celery_logger.info(["NO ZONES", newzones])
-                #        newzones = None
-                #        classification_results = ""
-                # Picture with zones
-                # original.save(fullpath)#, quality=100, subsampling=0)
-                #celery_logger.info(["IMGLABEL", imglabel, classification_results])
-                #imglabel = imglabel + " " + classification_results
         # Thumbnails
         original.thumbnail((300, 300), Image.ANTIALIAS)
         original.save(thumbpath, FORMAT, quality=90)
@@ -991,8 +952,6 @@ def parse_request_pictures(parent_data, camposition_id, req_file, flabel, user_l
                                  original=partorigpath,
                                  results=classification_results,
         )
-        #if newzones:
-        #    newpicture.zones = newzones
         db.session.add(newpicture)
         camposition.pictures.append(newpicture)
         db.session.commit()
@@ -1149,7 +1108,8 @@ class DataPictureSchema(ma.ModelSchema):
     class Meta:
         model = DataPicture
 
-    numwarnings = ma.Function(lambda obj: obj.numwarnings)        
+    numwarnings = ma.Function(lambda obj: obj.numwarnings)
+    results = ma.Function(lambda obj: obj.results if 7 < obj.ts.hour < 19 else "")
     preview = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.thumbnail, _external=True, _scheme='https')))
     fpath = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.fpath, _external=True, _scheme='https')))
     original = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.original, _external=True, _scheme='https')))
