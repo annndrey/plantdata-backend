@@ -2209,7 +2209,8 @@ class SensorsStatsAPI(Resource):
                     limit_type = l.prtype.ptype
                     minvalue = l.minvalue
                     maxvalue = l.maxvalue
-                    sp = spikes.filter(ProbeData.ptype==limit_type).filter(not_(ProbeData.value.between(minvalue,maxvalue)))
+                    # HIDE PROBES
+                    sp = spikes.filter(ProbeData.ptype==limit_type).filter(not_(ProbeData.value.between(minvalue,maxvalue))).filter(ProbeData.probe_id.notin_([362, 356]))
                     numsp = sp.scalar()
                     numspikes = numspikes + numsp
                     app.logger.debug(["SPIKES", limit_type, minvalue, maxvalue, numsp])
@@ -2219,8 +2220,9 @@ class SensorsStatsAPI(Resource):
 
 
             # Data stats: min, max, mean
-        if ( output_params and 'basicstats' in output_params ) or not output_params:                
-            probe_data = db.session.query(ProbeData).join(Data).join(Probe).join(Sensor).filter(Data.ts >= grouped_ts_from).filter(Data.ts < ts_to)
+        if ( output_params and 'basicstats' in output_params ) or not output_params:
+            # HIDE PROBES
+            probe_data = db.session.query(ProbeData).join(Data).join(Probe).join(Sensor).filter(Data.ts >= grouped_ts_from).filter(Data.ts < ts_to).filter(ProbeData.probe_id.notin_([362, 356]))
             if suuid == 'all':
                 probe_data = probe_data.filter(Sensor.uuid.in_([s.uuid for s in user.sensors]))
             else:
@@ -2228,8 +2230,6 @@ class SensorsStatsAPI(Resource):
                 
             probe_data_output = {}
             for d in probe_data.all():
-                #app.logger.debug(["PDATA", d.data.ts, d.ptype, d.value])
-                # TODO Split bythe  day/night time
                 timeofday = 'night'
                 if 7 <= d.data.ts.hour <= 19:
                     timeofday = "day"
