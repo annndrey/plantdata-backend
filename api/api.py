@@ -1720,7 +1720,11 @@ class ProbeAPI(Resource):
             if probe:
                 return jsonify(self.schema.dump(probe).data), 200
         elif suuid:
-            probes = db.session.query(Probe).join(Sensor).filter(Sensor.uuid == suuid).all()
+            probes = db.session.query(Probe).join(Sensor).filter(Sensor.uuid == suuid)
+            # HIDE PROBES            
+            probes = probes.filter(Probe.id.notin_([362, 356]))
+            probes = probes.all()
+            
             return jsonify(self.m_schema.dump(probes).data), 200
         else:
             # No suuid provided, return all user's probes
@@ -2221,8 +2225,10 @@ class SensorsStatsAPI(Resource):
 
             # Data stats: min, max, mean
         if ( output_params and 'basicstats' in output_params ) or not output_params:
-            # HIDE PROBES
-            probe_data = db.session.query(ProbeData).join(Data).join(Probe).join(Sensor).filter(Data.ts >= grouped_ts_from).filter(Data.ts < ts_to).filter(ProbeData.probe_id.notin_([362, 356]))
+
+            probe_data = db.session.query(ProbeData).join(Data).join(Probe).join(Sensor).filter(Data.ts >= grouped_ts_from).filter(Data.ts < ts_to)
+            # HIDE PROBES            
+            probe_data = probe_data.filter(ProbeData.probe_id.notin_([362, 356]))
             if suuid == 'all':
                 probe_data = probe_data.filter(Sensor.uuid.in_([s.uuid for s in user.sensors]))
             else:
@@ -2629,7 +2635,8 @@ class DataAPI(Resource):
             sensordata_query = db.session.query(Data).filter(Data.sensor.has(Sensor.uuid.in_([s.uuid for s in sensor])))
             if puuid:
                 sensordata_query = sensordata_query.join(Data.records).options(contains_eager(Data.records)).filter(ProbeData.probe.has(Probe.uuid==puuid))
-
+            # HIDE PROBES            
+            sensordata_query.filter(ProbeData.probe_id.notin_([362, 356]))
             sensordata_query = sensordata_query.order_by(Data.ts).filter(Data.ts >= day_st).filter(Data.ts <= day_end)
             
             app.logger.debug("GET DATA 2")
