@@ -1950,7 +1950,7 @@ class LocationWarningsAPI(Resource):
                        "x": x,
                        "y": y,
                        "z": z,
-                       "numwarnings":c[0].numwarnings if 7 < c[0].data.ts < 19 else 0,
+                       "numwarnings":c[0].numwarnings if 7 < c[0].data.ts.hour < 19 else 0,
                        "camlabel": c[1].camlabel,
                        "camid": c[0].id,
                        "camlocation": c[1].location.address
