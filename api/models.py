@@ -283,8 +283,9 @@ class Camera(db.Model):
             for pict in pos.pictures:
                 #for zone in pict.zones:
                 if "unhealthy" in pict.results:
-                    cnt = pict.results.count("unhealthy")
-                    numwarning = numwarning + cnt
+                    if pict.results:
+                        cnt = pict.results.count("unhealthy")
+                        numwarning = numwarning + cnt
         return numwarning
 
     
