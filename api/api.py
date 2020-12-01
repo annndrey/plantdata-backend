@@ -2139,7 +2139,7 @@ class SensorsStatsAPI(Resource):
             # TODO: add count unhealthy results for a particular picture
             all_unhealthy_zones = db.session.query(func.count(DataPicture.id)).join(Data).join(Sensor).filter(DataPicture.results.like('%unhealthy%')).filter(DataPicture.ts >= ts_from).filter(DataPicture.ts <= ts_to).filter(extract("hour", DataPicture.ts) > 7).filter(extract("hour", DataPicture.ts) < 19)
             # Fixed for new results
-            grouped_zones = db.session.query(DataPicture.ts, func.count(DataPicture.id)).join(Data).join(Sensor).filter(DataPicture.results.like('%unhealthy%')).filter(DataPicture.ts >= grouped_ts_from).filter(DataPicture.ts <= ts_to)
+            grouped_zones = db.session.query(DataPicture.ts, func.count(DataPicture.id)).join(Data).join(Sensor).filter(DataPicture.results.like('%unhealthy%')).filter(DataPicture.ts >= grouped_ts_from).filter(DataPicture.ts <= ts_to).filter(extract("hour", DataPicture.ts) > 7).filter(extract("hour", DataPicture.ts) < 19)
         
             all_zones = db.session.query(func.count(DataPicture.id)).join(Data).join(Sensor).filter(DataPicture.ts >= ts_from).filter(DataPicture.ts <= ts_to)
 
