@@ -9,7 +9,7 @@ from flask.json import jsonify
 from flasgger import Swagger
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import or_, desc, and_, func, not_
+from sqlalchemy import or_, desc, and_, func, not_, extract
 from sqlalchemy import create_engine
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import scoped_session
@@ -2137,7 +2137,7 @@ class SensorsStatsAPI(Resource):
             ## Overall health
             # Fixed for new results
             # TODO: add count unhealthy results for a particular picture
-            all_unhealthy_zones = db.session.query(func.count(DataPicture.id)).join(Data).join(Sensor).filter(DataPicture.results.like('%unhealthy%')).filter(DataPicture.ts >= ts_from).filter(DataPicture.ts <= ts_to)
+            all_unhealthy_zones = db.session.query(func.count(DataPicture.id)).join(Data).join(Sensor).filter(DataPicture.results.like('%unhealthy%')).filter(DataPicture.ts >= ts_from).filter(DataPicture.ts <= ts_to).filter(extract("hour", DataPicture.ts) > 7).filter(extract("hour", DataPicture.ts) < 19)
             # Fixed for new results
             grouped_zones = db.session.query(DataPicture.ts, func.count(DataPicture.id)).join(Data).join(Sensor).filter(DataPicture.results.like('%unhealthy%')).filter(DataPicture.ts >= grouped_ts_from).filter(DataPicture.ts <= ts_to)
         
