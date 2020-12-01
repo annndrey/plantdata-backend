@@ -1109,7 +1109,7 @@ class DataPictureSchema(ma.ModelSchema):
         model = DataPicture
 
     numwarnings = ma.Function(lambda obj: obj.numwarnings)
-    results = ma.Function(lambda obj: obj.results if 7 < obj.ts.hour < 19 else "")
+    results = ma.Function(lambda obj: obj.results if 7 < obj.ts.hour < 19 else "[]")
     preview = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.thumbnail, _external=True, _scheme='https')))
     fpath = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.fpath, _external=True, _scheme='https')))
     original = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.original, _external=True, _scheme='https')))
