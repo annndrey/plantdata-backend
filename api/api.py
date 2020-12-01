@@ -1108,7 +1108,7 @@ class DataPictureSchema(ma.ModelSchema):
     class Meta:
         model = DataPicture
 
-    numwarnings = ma.Function(lambda obj: obj.numwarnings)
+    numwarnings = ma.Function(lambda obj: obj.numwarnings if 7 < obj.ts.hour < 19 else 0)
     results = ma.Function(lambda obj: obj.results if 7 < obj.ts.hour < 19 else "[]")
     preview = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.thumbnail, _external=True, _scheme='https')))
     fpath = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.fpath, _external=True, _scheme='https')))
@@ -1950,7 +1950,7 @@ class LocationWarningsAPI(Resource):
                        "x": x,
                        "y": y,
                        "z": z,
-                       "numwarnings":c[0].numwarnings,
+                       "numwarnings":c[0].numwarnings if 7 < c[0].data.ts < 19 else 0,
                        "camlabel": c[1].camlabel,
                        "camid": c[0].id,
                        "camlocation": c[1].location.address
