@@ -876,7 +876,7 @@ def process_result(result):
 # process_single_zone
 
 @celery.task
-def parse_request_pictures(parent_data, camposition_id, req_file, flabel, user_login, sensor_uuid, recognize):
+def parse_request_pictures(parent_data, camposition_id, req_file, flabel, photo_ts, user_login, sensor_uuid, recognize):
     with app.app_context():
         data = db.session.query(Data).filter(Data.id == parent_data).first()
         
@@ -953,6 +953,9 @@ def parse_request_pictures(parent_data, camposition_id, req_file, flabel, user_l
                                  original=partorigpath,
                                  results=classification_results,
         )
+        if photo_ts:
+            newpicture.ts = photo_ts
+            
         db.session.add(newpicture)
         camposition.pictures.append(newpicture)
         db.session.commit()
@@ -964,6 +967,7 @@ def parse_request_pictures(parent_data, camposition_id, req_file, flabel, user_l
         # Here we have linked the picture with zones,
         # and can check now for the unhealthy results
         # and send emails
+        # TODO FIX - we have no zones anymore
         pict_zones_info = check_unhealthy_zones(newpicture, sensor_uuid)
         if pict_zones_info:
             picts_unhealthy_status.append(pict_zones_info)
@@ -3078,7 +3082,7 @@ class DataAPI(Resource):
         
         camname = request.form.get("camname")
         camposition = request.form.get("camposition")
-        
+        photo_ts = request.form.get("photo_ts", None)
         flabel = request.form.get("flabel")
         # TODO Add a per-user classificator API here
         recognize = request.form.get("recognize", False)
@@ -3155,7 +3159,7 @@ class DataAPI(Resource):
                 pict_recognize = True
                 
             # Running as celery task
-            parse_request_pictures.delay(data.id, camera_position.id, tmpf.name, flabel, user.login, sensor.uuid, pict_recognize)
+            parse_request_pictures.delay(data.id, camera_position.id, tmpf.name, flabel, photo_ts, user.login, sensor.uuid, pict_recognize)
             return "Data added", 200
         abort(404)
 
