@@ -231,7 +231,7 @@ class DataPicture(db.Model):
     def numwarnings(self):
         numwarning = 0
         if self.results:
-            if 7 < self.ts.hour < 19:
+            if 9 < self.ts.hour < 22:
                 numwarning = self.results.count("unhealthy")
         return numwarning
 
