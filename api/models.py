@@ -230,9 +230,9 @@ class DataPicture(db.Model):
     @hybrid_property
     def numwarnings(self):
         numwarning = 0
-        if 7 < self.ts.hour < 19:
-            if self.results:
-                numwarning = self.results.count("unhealthy")
+        if self.results:
+            #if 7 < self.ts.hour < 19:
+            numwarning = self.results.count("unhealthy")
         return numwarning
 
     
