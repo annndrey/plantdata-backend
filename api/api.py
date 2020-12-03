@@ -1357,7 +1357,7 @@ class CameraAPI(Resource):
 
     @token_required
     @cross_origin()
-    @cache.cached(timeout=3000, key_prefix=cache_key)
+    #@cache.cached(timeout=3000, key_prefix=cache_key)
     def get(self, id):
         """
         Get camera data
