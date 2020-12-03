@@ -1255,7 +1255,7 @@ class SensorTypeAPI(Resource):
 
     #@token_required
     @cross_origin()
-    #@cache.cached(timeout=300, key_prefix=cache_key)
+    @cache.cached(timeout=300, key_prefix=cache_key)
     def get(self):
         auth_headers = request.headers.get('Authorization', '').split()
         token = auth_headers[1]
@@ -1294,7 +1294,7 @@ class PictAPI(Resource):
 
     #@token_required
     @cross_origin()
-    #@cache.cached(timeout=300, key_prefix=cache_key)
+    @cache.cached(timeout=300, key_prefix=cache_key)
     def get(self, path):
         """
         Get picture by URL
@@ -1357,7 +1357,7 @@ class CameraAPI(Resource):
 
     @token_required
     @cross_origin()
-    #@cache.cached(timeout=3000, key_prefix=cache_key)
+    @cache.cached(timeout=300, key_prefix=cache_key)
     def get(self, id):
         """
         Get camera data
@@ -1447,7 +1447,7 @@ class CameraAPI(Resource):
 
     @token_required
     @cross_origin()
-    #@cache.cached(timeout=300, key_prefix=cache_key)
+    @cache.cached(timeout=300, key_prefix=cache_key)
     def post(self):
         """
         Create camera record
@@ -1516,7 +1516,7 @@ class ImagesAPI(Resource):
 
     @token_required
     @cross_origin()
-    #@cache.cached(timeout=300, key_prefix=cache_key)
+    @cache.cached(timeout=300, key_prefix=cache_key)
     def get(self):
         """
         Get saved images filtered by given parameters
@@ -1895,7 +1895,7 @@ class LocationWarningsAPI(Resource):
 
     @token_required
     @cross_origin()
-    #@cache.cached(timeout=300, key_prefix=cache_key)
+    @cache.cached(timeout=300, key_prefix=cache_key)
     def get(self):
         """
         """
@@ -2289,7 +2289,7 @@ class ProbeDataAPI(Resource):
 
     @token_required
     @cross_origin()
-    #@cache.cached(timeout=300, key_prefix=cache_key)
+    @cache.cached(timeout=300, key_prefix=cache_key)
     def get(self):
         """
         GET Get probe data [TODO: Fix description]
@@ -2389,7 +2389,7 @@ class DataAPI(Resource):
 
     @token_required
     @cross_origin()
-    #@cache.cached(timeout=60, key_prefix=cache_key)
+    @cache.cached(timeout=300, key_prefix=cache_key)
     def get(self):
         """
         Get sensors data
@@ -3175,7 +3175,7 @@ class SensorAPI(Resource):
 
     @token_required
     @cross_origin()
-    #@cache.cached(timeout=300, key_prefix=cache_key)
+    @cache.cached(timeout=300, key_prefix=cache_key)
     def get(self, id=None):
         """
         Get sensors
@@ -3371,7 +3371,7 @@ class UserAPI(Resource):
 
     @token_required
     @cross_origin()
-    #@cache.cached(timeout=300, key_prefix=cache_key)
+    @cache.cached(timeout=300, key_prefix=cache_key)
     def get(self, id=None):
         """
         Get users
