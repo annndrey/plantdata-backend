@@ -1113,8 +1113,8 @@ class DataPictureSchema(ma.ModelSchema):
     class Meta:
         model = DataPicture
 
-    numwarnings = ma.Function(lambda obj: obj.numwarnings)# if 7 < obj.ts.hour < 19 else 0)
-    results = ma.Function(lambda obj: obj.results)# if 7 < obj.ts.hour < 19 else "[]")
+    numwarnings = ma.Function(lambda obj: obj.numwarnings if 7 < obj.ts.hour < 19 else 0)
+    results = ma.Function(lambda obj: obj.results if 7 < obj.ts.hour < 19 else "[]")
     preview = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.thumbnail, _external=True, _scheme='https')))
     fpath = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.fpath, _external=True, _scheme='https')))
     original = ma.Function(lambda obj: urllib.parse.unquote(url_for("picts", path=obj.original, _external=True, _scheme='https')))
@@ -1959,7 +1959,7 @@ class LocationWarningsAPI(Resource):
                        "x": x,
                        "y": y,
                        "z": z,
-                       "numwarnings":c[0].numwarnings,# if 7 < c[0].data.ts.hour < 19 else 0,
+                       "numwarnings":c[0].numwarnings if 7 < c[0].data.ts.hour < 19 else 0,
                        "camlabel": c[1].camlabel,
                        "camid": c[0].id,
                        "camlocation": c[1].location.address
@@ -2146,9 +2146,9 @@ class SensorsStatsAPI(Resource):
             ## Overall health
             # Fixed for new results
             # TODO: add count unhealthy results for a particular picture
-            all_unhealthy_zones = db.session.query(func.count(DataPicture.id)).join(Data).join(Sensor).filter(DataPicture.results.like('%unhealthy%')).filter(DataPicture.ts >= ts_from).filter(DataPicture.ts <= ts_to)#.filter(extract("hour", DataPicture.ts) > 7).filter(extract("hour", DataPicture.ts) < 19)
+            all_unhealthy_zones = db.session.query(func.count(DataPicture.id)).join(Data).join(Sensor).filter(DataPicture.results.like('%unhealthy%')).filter(DataPicture.ts >= ts_from).filter(DataPicture.ts <= ts_to.filter(extract("hour", DataPicture.ts) > 7).filter(extract("hour", DataPicture.ts) < 19)
             # Fixed for new results
-            grouped_zones = db.session.query(DataPicture.ts, func.count(DataPicture.id)).join(Data).join(Sensor).filter(DataPicture.results.like('%unhealthy%')).filter(DataPicture.ts >= grouped_ts_from).filter(DataPicture.ts <= ts_to)#.filter(extract("hour", DataPicture.ts) > 7).filter(extract("hour", DataPicture.ts) < 19)
+            grouped_zones = db.session.query(DataPicture.ts, func.count(DataPicture.id)).join(Data).join(Sensor).filter(DataPicture.results.like('%unhealthy%')).filter(DataPicture.ts >= grouped_ts_from).filter(DataPicture.ts <= ts_to.filter(extract("hour", DataPicture.ts) > 7).filter(extract("hour", DataPicture.ts) < 19)
         
             all_zones = db.session.query(func.count(DataPicture.id)).join(Data).join(Sensor).filter(DataPicture.ts >= ts_from).filter(DataPicture.ts <= ts_to)
 
