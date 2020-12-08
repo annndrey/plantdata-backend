@@ -3240,6 +3240,7 @@ class SensorAPI(Resource):
         token = auth_headers[1]
         data = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         user = User.query.filter_by(login=data['sub']).first()
+        app.logger.debug(["User sensors", user, user.sensors])
         if not user:
             abort(404)
         if not id:
