@@ -1229,6 +1229,12 @@ class ProbeSchema(ma.ModelSchema):
         exclude = ['values', 'id']
 
 
+class NotificationSchema(ma.ModelSchema):
+    class Meta:
+        model = Notification
+        exclude = ['users', ]
+        
+
 class ProbeShortSchema(ma.ModelSchema):
     class Meta:
         model = Probe
@@ -1691,6 +1697,100 @@ class ImagesAPI(Resource):
 
         abort(404)
 
+
+class NotificationsAPI(Resource):
+    def __init__(self):
+        self.schema = NotificationSchema()
+        self.m_schema = NotificationSchema(many=True)
+        self.method_decorators = []
+
+    def options(self, *args, **kwargs):
+        return jsonify([])
+
+    @token_required
+    @cross_origin()
+    def get(self, id=None):
+        """
+        GET Get notifications [TODO: Fix description]
+        
+        ---
+        """
+        auth_headers = request.headers.get('Authorization', '').split()
+        token = auth_headers[1]
+        udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
+        user = User.query.filter_by(login=udata['sub']).first()
+        ntype = request.args.get('ntype', None)
+
+        if id:
+            notification = db.session.query(Notification).filter(Notification.id == id).filter(Notifiaction.user == user).first()
+            if notification:
+                return jsonify(self.schema.dump(notification).data), 200
+        else:
+            notifications = db.session.query(Notification).filter(Notifiaction.user == user)
+            if ntype:
+                notifications = notifications.filter(Notificationr.ntype == ntype)
+            # Showing last 10 notifications,
+            # TODO: Add pagination to load more results
+            
+            notifications = notifications.order_by(Notification.id.desc()).limit(10)
+            notifications = notifications.all()
+            
+            return jsonify(self.m_schema.dump(notifications).data), 200
+
+        abort(404)
+
+    # TODO
+    # Add PATCH & DELETE METHODS
+        
+    #@token_required
+    #@cross_origin()
+    #def post(self):
+    #    """
+    #    POST Create probe [TODO: Fix description]
+    #    ---
+    #    """
+    #    auth_headers = request.headers.get('Authorization', '').split()
+    #    token = auth_headers[1]
+    #    udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
+    #    user = User.query.filter_by(login=udata['sub']).first()
+    #    puuid = request.form.get('puuid', None)
+    #    did = request.form.get('did', None)
+    #    datarecord = db.session.query(Data).filter(Data.id == did).first()
+    #    suuid  = request.form.get('suuid', None)
+    #    sensor = db.session.query(Sensor).filter(Sensor.uuid == suuid).first()
+    #    x  = request.form.get('x', None)
+    #    y  = request.form.get('y', None)
+    #    z  = request.form.get('z', None)
+    #    row = request.form.get('row', None)
+    #    col = request.form.get('col', None)
+    #    plabel = request.form.get('plabel', None)
+    #    if sensor:
+    #        if sensor.user != user:
+    #            abort(403)
+
+    #    probe = db.session.query(Probe).filter(Probe.uuid == puuid).first()
+    #    if not probe:
+    #        newprobe = Probe(sensor=sensor, uuid=puuid, data=datarecord, label=plabel)
+    #        if x:
+    #            newprobe.x = x
+    #        if y:
+    #            newprobe.y = y
+    #        if z:
+    #            newprobe.z = z
+    #        if row:
+    #            newprobe.row = row
+    #        if col:
+    #            newprobe.row = col#
+
+    #            
+    #        db.session.add(newprobe)
+    #        db.session.commit()
+    #        return jsonify(self.schema.dump(newprobe).data), 201
+    #    else:
+    #        return jsonify(self.schema.dump(probe).data), 409
+    #    abort(404)
+
+        
 
 class ProbeAPI(Resource):
     def __init__(self):
