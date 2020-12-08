@@ -1722,11 +1722,11 @@ class NotificationsAPI(Resource):
         ntype = request.args.get('ntype', None)
 
         if id:
-            notification = db.session.query(Notification).filter(Notification.id == id).filter(Notifiaction.user == user).first()
+            notification = db.session.query(Notification).filter(Notification.id == id).filter(Notification.user == user).first()
             if notification:
                 return jsonify(self.schema.dump(notification).data), 200
         else:
-            notifications = db.session.query(Notification).filter(Notifiaction.user == user)
+            notifications = db.session.query(Notification).filter(Notification.user == user)
             if ntype:
                 notifications = notifications.filter(Notificationr.ntype == ntype)
             # Showing last 10 notifications,
