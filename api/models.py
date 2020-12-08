@@ -135,7 +135,11 @@ class Notification(db.Model):
     user_id = db.Column(db.Integer, ForeignKey('user.id'))
     user = relationship("User", backref=backref("notifications"))
     sent = db.Column(db.Boolean, default=False)
+    read = db.Column(db.Boolean, default=False)
+    deleted = db.Column(db.Boolean, default=False)
+    archived = db.Column(db.Boolean, default=False)        
     ntype = db.Column(db.String(200))
+
     
 # Sensors
 class Sensor(db.Model):
