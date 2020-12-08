@@ -1232,8 +1232,8 @@ class ProbeSchema(ma.ModelSchema):
 class NotificationSchema(ma.ModelSchema):
     class Meta:
         model = Notification
-        exclude = ['user', ]
-        
+        exclude = ['user', 'text']
+    json_data = ma.Function(lambda obj: obj.json_data)        
 
 class ProbeShortSchema(ma.ModelSchema):
     class Meta:

@@ -12,6 +12,7 @@ from flask_login import UserMixin
 import datetime
 import enum
 import jwt
+import json
 import calendar
 
 
@@ -139,6 +140,10 @@ class Notification(db.Model):
     deleted = db.Column(db.Boolean, default=False)
     archived = db.Column(db.Boolean, default=False)        
     ntype = db.Column(db.String(200))
+
+    @hybrid_property
+    def json_data(self):
+        return json.loads(self.text)
 
     
 # Sensors
