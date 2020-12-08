@@ -3752,6 +3752,7 @@ api.add_resource(SensorTypeAPI, '/sensortypes',  endpoint='sensortypes')
 api.add_resource(LocationWarningsAPI, '/locationwarnings', endpoint='locationwarnings')
 api.add_resource(ProbeAPI, '/probes', '/probes/<int:id>', endpoint='probes')
 api.add_resource(ProbeDataAPI, '/probedata', '/probedata/<int:id>', endpoint='probedata')
+api.add_resource(NotificationsAPI, '/alerts', '/alerts/<int:id>', endpoint='notifications')
 api.add_resource(PictAPI, "/p/<path:path>", endpoint="picts")
 
 @app.cli.command()
