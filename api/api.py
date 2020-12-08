@@ -1716,8 +1716,9 @@ class ProbeAPI(Resource):
         suuid = request.args.get('suuid', None)
 
         sensor = db.session.query(Sensor).filter(Sensor.uuid == suuid).first()
-        app.logger.debug(["SENSOR", suuid, puuid, sensor, user])
+
         if sensor:
+            app.logger.debug(["SENSOR", suuid, puuid, sensor.user, user])
             if sensor.user != user:
                 abort(403)
         if puuid:
