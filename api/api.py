@@ -1232,7 +1232,7 @@ class ProbeSchema(ma.ModelSchema):
 class NotificationSchema(ma.ModelSchema):
     class Meta:
         model = Notification
-        exclude = ['users', ]
+        exclude = ['user', ]
         
 
 class ProbeShortSchema(ma.ModelSchema):
