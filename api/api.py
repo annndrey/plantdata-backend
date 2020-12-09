@@ -1756,6 +1756,7 @@ class NotificationsAPI(Resource):
         isread = request.json.get('read', None)
         app.logger.debug(["PATCH", id, request.json, user])
         notification = db.session.query(Notification).filter(Notification.id == id).filter(Notification.user == user).first()
+        app.logger.debug(["PATCH", notification])
         if isread:
             notification.read = True
             db.session.add(notification)
