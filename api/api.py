@@ -1742,18 +1742,25 @@ class NotificationsAPI(Resource):
     # TODO
     # Add PATCH & DELETE METHODS
         
-    #@token_required
-    #@cross_origin()
-    #def post(self):
-    #    """
-    #    POST Create probe [TODO: Fix description]
-    #    ---
-    #    """
-    #    auth_headers = request.headers.get('Authorization', '').split()
-    #    token = auth_headers[1]
-    #    udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
-    #    user = User.query.filter_by(login=udata['sub']).first()
-    #    puuid = request.form.get('puuid', None)
+    @token_required
+    @cross_origin()
+    def patch(self, id):
+        """
+        PATCH Update notification [TODO: Fix description]
+        ---
+        """
+        auth_headers = request.headers.get('Authorization', '').split()
+        token = auth_headers[1]
+        udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
+        user = User.query.filter_by(login=udata['sub']).first()
+        isread = request.values.get('read', None)
+        notification = db.session.query(Notification).filter(Notification.id == id).filter(Notification.user == user).first()
+        if isread:
+            notification.read = True
+            db.session.add(notification)
+            db.session.commit()
+            return make_response("Notification updated", 204)
+        abort(404, message="Not found")
     #    did = request.form.get('did', None)
     #    datarecord = db.session.query(Data).filter(Data.id == did).first()
     #    suuid  = request.form.get('suuid', None)
