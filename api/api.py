@@ -1754,11 +1754,10 @@ class NotificationsAPI(Resource):
         udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         user = User.query.filter_by(login=udata['sub']).first()
         isread = request.json.get('read', None)
-        app.logger.debug(["PATCH", id, request.json, user])
+        app.logger.debug(["PATCH", id, request.json, user, isread])
         notification = db.session.query(Notification).filter(Notification.id == id).filter(Notification.user == user).first()
-        app.logger.debug(["PATCH", notification])
-        if isread:
-            notification.read = True
+        if notification:
+            notification.read = isread
             db.session.add(notification)
             db.session.commit()
             return make_response("Notification updated", 204)
