@@ -1753,8 +1753,8 @@ class NotificationsAPI(Resource):
         token = auth_headers[1]
         udata = jwt.decode(token, current_app.config['SECRET_KEY'], options={'verify_exp': False})
         user = User.query.filter_by(login=udata['sub']).first()
-        isread = request.values.get('read', None)
-        app.logger.debug(["PATCH", id, request.json])
+        isread = request.json.get('read', None)
+        app.logger.debug(["PATCH", id, request.json, user])
         notification = db.session.query(Notification).filter(Notification.id == id).filter(Notification.user == user).first()
         if isread:
             notification.read = True
