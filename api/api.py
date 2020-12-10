@@ -431,26 +431,31 @@ def check_unhealthy_zones(pict, suuid):
            'sensor_uuid': None,
            'camname': pict.camera_position.camera.camlabel,
            'position': pict.camera_position.poslabel,
-           'zones':[],
+           #'zones':[],
+           results: [],
            'ts': pict.ts
     }
+    if 'unhealthy' in pict.results:
+        res['results'] = json.loads(pict.results)
+    if res['results']:
+        return res
     # pict.zones
     # pict.camera_position.poslabel
     # pict.camera_position.camera.camlabel
     # [zone.zone for zone in pict.zones]
-    for zone in pict.zones:
-        # Check prev zones here >>>
-        app.logger.debug(["ZONE RESULTS", zone.results])
-        if zone.results:
-            if 'unhealthy' in zone.results:
-                prev_three_zones = db.session.query(PictureZone).join(DataPicture).join(CameraPosition).join(Camera).join(Data).join(Sensor).order_by(PictureZone.id.desc()).filter(PictureZone.zone==zone.zone).filter(CameraPosition.poslabel==res['position']).filter(Camera.camlabel==res['camname']).filter(Sensor.uuid==suuid).limit(3).offset(1).all()
-                app.logger.debug(["PREV THEE ZONES", zone.id, [(z.results, z.id) for z in prev_three_zones]])
-                # Changed results to revisedresults
+    #for zone in pict.zones:
+    #    # Check prev zones here >>>
+    #    app.logger.debug(["ZONE RESULTS", zone.results])
+    #    if zone.results:
+    #        if 'unhealthy' in zone.results:
+    #            prev_three_zones = db.session.query(PictureZone).join(DataPicture).join(CameraPosition).join(Camera).join(Data).join(Sensor).order_by(PictureZone.id.desc()).filter(PictureZone.zone==zone.zone).filter(CameraPosition.poslabel==res['position']).filter(Camera.camlabel==res['camname']).filter(Sensor.uuid==suuid).limit(3).offset(1).all()
+    #            app.logger.debug(["PREV THEE ZONES", zone.id, [(z.results, z.id) for z in prev_three_zones]])
+    #            # Changed results to revisedresults
 
-                if all(['unhealthy' in z.results for z in prev_three_zones]):
-                    res['zones'].append({"results": "{} {}".format(zone.zone, zone.results), "fpath": zone.fpath})
-    if res['zones']:
-        return res
+     #           if all(['unhealthy' in z.results for z in prev_three_zones]):
+     #               res['zones'].append({"results": "{} {}".format(zone.zone, zone.results), "fpath": zone.fpath})
+    #if res['zones']:
+    #    return res
 
 
 def cache_key():
@@ -968,9 +973,13 @@ def parse_request_pictures(parent_data, camposition_id, req_file, flabel, photo_
         # and can check now for the unhealthy results
         # and send emails
         # TODO FIX - we have no zones anymore
-        pict_zones_info = check_unhealthy_zones(newpicture, sensor_uuid)
-        if pict_zones_info:
-            picts_unhealthy_status.append(pict_zones_info)
+        #pict_zones_info = check_unhealthy_zones(newpicture, sensor_uuid)
+        #if pict_zones_info:
+        #    picts_unhealthy_status.append(pict_zones_info)
+        pict_results_info = check_unhealthy_zones(newpicture, sensor_uuid)
+        if pict_results_info:
+            picts_unhealthy_status.append(pict_results_info)
+            
         app.logger.debug("NEW PICTURE ADDED")
 
         if picts_unhealthy_status:
