@@ -1261,7 +1261,7 @@ class SensorTypeAPI(Resource):
 
     #@token_required
     @cross_origin()
-    @cache.cached(timeout=300, key_prefix=cache_key)
+    #@cache.cached(timeout=300, key_prefix=cache_key)
     def get(self):
         auth_headers = request.headers.get('Authorization', '').split()
         token = auth_headers[1]
@@ -2004,7 +2004,7 @@ class LocationWarningsAPI(Resource):
 
     @token_required
     @cross_origin()
-    @cache.cached(timeout=300, key_prefix=cache_key)
+    #@cache.cached(timeout=300, key_prefix=cache_key)
     def get(self):
         """
         """
@@ -2093,7 +2093,7 @@ class SensorsStatsAPI(Resource):
 
     @token_required
     @cross_origin()
-    @cache.cached(timeout=300, key_prefix=cache_key)
+    #@cache.cached(timeout=300, key_prefix=cache_key)
     def get(self):
         """
         GET Get sensors stats. In case of no sensor UUID provided 
@@ -3481,7 +3481,7 @@ class UserAPI(Resource):
 
     @token_required
     @cross_origin()
-    @cache.cached(timeout=300, key_prefix=cache_key)
+    #@cache.cached(timeout=300, key_prefix=cache_key)
     def get(self, id=None):
         """
         Get users
