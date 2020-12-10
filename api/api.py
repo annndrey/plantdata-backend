@@ -597,34 +597,34 @@ def send_images_email_notification(email, pict_status_list):
 </html>
     """
 
-    status_text = []
-    email_images = []
+    #status_text = []
+    #email_images = []
     for i, obj in enumerate(pict_status_list):
         p = json.loads(obj)
-        figure_template = """
-        <p>
-        <figure>
-        <img src='cid:image{}_{}' alt='missing'/>
-        <figcaption>{}</figcaption>
-        </figure>
-        </p>
-        """
-        fig_list = []
-        for j, z in enumerate(p['zones']):
-            fig_html = figure_template.format(i, j, z['results'])
-            fig_list.append(fig_html)
-            with open(os.path.join(BASEDIR, z['fpath']), 'rb') as img_file:
-                msgImage = MIMEImage(img_file.read())
-                msgImage.add_header('Content-ID', '<image{}_{}>'.format(i, j))
-                email_images.append(msgImage)
+        #figure_template = """
+        #<p>
+        #<figure>
+        #<img src='cid:image{}_{}' alt='missing'/>
+        #<figcaption>{}</figcaption>
+        #</figure>
+        #</p>
+        #"""
+        #fig_list = []
+        #for j, z in enumerate(p['zones']):
+        #    fig_html = figure_template.format(i, j, z['results'])
+        #    fig_list.append(fig_html)
+        #    with open(os.path.join(BASEDIR, z['fpath']), 'rb') as img_file:
+        #        msgImage = MIMEImage(img_file.read())
+        #        msgImage.add_header('Content-ID', '<image{}_{}>'.format(i, j))
+        #        email_images.append(msgImage)
 
-        figs = "\n".join(fig_list)
+        #figs = "\n".join(fig_list)
 
         r = """<li>
         {} {} {} {} {}
         {}
         </li>
-        """.format(p['ts'], p['location'], p['sensor_uuid'], p['camname'], p['position'], figs)
+        """.format(p['ts'], p['location'], p['sensor_uuid'], p['camname'], p['position'], p['text'])#figs)
         status_text.append(r)
 
     status_text = "\n".join(status_text)
