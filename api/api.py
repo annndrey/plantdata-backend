@@ -432,7 +432,7 @@ def check_unhealthy_zones(pict, suuid):
            'camname': pict.camera_position.camera.camlabel,
            'position': pict.camera_position.poslabel,
            #'zones':[],
-           results: [],
+           'results': [],
            'ts': pict.ts
     }
     if 'unhealthy' in pict.results:
