@@ -527,7 +527,7 @@ def get_zones(pict, n, m):
 @celery.on_after_configure.connect
 def setup_periodic_tasks(sender, **kwargs):
     sender.add_periodic_task(
-        crontab(minute=0, hour='*/3'),
+        crontab(minute=0, hour='*/1'),
         check_pending_image_notifications.s(),
     )
     sender.add_periodic_task(
@@ -597,7 +597,7 @@ def send_images_email_notification(email, pict_status_list):
 </html>
     """
 
-    #status_text = []
+    status_text = []
     #email_images = []
     for i, obj in enumerate(pict_status_list):
         p = json.loads(obj)
@@ -632,15 +632,15 @@ def send_images_email_notification(email, pict_status_list):
     message_text = MIMEText(email_body, 'html')
     msg.attach(message_text)
 
-    for img in email_images:
-        msg.attach(img)
+    #for img in email_images:
+    #    msg.attach(img)
 
     # FIX 
     print("mail ready to be sent")
+    print(["IMAGE MESSAGE", msg.as_string()])
     s = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
     s.ehlo()
     s.starttls()
-    #print([MAILUSER, MAILPASS])
     s.login(MAILUSER, MAILPASS)
     s.sendmail(sender, email, msg.as_string())
     s.quit()
