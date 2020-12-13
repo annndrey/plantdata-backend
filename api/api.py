@@ -601,6 +601,7 @@ def send_images_email_notification(email, pict_status_list):
     #email_images = []
     for i, obj in enumerate(pict_status_list):
         p = json.loads(obj)
+        print(["OBJ", obj])
         #figure_template = """
         #<p>
         #<figure>
