@@ -625,7 +625,7 @@ def send_images_email_notification(email, pict_status_list):
         {} {} {} {} {}
         {}
         </li>
-        """.format(p['ts'], p['location'], p['sensor_uuid'], p['camname'], p['position'], p['text'])#figs)
+        """.format(p['ts'], p['location'], p['sensor_uuid'], p['camname'], p['position'], p['results'])#figs)
         status_text.append(r)
 
     status_text = "\n".join(status_text)
