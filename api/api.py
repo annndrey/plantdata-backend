@@ -949,6 +949,9 @@ def parse_request_pictures(parent_data, camposition_id, req_file, flabel, photo_
                 else:
                     classification_results = None
 
+        image_width, image_height = original.size
+        image_area = image_width * image_height
+        
         # Thumbnails
         original.thumbnail((300, 300), Image.ANTIALIAS)
         original.save(thumbpath, FORMAT, quality=90)
@@ -958,6 +961,9 @@ def parse_request_pictures(parent_data, camposition_id, req_file, flabel, photo_
                                  thumbnail=partthumbpath,
                                  original=partorigpath,
                                  results=classification_results,
+                                 width=image_width,
+                                 height=image_height,
+                                 area=image_area
         )
         if photo_ts:
             newpicture.ts = photo_ts

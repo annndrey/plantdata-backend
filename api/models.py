@@ -97,7 +97,7 @@ class ProbeData(db.Model):
     probe = relationship("Probe", backref=backref("values", uselist=True))
     data_id = db.Column(db.Integer, ForeignKey('data.id'))
     data = relationship("Data", backref=backref("records", uselist=True))
-    value = db.Column(db.Float())
+    value = db.Column(db.Float)
     ptype = db.Column(db.String(200))
     label = db.Column(db.String(200))
     prtype_id = db.Column(db.Integer, ForeignKey('sensor_type.id'))
@@ -197,14 +197,14 @@ class SensorLimit(db.Model):
     sensor_id = db.Column(db.Integer, ForeignKey('sensor.id'))
     prtype = relationship("SensorType", backref=backref("limits", uselist=True))
     sensor = relationship("Sensor", backref=backref("limits", uselist=True))
-    minvalue = db.Column(db.Float(), nullable=True)
-    maxvalue = db.Column(db.Float(), nullable=True)
+    minvalue = db.Column(db.Float, nullable=True)
+    maxvalue = db.Column(db.Float, nullable=True)
     
     
 class SensorType(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    minvalue = db.Column(db.Float(), nullable=True)
-    maxvalue = db.Column(db.Float(), nullable=True)
+    minvalue = db.Column(db.Float, nullable=True)
+    maxvalue = db.Column(db.Float, nullable=True)
     ptype = db.Column(db.String(200))
     sensor_id = db.Column(db.Integer, ForeignKey('sensor.id'))
     sensor = relationship("Sensor", backref=backref("sensortypes", uselist=True))
@@ -235,6 +235,9 @@ class DataPicture(db.Model):
     original = db.Column(db.Text())
     results = db.Column(db.Text())
     ts = db.Column(db.DateTime, default=datetime.datetime.now)
+    width = db.Column(db.Integer)
+    height = db.Column(db.Integer)
+    area = db.Column(db.Float)
 
     @hybrid_property
     def numwarnings(self):
