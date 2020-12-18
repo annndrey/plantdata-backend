@@ -42,6 +42,12 @@ data_probes = db.Table('data_probes', db.Model.metadata,
 )
 
 
+def findarea(points):
+    #  [left, top, right, bottom]
+    width = points[2]-points[0]
+    height = points[3]-points[1]
+    return width * height
+
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -247,6 +253,26 @@ class DataPicture(db.Model):
                 numwarning = self.results.count("unhealthy")
         return numwarning
 
+    @hybrid_property
+    def health(self):
+        totalarea = self.area
+        healthyarea = self.area
+        
+        if self.results and self.area:
+            if 7 < self.ts.hour < 19:
+                json_res = json.loads(self.results)
+                for zone in json_res:
+                    if not "State" in zone['result'].keys():
+                        # infrastructure
+                        healthyarea = healthyarea - findarea(zone['region'])
+                    elif zone['result']['State'] == "unhealthy":
+                        # unhealthy
+                        healthyarea = healthyarea - findarea(zone['region'])
+                return (healthyarea/totalarea)*100
+
+    
+    
+    
     
 class PictureZone(db.Model):
     id = db.Column(db.Integer, primary_key=True)
