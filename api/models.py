@@ -264,7 +264,7 @@ class DataPicture(db.Model):
                 for zone in json_res:
                     if not "State" in zone['result'].keys():
                         # infrastructure
-                        healthyarea = healthyarea - findarea(zone['region'])
+                        totalarea = totalarea - findarea(zone['region'])
                     elif zone['result']['State'] == "unhealthy":
                         # unhealthy
                         healthyarea = healthyarea - findarea(zone['region'])
