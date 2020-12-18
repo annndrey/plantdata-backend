@@ -261,10 +261,15 @@ class DataPicture(db.Model):
         if self.results and self.area:
             if 7 < self.ts.hour < 19:
                 json_res = json.loads(self.results)
+                # First substract infrastructure from the healthy area
                 for zone in json_res:
                     if not "State" in zone['result'].keys():
                         # infrastructure
                         totalarea = totalarea - findarea(zone['region'])
+                        healthyarea = totalarea
+                        
+                # then substract all unhealthy zones
+                for zone in json_res:
                     elif zone['result']['State'] == "unhealthy":
                         # unhealthy
                         healthyarea = healthyarea - findarea(zone['region'])
