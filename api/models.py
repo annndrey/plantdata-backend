@@ -270,7 +270,7 @@ class DataPicture(db.Model):
                         
                 # then substract all unhealthy zones
                 for zone in json_res:
-                    elif zone['result']['State'] == "unhealthy":
+                    if zone['result']['State'] == "unhealthy":
                         # unhealthy
                         healthyarea = healthyarea - findarea(zone['region'])
                 return (healthyarea/totalarea)*100
