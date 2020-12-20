@@ -3245,16 +3245,17 @@ class DataAPI(Resource):
             if not camera_position:
                 camera_position = CameraPosition(camera=camera, poslabel=camposition)
                 if pos_location:
-                    camera_position.x
-                    camera_position.y
-                    camera_position.z
-                    camera_position.row
-                    camera_position.col
+                    camera_position.x = pos_location.posx
+                    camera_position.y = pos_location.posy
+                    camera_position.z = pos_location.posz
+                    camera_position.row = pos_location.row
+                    camera_position.col = pos_location.col
                     
                 db.session.add(camera_position)
                 db.session.commit()
 
             app.logger.debug(["DB CAMERA", camera.camlabel, camera_position.poslabel, camera.x, camera.y, camera.z])
+            app.logger.debug(["DB CAMERA POSITION", camera_position.x, camera_position.y, camera_position.z])
             # data.cameras.append(camera)
             app.logger.debug(["RECOGNIZE", recognize])
             # To be sure to consume request data
