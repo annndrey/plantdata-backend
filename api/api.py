@@ -3239,7 +3239,7 @@ class DataAPI(Resource):
                 db.session.add(camera)
                 db.session.commit()
                 
-            pos_location = db.session.query(CameraPositionLocation).filter(CameraPositionLocation.camlabel==camname).filter(CameraPositionLocation.locname==camposition).filter(CameraPositionLocation.location==sensor.location).first()
+            pos_location = db.session.query(CameraPositionLocation).filter(CameraPositionLocation.camlabel==camname).filter(CameraPositionLocation.poslabel==camposition).filter(CameraPositionLocation.location==sensor.location).first()
             
             camera_position = db.session.query(CameraPosition).join(Camera).filter(Camera.id == camera.id).filter(CameraPosition.poslabel == camposition).first()
             if not camera_position:
