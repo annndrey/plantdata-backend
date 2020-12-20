@@ -275,6 +275,7 @@ class DataPicture(db.Model):
                         healthyarea = healthyarea - findarea(zone['region'])
                 if totalarea==0:
                     totalarea = 1
+                    healthyarea = 1
                 return (healthyarea/totalarea)*100
 
     
