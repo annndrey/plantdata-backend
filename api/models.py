@@ -273,6 +273,8 @@ class DataPicture(db.Model):
                     if "State" in zone['result'].keys() and  zone['result']['State'] == "unhealthy":
                         # unhealthy
                         healthyarea = healthyarea - findarea(zone['region'])
+                if totalarea==0:
+                    totalarea = 1
                 return (healthyarea/totalarea)*100
 
     
