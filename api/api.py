@@ -2327,7 +2327,7 @@ class SensorsStatsAPI(Resource):
         if ( output_params and 'spikes' in output_params ) or not output_params:                
 
             # number of unusual spikes
-            spikes = db.session.query(func.count(ProbeData.id)).join(Data).join(Probe).join(Sensor).filter(Data.ts > ts_from).filter(Data.ts < ts_to)
+            spikes = db.session.query(func.count(ProbeData.id)).join(Data).join(Probe).join(Sensor).filter(Data.ts > ts_from).filter(Data.ts < ts_to).filter(Probe.label.isnot(None))
             if suuid == 'all':
                 spikes = spikes.filter(Sensor.uuid.in_([s.uuid for s in user.sensors]))
             else:
@@ -2357,7 +2357,7 @@ class SensorsStatsAPI(Resource):
             # Data stats: min, max, mean
         if ( output_params and 'basicstats' in output_params ) or not output_params:
 
-            probe_data = db.session.query(ProbeData).join(Data).join(Probe).join(Sensor).filter(Data.ts >= grouped_ts_from).filter(Data.ts < ts_to)
+            probe_data = db.session.query(ProbeData).join(Data).join(Probe).join(Sensor).filter(Data.ts >= grouped_ts_from).filter(Data.ts < ts_to).filter(Probe.label.isnot(None))
             # HIDE PROBES            
             probe_data = probe_data.filter(ProbeData.probe_id.notin_([362, 356]))
             if suuid == 'all':
