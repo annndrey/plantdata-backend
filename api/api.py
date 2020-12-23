@@ -1854,7 +1854,7 @@ class ProbeAPI(Resource):
             probes = db.session.query(Probe).join(Sensor).filter(Sensor.uuid == suuid)
             # HIDE PROBES            
             probes = probes.filter(Probe.id.notin_([362, 356]))
-            probes = probes.all()
+            probes = [p for p in probes.all() if p.label]
             
             return jsonify(self.m_schema.dump(probes).data), 200
         else:
@@ -2763,7 +2763,7 @@ class DataAPI(Resource):
                     day_st = datetime.datetime.strptime(ts_from, '%d-%m-%Y %H:%M').replace(hour=0, minute=0, second=0)
                     day_end = datetime.datetime.strptime(ts_to, '%d-%m-%Y %H:%M').replace(hour=23, minute=59, second=59)
             
-            sensordata_query = db.session.query(Data).filter(Data.sensor.has(Sensor.uuid.in_([s.uuid for s in sensor])))
+            sensordata_query = db.session.query(Data).filter(Data.sensor.has(Sensor.uuid.in_([s.uuid for s in sensor]))).filter(ProbeData.probe.has(Probe.label.isnot(None)))
             if puuid:
                 sensordata_query = sensordata_query.join(Data.records).options(contains_eager(Data.records)).filter(ProbeData.probe.has(Probe.uuid==puuid))
             # HIDE PROBES            
