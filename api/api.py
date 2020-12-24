@@ -435,8 +435,10 @@ def check_unhealthy_zones(pict, suuid):
            'results': [],
            'ts': pict.ts
     }
-    if 'unhealthy' in pict.results:
-        res['results'] = json.loads(pict.results)
+    if pict.results:
+        if 'unhealthy' in pict.results:
+            res['results'] = json.loads(pict.results)
+            
     if res['results']:
         return res
     # pict.zones
@@ -947,6 +949,7 @@ def parse_request_pictures(parent_data, camposition_id, req_file, flabel, photo_
                     classification_results = json.dumps(cf_result)
                     app.logger.debug(f"CF RESULTS {cf_result}")
                 else:
+                    app.logger.debug(f"NO RESULTS FROM CF")
                     classification_results = None
 
         image_width, image_height = original.size
