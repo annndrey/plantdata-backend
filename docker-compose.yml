@@ -11,7 +11,7 @@ services:
       - ./.socket:/socket
       - $PICT_DIR:/data/picts
       - /etc/localtime:/etc/localtime
-      - /var/run/mysqld/mysqld.sock:/tmp/mysql.sock
+      - /var/run/mysqld/mysqld.sock:/etc/mysql.sock
     environment:
       APPSETTINGS: config_docker.py
       TEXT_FONT: /data/fonts/truetype/liberation/LiberationSans-Regular.ttf
