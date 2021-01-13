@@ -33,7 +33,7 @@ deploy_live:
   only:
     - master
   tags:
-    - master_runner
+    - master
     
 deploy_beta:
   stage: deploy
@@ -56,4 +56,4 @@ deploy_beta:
   only:
     - develop
   tags:
-    - develop_runner
+    - dev
