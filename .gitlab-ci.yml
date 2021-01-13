@@ -12,7 +12,7 @@ test:
     - python3 --version
     - echo $CI_PROJECT_DIR
   tags:
-    - develop_runner
+    - dev-runner-fermata-gpu
     
 
 deploy_live:
@@ -36,7 +36,7 @@ deploy_live:
   only:
     - master
   tags:
-    - master_runner
+    - master-runner-fermata-gpu
     
 deploy_beta:
   stage: deploy
@@ -59,4 +59,4 @@ deploy_beta:
   only:
     - dev-v2
   tags:
-    - develop_runner
+    - dev-runner-fermata-gpu
