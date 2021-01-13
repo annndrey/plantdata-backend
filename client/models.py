@@ -45,3 +45,4 @@ class Photo(Base):
     uploaded = Column(Boolean, default=False)
     camname = Column(String(255))
     camposition = Column(Integer)
+    ts = Column(DateTime, default=datetime.datetime.now)

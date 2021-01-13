@@ -1,58 +1,39 @@
 CAMERAS:
   - LABEL: "CAM1"
     CAMERA_TYPE: "IP"
-    CAMERA_IP: "192.168.0.201"
+    CAMERA_IP: "192.168.1.4"
     CAMERA_LOGIN: "admin"
-    CAMERA_PASSWORD: "plantdata"
-    NUMFRAMES: 9
-  - LABEL: "CAM2"
-    CAMERA_TYPE: "IP"
-    CAMERA_IP: "192.168.0.202"
-    CAMERA_LOGIN: "admin"
-    CAMERA_PASSWORD: "plantdata"
-    NUMFRAMES: 9
-  - LABEL: "CAM3"
-    CAMERA_TYPE: "IP"
-    CAMERA_IP: "192.168.0.203"
-    CAMERA_LOGIN: "admin"
-    CAMERA_PASSWORD: "plantdata"
-    NUMFRAMES: 6
-  - LABEL: "CAM4"
-    CAMERA_TYPE: "IP"
-    CAMERA_IP: "192.168.0.204"
-    CAMERA_LOGIN: "admin"
-    CAMERA_PASSWORD: "plantdata"
-    NUMFRAMES: 7
-  - LABEL: "CAM5"
-    CAMERA_TYPE: "IP"
-    CAMERA_IP: "192.168.0.205"
-    CAMERA_LOGIN: "admin"
-    CAMERA_PASSWORD: "plantdata"
-    NUMFRAMES: 9
-  - LABEL: "CAM6"
-    CAMERA_TYPE: "IP"
-    CAMERA_IP: "192.168.0.206"
-    CAMERA_LOGIN: "admin"
-    CAMERA_PASSWORD: "plantdata"
-    NUMFRAMES: 4
-  - LABEL: "CAM7"
-    CAMERA_TYPE: "IP"
-    CAMERA_IP: "192.168.0.207"
-    CAMERA_LOGIN: "admin"
-    CAMERA_PASSWORD: "plantdata"
-    NUMFRAMES: 6
-  - LABEL: "CAM8"
-    CAMERA_TYPE: "IP"
-    CAMERA_IP: "192.168.0.208"
-    CAMERA_LOGIN: "admin"
-    CAMERA_PASSWORD: "plantdata"
-    NUMFRAMES: 4
-  - LABEL: "USB0"
-    CAMERA_TYPE: "USB"
-    PORTNUM: 0
-SERVER_LOGIN: "your_login_here"
-SERVER_PASSWORD: "your_password_here"
+    CAMERA_PASSWORD: "123456"
+    NUMFRAMES: 239
+#239
+#  - LABEL: "CAM2"
+#    CAMERA_TYPE: "IP"
+#    CAMERA_IP: "192.168.1.22"
+#    CAMERA_LOGIN: "admin"
+#    CAMERA_PASSWORD: "PlantData132"
+#    NUMFRAMES: 28
+#  - LABEL: "CAM3"
+#    CAMERA_TYPE: "IP"
+#    CAMERA_IP: "192.168.1.23"
+#    CAMERA_LOGIN: "admin"
+#    CAMERA_PASSWORD: "PlantData132"
+#    NUMFRAMES: 17
+#  - LABEL: "CAM4"
+#    CAMERA_TYPE: "IP"
+#    CAMERA_IP: "192.168.1.24"
+#    CAMERA_LOGIN: "admin"
+#    CAMERA_PASSWORD: "PlantData132"
+#    NUMFRAMES: 9
+#  - LABEL: "CAM5"
+#    CAMERA_TYPE: "IP"
+#    CAMERA_IP: "192.168.1.25"
+#    CAMERA_LOGIN: "admin"
+#    CAMERA_PASSWORD: "PlantData132"
+#    NUMFRAMES: 29
 SERVER_HOST: "https://dev.plantdata.fermata.tech:5598/api/v2/{}"
+SERVER_LOGIN: "loratest@fermata.tech"
+SERVER_PASSWORD: "Ji9aix8r"
 DB_FILE: "localdata.db"
 DATADIR: "picts"
 LOWLIGHT: 10
+EXCLUDE_POS: "65-99,222"

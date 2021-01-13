@@ -174,9 +174,17 @@ def collect_pictures(CAMERA_LOGIN, CAMERA_PASSWORD, CAMERA_IP, LABEL, NUMFRAMES,
                 for j in range(5):
                     check, frame = rtsp.read()
                     sleep(1)
+                # Skip night images
+                #
+                blur = cv2.blur(frame, (5, 5))
+                #if max(cv2.mean(blur)) > 130:
                 showPic = cv2.imwrite(fname, frame, [cv2.IMWRITE_JPEG_QUALITY, 100])
                 logger.debug("CAPTURED {} PICT {}".format(LABEL, i+1))
-                cameradata.append({"fname": fname, "label": LABEL + " {}".format(i+1), "cameraname": LABEL, "cameraposition": i+1})
+                logger.debug("PICT BRIGHTNESS {}".format(max(cv2.mean(blur))))
+                cameradata.append({"fname": fname, "label": LABEL + " {}".format(i+1), "cameraname": LABEL, "cameraposition": i+1, "ts": datetime.datetime.now()})
+                #else:
+                #    logger.debug("SKIPPING {} PICT {}, TOO DARK".format(LABEL, i+1))
+                    
                 rtsp.release()
                 #sleep(10)
     # Go to the first position
@@ -196,7 +204,7 @@ def create_session(db_file):
     return session
 
     
-def send_patch_request(fname, flabel, fcamname, fcamposition, data_id, photo_id, header):
+def send_patch_request(fname, flabel, fcamname, fcamposition, data_id, photo_id, photo_ts, header):
     files = {}
     files['{}'.format(flabel)] = open(fname, 'rb')
     logger.debug("FILESIZE {}".format(os.stat(fname).st_size))
@@ -205,7 +213,7 @@ def send_patch_request(fname, flabel, fcamname, fcamposition, data_id, photo_id,
     logger.debug("SENDING FILE {}".format(files))
     # send camera_name, camera position
     #resp = requests.patch(SERVER_HOST.format(url_str), data={"camname": fcamname, 'flabel': flabel, "camposition": fcamposition, "recognize": False}, headers=header, files=files)
-    resp = requests.patch(SERVER_HOST.format(url_str), data={"camname": fcamname, 'flabel': flabel, "camposition": fcamposition, "recognize": True}, headers=header, files=files)
+    resp = requests.patch(SERVER_HOST.format(url_str), data={"camname": fcamname, 'flabel': flabel, "camposition": fcamposition, "recognize": True, "photo_ts": photo_ts}, headers=header, files=files)
     logger.debug("PATCH RESPONSE STATUS CODE {}".format(resp.status_code))
     if resp.status_code == 200:
         os.unlink(os.path.join("/home/pi", fname))
@@ -330,7 +338,7 @@ def post_data(token, bsuuid, take_photos):
         files = {}
         # Take newdata from the DB
         for i, d in enumerate(cameradata):
-            newphoto = Photo(bs=latestdata, photo_filename=d['fname'], label=d["label"], camname=d["cameraname"], camposition=d["cameraposition"])
+            newphoto = Photo(bs=latestdata, photo_filename=d['fname'], label=d["label"], camname=d["cameraname"], camposition=d["cameraposition"], ts=d['ts'])
             session.add(newphoto)
             session.commit()
     else:
@@ -374,7 +382,7 @@ def post_data(token, bsuuid, take_photos):
                         for i, f in enumerate(cachedphotos):
                             if f.bs:
                                 if f.bs.remote_data_id:
-                                    loopdata.append(send_patch_request(f.photo_filename, f.label, f.camname, f.camposition, f.bs.remote_data_id, f.photo_id, head))
+                                    loopdata.append(send_patch_request(f.photo_filename, f.label, f.camname, f.camposition, f.bs.remote_data_id, f.photo_id, f.ts, head))
                                 
                         logger.debug(["RESULTS STATUSES", loopdata])
 
@@ -398,9 +406,13 @@ if __name__ == '__main__':
         base_station_uuid = register_base_station(token)
  
     scheduler = SafeScheduler()
-    scheduler.every(60).minutes.do(post_data, token, base_station_uuid, False)
-    scheduler.every(120).minutes.do(post_data, token, base_station_uuid, True)
+    collect_data = scheduler.every(60).minutes.do(post_data, token, base_station_uuid, False)
+    # 45 min to collect, 110 min to send + 10 additional min just to be sure
+    collect_photos = scheduler.every(100).minutes.do(post_data, token, base_station_uuid, True)
     logger.debug(base_station_uuid)
+    # first run
+    collect_data.run()
+    #collect_photos.run()
     #post_data(token, base_station_uuid, True)
     #sys.exit(1)
     while 1:
