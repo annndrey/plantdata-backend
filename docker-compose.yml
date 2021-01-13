@@ -42,6 +42,7 @@ services:
       - ./.data/fonts:/data/fonts
       - /etc/localtime:/etc/localtime
       - $PICT_DIR:/data/picts
+      - /var/run/mysqld/mysqld.sock:/tmp/mysql.sock
     environment:
       PYTHONDONTWRITEBYTECODE: 1
       APPSETTINGS: config_docker.py
@@ -67,6 +68,7 @@ services:
       - ./.data/fonts:/data/fonts
       - /etc/localtime:/etc/localtime
       - $PICT_DIR:/data/picts
+      - /var/run/mysqld/mysqld.sock:/tmp/mysql.sock
     environment:
       PYTHONDONTWRITEBYTECODE: 1
       APPSETTINGS: config_docker.py
