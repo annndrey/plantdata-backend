@@ -1,3 +1,4 @@
+setuptools==45
 alembic==1.0.1
 amqp==2.5.1
 aniso8601==4.0.1
