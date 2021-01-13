@@ -11,7 +11,7 @@ MAILPASS = os.environ.get('MAILPASS', '')
 DEBUG = True
 DEVELOPMENT = True
 SECRET_KEY='secretkeyformyapp'
-SQLALCHEMY_DATABASE_URI=f'mysql+pymysql://{DBUSER}:{DBPASS}@/{DBNAME}?unix_socket=/etc/mysqld.sock'
+SQLALCHEMY_DATABASE_URI=f'mysql+pymysql://{DBUSER}:{DBPASS}@{HOST}/{DBNAME}'
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 FILE_PATH = "/data/picts"
 CF_LOGIN = "saladuser"
