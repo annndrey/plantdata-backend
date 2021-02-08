@@ -314,7 +314,7 @@ def check_pending_notifications():
 
 @celery.task
 def send_email_notification(email, pict_status_list):
-    sender = "noreply@plantdata.fermata.tech"
+    sender = "noreply@host"
     msg = MIMEMultipart('related')
     msg['Subject'] = 'Plantdata Service Notification'
     msg['From'] = sender
@@ -428,7 +428,7 @@ def crop_zones(results, cam_names, cam_positions, cam_zones, cam_numsamples, cam
                                                 #app.logger.debug(f"Filtering results {camname}, {position}, {ts}")
                                                 prefix = f"{camname}-{position}-{ts}"
                                                 # Saving original_file
-                                                p['original'] = p['original'].replace(f'https://plantdata.fermata.tech:5498/api/v{API_VERSION}/p/', '')
+                                                p['original'] = p['original'].replace(f'https://host:port/api/v{API_VERSION}/p/', '')
                                                 orig_fpath = os.path.join(current_app.config['FILE_PATH'], p['original'])
                                                 orig_newpath = os.path.join(temp_dir, prefix+".jpg")
                                                 if label_text:

@@ -3,12 +3,12 @@ import os
 DEBUG = True
 DEVELOPMENT = True
 SECRET_KEY='secretkeyformyapp'
-SQLALCHEMY_DATABASE_URI='mysql+pymysql://plantdata:plantdatapass@192.168.1.4/plantdb'
+SQLALCHEMY_DATABASE_URI='mysql+pymysql://user@host/plantdb'
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 FILE_PATH = "/data/picts"
-CF_LOGIN = "saladuser"
-CF_PASSWORD = "saladpass1a1"
-CF_HOST = "https://salad.fermata.tech/{}"
+CF_LOGIN = "user"
+CF_PASSWORD = "pass"
+CF_HOST = "https://host/{}"
 CLASSIFY_ZONES = True
 FONT = "/data/fonts/truetype/liberation/LiberationSans-Regular.ttf"
 FONTSIZE = 50
