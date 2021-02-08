@@ -5,7 +5,7 @@ server {
   ## to be served if you visit any address that your server responds to, eg.
   ## the ip address of the server (http://x.x.x.x/)
   listen 80;
-  server_name salad.fermata.tech; ## Replace this with something like gitlab.example.com
+  server_name host; ## Replace this with something like gitlab.example.com
   server_tokens off; ## Don't show the nginx version number, a security best practice
   return 301 https://$http_host$request_uri;
   access_log  /var/log/nginx/salad_access.log;
@@ -17,10 +17,10 @@ server {
     listen 443 ssl http2;
     client_max_body_size 10M;
 
-    server_name salad.fermata.tech;
+    server_name host;
     server_tokens off; ## Don't show the nginx version number, a security best practice
-    ssl_certificate /etc/letsencrypt/live/salad.fermata.tech/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/salad.fermata.tech/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/host/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/host/privkey.pem;
 
     location / {
       proxy_set_header Host $http_host;
@@ -36,7 +36,4 @@ server {
 
   }
 
-  #upstream uvicorn {
-  #  server unix:/home/annndrey/cityfarmer_fastapi/salad.sock;
-  #}
 

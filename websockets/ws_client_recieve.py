@@ -12,7 +12,7 @@ from client_parallel import get_base_station_uuid
 
 
 
-SERVER_URL = "ws://dev.plantdata.fermata.tech:6789"
+SERVER_URL = "ws://host:port"
 
 async def rpi_client():
     bsuuid, _ = get_base_station_uuid()

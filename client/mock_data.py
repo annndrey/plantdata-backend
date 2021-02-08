@@ -36,7 +36,7 @@ with open("mock_data_config.yaml", 'r') as stream:
 
 SERVER_LOGIN = CONFIG_FILE['SERVER_LOGIN']
 SERVER_PASSWORD = CONFIG_FILE['SERVER_PASSWORD']
-SERVER_HOST = "https://dev.plantdata.fermata.tech:5598/api/v2/{}"
+SERVER_HOST = "https://host:port/api/v2/{}"
 
 H_mean = 70
 CO_mean = 300

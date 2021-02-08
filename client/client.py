@@ -40,9 +40,9 @@ with open("config.yaml", 'r') as stream:
     except yaml.YAMLError as exc:
         print(exc)
 
-SERVER_LOGIN = "plantuser@plantdata.com"
-SERVER_PASSWORD = "plantpassword"
-SERVER_HOST = "https://plantdata.fermata.tech:5498/api/v1/{}"
+SERVER_LOGIN = "user@host"
+SERVER_PASSWORD = "password"
+SERVER_HOST = "https://host:port/api/v1/{}"
 db_file = 'localdata.db'
 DATADIR = "picts"
 LOWLIGHT = 10

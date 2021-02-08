@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+\#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 import sys
@@ -90,7 +90,7 @@ with open("config.yaml", 'r') as stream:
 
 SERVER_LOGIN = CONFIG_FILE['SERVER_LOGIN']
 SERVER_PASSWORD = CONFIG_FILE['SERVER_PASSWORD']
-SERVER_HOST = "https://dev.plantdata.fermata.tech:5598/api/v2/{}"
+SERVER_HOST = "https://host:port/api/v2/{}"
 db_file = CONFIG_FILE['DB_FILE']
 DATADIR = CONFIG_FILE['DATADIR']
 LOWLIGHT = CONFIG_FILE['LOWLIGHT']

@@ -1,3 +1,3 @@
-SERVER_HOST: "https://dev.plantdata.fermata.tech:5598/api/v2/{}"
-SERVER_LOGIN: "mockdata@fermata.tech"
-SERVER_PASSWORD: "See8aeb9"
+SERVER_HOST: "https://host:port/api/v2/{}"
+SERVER_LOGIN: "mockdata@host"
+SERVER_PASSWORD: "pass"

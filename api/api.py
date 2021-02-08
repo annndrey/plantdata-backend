@@ -160,8 +160,8 @@ swagger = Swagger(app, config=swagger_config, template=swtemplate)
 CF_LOGIN = app.config['CF_LOGIN']
 CF_PASSWORD = app.config['CF_PASSWORD']
 #CF_HOST = app.config['CF_HOST']
-CF_HOST = "https://regions.fermata.tech:5777/api/v1/loadimage"
-CF_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZW1vdXNlckBmZXJtYXRhLnRlY2giLCJpYXQiOjE2MDg4MDY4NDEsImV4cCI6MTYxMjQwNjg0MX0.84E_Qo218pCTwrFkpA2E1jqILPXS94Eeacl66ZnW-Zs"
+CF_HOST = "https://host:port/api/v1/loadimage"
+CF_TOKEN = "jwt-token"
 FONT = app.config['FONT']
 FONTSIZE = app.config['FONTSIZE']
 
@@ -745,7 +745,7 @@ def crop_zones(results, cam_names, cam_positions, cam_zones, cam_numsamples, cam
                                                 #app.logger.debug(f"Filtering results {camname}, {position}, {ts}")
                                                 prefix = f"{camname}-{position}-{ts}"
                                                 # Saving original_file
-                                                p['original'] = p['original'].replace(f'https://dev.plantdata.fermata.tech:5598/api/v{API_VERSION}/p/', '')
+                                                p['original'] = p['original'].replace(f'https://host:port/api/v{API_VERSION}/p/', '')
                                                 orig_fpath = os.path.join(current_app.config['FILE_PATH'], p['original'])
                                                 orig_newpath = os.path.join(temp_dir, prefix+".jpg")
                                                 if label_text:
@@ -770,7 +770,7 @@ def crop_zones(results, cam_names, cam_positions, cam_zones, cam_numsamples, cam
                 if file != zfname:
                     zipf.write(os.path.join(root, file))
         zipf.close()
-        shutil.move(zipname, os.path.join('/home/annndrey/Dropbox/plantdata', zfname))
+        shutil.move(zipname, os.path.join('/home/user/Dropbox/plantdata', zfname))
 
 
 #@app.before_first_request
