@@ -13,13 +13,13 @@ from time import sleep
 
 def get_token():
     data_sent = False
-    login_data = {"username":"plantuser@plantdata.com",
-                  "password":"plantpassword"
+    login_data = {"username":"user@host",
+                  "password":"password"
     }
     token = None
     while not data_sent:
         try:
-            res = requests.post("https://plantdata.fermata.tech:5498/api/v1/token", json=login_data)
+            res = requests.post("https://host:port/api/v1/token", json=login_data)
             data_sent = True
         except requests.exceptions.ConnectionError:
             print("")
