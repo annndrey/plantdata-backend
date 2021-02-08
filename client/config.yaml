@@ -1,6 +1,6 @@
 - CAMERA_IP: "192.168.0.100"
-  CAMERA_LOGIN: "plantdata"
-  CAMERA_PASSWORD: "plantpassword"
+  CAMERA_LOGIN: "admin"
+  CAMERA_PASSWORD: "admin"
   NUMFRAMES: 3
   LABEL: "Top White Camera"
   CAMERA_TYPE: "IP"
@@ -14,7 +14,7 @@
   CAMERA_TYPE: "IP"
   CAMERA_IP: "192.168.0.104"
   CAMERA_LOGIN: "admin"
-  CAMERA_PASSWORD: "plantdata"
+  CAMERA_PASSWORD: "admin"
   NUMFRAMES: 7
 - LABEL: "USB0"
   CAMERA_TYPE: "USB"
