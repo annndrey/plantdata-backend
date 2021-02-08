@@ -13,13 +13,13 @@ from time import sleep
 
 def get_token():
     data_sent = False
-    login_data = {"username":"plantuser@plantdata.com",
-                  "password":"plantpassword"
+    login_data = {"username":"user@host",
+                  "password":"pass"
     }
     token = None
     while not data_sent:
         try:
-            res = requests.post("https://plantdata.fermata.tech:5498/api/v1/token", json=login_data)
+            res = requests.post("https://host:port/api/v1/token", json=login_data)
             data_sent = True
         except requests.exceptions.ConnectionError:
             print("")
@@ -64,7 +64,7 @@ def new_sensor(token):
     location = {'lat': 111, 'lon': 111, 'address': 'test address 1'}
     while not data_sent:
         try:
-            response = requests.post("https://plantdata.fermata.tech:5498/api/v1/sensors", json=location, headers=head)
+            response = requests.post("https://host:port/api/v1/sensors", json=location, headers=head)
             data_sent = True
         except requests.exceptions.ConnectionError:
             sleep(2)
@@ -85,7 +85,7 @@ def post_data(token, suuid):
     serialdata['uuid'] = suuid
     while not data_sent:
         try:
-            response = requests.post("https://plantdata.fermata.tech:5498/api/v1/data", data=serialdata,  headers=head)
+            response = requests.post("https://host:port/api/v1/data", data=serialdata,  headers=head)
             data_sent=True
         except requests.exceptions.ConnectionError:
             if not data_cached:
